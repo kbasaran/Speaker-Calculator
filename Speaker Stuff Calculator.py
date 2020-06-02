@@ -104,9 +104,9 @@ def calculate_air_mass(Sd):
 def calculate_Lm(Bl, Re, Mms, Sd):
     """Calculate Lm@Re, 1W, 1m."""
     w_ref = 10**-12
-    half_space_Q = 1/2/np.pi
-    P_1W = half_space_Q * cons.Kair * Bl**2 * Sd**2 / cons.c_air**3 / Re / Mms**2 / 2 / np.pi
-    return 10 * np.log10(P_1W/w_ref)
+    I_1W_per_m2 = cons.RHO * Bl**2 * Sd**2 / cons.c_air / Re / Mms**2 / 2 / np.pi
+    P_over_I_half_space = 1/2/np.pi  # m²
+    return 10 * np.log10(I_1W_per_m2 * P_over_I_half_space / w_ref)
 
 
 def calculate_Xmech(Xmax):
@@ -757,13 +757,12 @@ if __name__ == "__main__":
     form.add_line(input_form_layout)
     form.add_title(input_form_layout, "Excitation")
 
-    form.add_double_float_var(input_form_layout, "excitation_value", "Excitation value", default=2.83)
-
     excitation_combo_box_choices = ([("Volt","V"),
                                      ("Watt@Rdc","W"),
                                      ("Watt@Rnom","Wn")
                                      ])
     form.add_combo_box(input_form_layout, "excitation_unit", excitation_combo_box_choices, box_screen_name="Unit")
+    form.add_double_float_var(input_form_layout, "excitation_value", "Excitation value", default=2.83)
     form.set_value("excitation_unit", "V")
 
     form.add_double_float_var(input_form_layout, "nominal_impedance", "Nominal impedance", default=4)
@@ -868,12 +867,12 @@ if __name__ == "__main__":
             if rb_graph["SPL"].isChecked():
                 curve = result_sys.SPL
                 curve_2 = result_sys.SPL_Xmax_limited
-                upper_limit = graph_ceil(np.max(curve) + 3, 10)
+                upper_limit = graph_ceil(np.max(curve) + 2, 10)
                 lower_limit = upper_limit - 50
                 ax.semilogx(cons.f, curve)
                 ax.semilogx(cons.f, curve_2, "m", label="Xmax limited")
                 ax.legend()
-                ax.set_title("SPL@1m, Half-space, %.2f Volt, %.3g Watt"
+                ax.set_title("SPL@1m, Half-space, %.2f Volt, %.2f Watt"
                              % (result_sys.V_in, result_sys.P_real))
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=lower_limit, upper=upper_limit)
