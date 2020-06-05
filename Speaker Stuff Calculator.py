@@ -288,8 +288,9 @@ class UserForm():
                 raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
         elif isinstance(qwidget_obj, QComboBox):  # recevies tuple with entry_name
-            if isinstance(value, str):
-                qwidget_obj.setCurrentText(value)
+            if isinstance(value[0], str):
+                qwidget_obj.setCurrentText(value[0])
+                # qwidget_obj.setCurrentData(value[1])
             else:
                 raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
@@ -572,7 +573,7 @@ class SpeakerSystem():
                 self.sysx2t = signal.StateSpace(ass, bss, cssx2t, dss)
 
         # Output arrays
-        _, self.x1_1V = np.abs(signal.freqresp(self.sysx1, w=cons.w))  # hata veriyo
+        _, self.x1_1V = signal.freqresp(self.sysx1, w=cons.w)  # hata veriyo
         _, self.x1t_1V = signal.freqresp(self.sysx1t, w=cons.w)
         self.x1 = self.x1_1V * self.V_in
         if self.dof > 1:
@@ -622,10 +623,10 @@ class SpeakerSystem():
 
         elif self.dof == 2:
             self.summary += "\r\nPeak relative displacement at %iHz is %.3g mm" %\
-                (f_interest, (self.x1[f_inter_idx]-self.x2[f_inter_idx])*1e3*2**0.5)
+                (f_interest, np.abs(self.x1[f_inter_idx]-self.x2[f_inter_idx])*1e3*2**0.5)
 
             self.summary += "\r\nPeak relative displacement overall is %.3g mm" %\
-                np.max((self.x1-self.x2)*1e3*2**0.5)
+                np.max(np.abs(self.x1-self.x2)*1e3*2**0.5)
         else:
             self.summary += "Unable to identify the total degrees of freedom"
 
@@ -767,10 +768,6 @@ if __name__ == "__main__":
 
     form.add_double_float_var(input_form_layout, "nominal_impedance", "Nominal impedance", default=4)
 
-    # form.excitation_unit["obj"].currentIndexChanged.connect(
-    #     form.nominal_impedance["obj"].setEnabled(
-    #         form.get_value("excitation_unit")[1]=="Wn"))
-
     # System type selection radio buttons
     form.add_line(input_form_layout)
     form.add_title(input_form_layout, "System type")
@@ -843,12 +840,17 @@ if __name__ == "__main__":
     rb_graph["x1-x2"] = QRadioButton("Excursion (x1-x2)")
     layout.addWidget(rb_graph["x1-x2"])
 
-    # Message_box for user data
+    rb_graph["phase"] = QRadioButton("Phase")
+    layout.addWidget(rb_graph["phase"])
+
+    # Message_box for output data
     message_box = QPlainTextEdit()
     message_box.setMinimumHeight(245)
     message_box.setMinimumWidth(350)
     message_box.setReadOnly(True)
+    # User notes box
     setattr(form, "user_notes", {"obj": QPlainTextEdit()})
+    form.user_notes["obj"].setPlainText("..")
 
     def graph_ceil(x, step=5):
         """Define max scale value for the graph based on highest value."""
@@ -886,27 +888,42 @@ if __name__ == "__main__":
 
             if rb_graph["x1"].isChecked():
                 curve = np.abs(result_sys.x1) * 1000
-                ax.semilogx(cons.f, curve)
-                ax.semilogx(cons.f, curve * 2**0.5, "m")
-                ax.set_title("Absolute RMS and Peak Displacement, One-way")
+                ax.semilogx(cons.f, curve, label="RMS")
+                ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
+                ax.set_title("Absolute Displacement, RMS and Peak, One-way")
                 ax.set_xbound(lower=10, upper=3000)
-                ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
+                ax.legend()
+                # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
             if rb_graph["x2"].isChecked():
                 curve = np.abs(result_sys.x2) * 1000
-                ax.semilogx(cons.f, curve)
-                ax.semilogx(cons.f, curve * 2**0.5, "m")
-                ax.set_title("Absolute RMS and Peak Displacement, One-way")
+                ax.semilogx(cons.f, curve, label="RMS")
+                ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
+                ax.set_title("Absolute Displacement, RMS and Peak, One-way")
                 ax.set_xbound(lower=10, upper=3000)
-                ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
+                ax.legend()
+                # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
             if rb_graph["x1-x2"].isChecked():
                 curve = np.abs(result_sys.x1 - result_sys.x2) * 1000
-                ax.semilogx(cons.f, curve)
-                ax.semilogx(cons.f, curve * 2**0.5, "m")
-                ax.set_title("Relative RMS and Peak Displacement, One-way")
+                ax.semilogx(cons.f, curve, label="RMS")
+                ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
+                ax.set_title("Relative Displacement, RMS and Peak, One-way")
                 ax.set_xbound(lower=10, upper=3000)
-                ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
+                ax.legend()
+                # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
+
+            if rb_graph["phase"].isChecked():
+                curve = np.angle(result_sys.x1, deg=True)
+                ax.semilogx(cons.f, curve, label="dof 1")
+                if form.get_value("dof") == "2 dof":
+                    curve_2 = np.angle(result_sys.x2, deg=True)
+                    ax.semilogx(cons.f, curve_2, label="dof 2")
+                ax.legend()
+                ax.set_yticks(range(-180, 180+1, 90))
+                ax.set_title("Absolute phase")
+                ax.set_xbound(lower=10, upper=3000)
+                ax.set_ybound(lower=-180, upper=180)
 
             ax.grid(True, which="both")
         else:
