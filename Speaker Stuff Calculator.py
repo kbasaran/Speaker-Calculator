@@ -89,9 +89,10 @@ cons.setattrs(GAMMA=1.401,  # adiabatic index of air
               P0=101325,
               RHO=1.1839,  # 25 degrees celcius
               Kair=101325 * 1.401,  # could not find a way to refer to RHO here
-              c_air=(101325 * 1.401 / 1.1839)**0.5
+              c_air=(101325 * 1.401 / 1.1839)**0.5,
+              vc_table_file_name=".\SSC_data\VC_TABLE.csv"
               )
-setattr(cons, "VC_TABLE", pd.read_csv(".\SSC_data\VC_TABLE.csv", index_col="Name"))
+setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file_name, index_col="Name"))
 setattr(cons, "f", generate_freqs(10, 5000, 48*4))
 setattr(cons, "w", 2*np.pi*cons.f)
 
@@ -125,14 +126,16 @@ def calculate_windings(wire_type, N_layers, former_OD, h_winding):
 
     def calc_N_winding_per_layer(i_layer):
         """Calculate the number of windings that fit on one layer of coil."""
-        val = h_winding / d_wire - i_layer * 2
-        return (0 if val < 3 else val)
-        # less windings on each stacked layer
+        val = h_winding / d_wire - i_layer * 2  # 2 windings less on each stacked layer
+        return (-1 if val < 1 else val)
 
     def calc_length_of_one_turn_per_layer(i_layer):
         """Calculate the length of one turn of wire on a given coil layer."""
-        turn_mean_radius = former_OD/2 + d_wire/2 + 0.8 * i_layer * d_wire
-        # 1.0 is stacking coefficient
+        if i_layer == 1:
+            turn_mean_radius = former_OD/2 + d_wire/2
+        if i_layer > 1:
+            turn_mean_radius = former_OD/2 + d_wire/2 + np.pi/4 * (i_layer - 1) * d_wire 
+        # pi/4 is stacking coefficient
         return 2*np.pi*turn_mean_radius
 
     # Windings amount for each layer
@@ -140,8 +143,7 @@ def calculate_windings(wire_type, N_layers, former_OD, h_winding):
                           for i in range(N_layers)]
 
     # Wire length for one full turn around for a given layer
-    l_one_turn = [calc_length_of_one_turn_per_layer(i)
-                  for i in range(N_layers)]
+    l_one_turn = [calc_length_of_one_turn_per_layer(i_layer) for i_layer in range(1, N_layers+1)]
 
     total_length_wire_per_layer = [N_windings[i] * l_one_turn[i]
                                    for i in range(N_layers)]
@@ -266,7 +268,7 @@ class UserForm():
         to_layout.addRow(description, getattr(self, var_name)["obj"])
 
     def set_value(self, item_name, value):
-        """Set a value of a form item."""
+        """Set value of a form item."""
         item = getattr(self, item_name)
         qwidget_obj = item["obj"]
         if isinstance(qwidget_obj, QLineEdit):
@@ -305,7 +307,7 @@ class UserForm():
             raise Exception("Don't know how to set %s with value %g" % (item_name,  value))
 
     def get_value(self, item_name):
-        """Get a value of a form variable."""
+        """Get value of a form item."""
         item = getattr(self, item_name)
         try:
             qwidget_object = item["obj"]
@@ -337,7 +339,7 @@ class UserForm():
             return
         table_columns = ["N_layers", "wire_type", "Bl", "Rdc", "Lm", "Qts", "former_ID",
                          "t_former", "h_winding", "N_windings", "l_wire"]
-        self.coil_options_table = pd.DataFrame(columns=table_columns)  # make a dataframe so store viable winding options
+        self.coil_options_table = pd.DataFrame(columns=table_columns)  # make a dataframe to store viable winding options
 
         # Scan through winding options
         winding = Record()
@@ -351,7 +353,7 @@ class UserForm():
                                                              winding.former_ID + winding.t_former * 2,
                                                              winding.h_winding)
         # if Rdc is usable, add to DataFrame
-                if winding.target_Rdc / 1.1 < Rdc < winding.target_Rdc * 1.15 and 0 not in N_windings:
+                if winding.target_Rdc / 1.1 < Rdc < winding.target_Rdc * 1.15 and all(i > 0 for i in N_windings):
                     winding_name = str(N_layers) + "x " + wire_type
                     winding_data = {}
                     for k in ["wire_type", "N_layers", "Rdc", "N_windings", "l_wire"]:
@@ -405,7 +407,7 @@ class SpeakerDriver():
             l_wire = winding_data["l_wire"]
 
             d_max_wire = cons.VC_TABLE.loc[wire_type, "max"] / 1000
-            w_coil = N_layers * d_max_wire  # worst case overlap
+            w_coil = d_max_wire * (1 + (N_layers - 1)*np.pi/4)
             coil_mass = l_wire * cons.VC_TABLE.loc[wire_type, "g/m"] / 1000
             Bl = B_average * l_wire
             Mmd = self.dead_mass + coil_mass
@@ -589,7 +591,7 @@ class SpeakerSystem():
 
         # Xmax limited SPL calculation
         x1_max_rms_array = [np.array(self.spk.Xmax/2**0.5)] * len(cons.f)
-        x1t_max_rms_array = x1_max_rms_array * cons.w * 1j
+        x1t_max_rms_array = np.abs(x1_max_rms_array * cons.w * 1j)
         p0_xmax_limited = 0.5 * 1j * cons.w * cons.RHO * a**2 * x1t_max_rms_array
         self.SPL_Xmax_limited = 20*np.log10(np.abs(p0_xmax_limited)/pref)
 
@@ -616,10 +618,10 @@ class SpeakerSystem():
 
         if self.dof == 1:
             self.summary += "\r\nPeak displacement at %iHz is %.3g mm" %\
-                (f_interest, self.x1[f_inter_idx]*1e3*2**0.5)
+                (f_interest, np.abs(self.x1)[f_inter_idx]*1e3*2**0.5)
 
             self.summary += "\r\nPeak displacement overall is %.3g mm" %\
-                np.max(self.x1*1e3*2**0.5)
+                np.max(np.abs(self.x1)*1e3*2**0.5)
 
         elif self.dof == 2:
             self.summary += "\r\nPeak relative displacement at %iHz is %.3g mm" %\
@@ -639,7 +641,7 @@ class SpeakerSystem():
 
 
 def update_model():
-    """Update the model used in calculations."""
+    """Update the mathematical model of the speaker."""
     global result_sys, form, cons
     motor_spec_choice = form.get_value("motor_spec_type")[1]
     coil_choice = form.get_value("coil_choice_box")
@@ -648,21 +650,22 @@ def update_model():
     if winding_data != "" or motor_spec_choice == "define_Bl_Re":
         speaker = SpeakerDriver(coil_choice)
         result_sys = SpeakerSystem(speaker)
+        update_available_graph_buttons()
         update_view()
     else:
-        print("Cannot update model with coil_choice: %s" % winding_name)
+        print("Cannot update model")
 
 
 if __name__ == "__main__":
 
-    # Initiate PyQT Application
+    # %% Initiate PyQT Application
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
-    form = UserForm()
+    form = UserForm()  # initiate an object to hold all user form items
 
-    # %% Make CRUD widget - create, read, update, delete
+    # %% Add a Save/Load widget
     crud = QHBoxLayout()
     crud_load_button = QPushButton("Load")
     crud_load_button.clicked.connect(partial(form.load_pickle))
@@ -671,10 +674,10 @@ if __name__ == "__main__":
     crud.addWidget(crud_load_button)
     crud.addWidget(crud_save_button)
 
-    # %% Make form widgets on left side of GUI
+    # %% Start a form widget for the left side of GUI
     input_form_layout = QFormLayout()
 
-    # Add basic speaker parameter
+    # %% Add basic speaker parameters to form
     form.add_title(input_form_layout, "General speaker specifications")
 
     form.add_double_float_var(input_form_layout, "fs", "fs (Hz)", default=111)
@@ -685,14 +688,14 @@ if __name__ == "__main__":
 
     form.add_line(input_form_layout)
 
-    # Add motor input choice combobox
+    # %% Add motor input choice combobox to form
     combo_box_data = [("Define Coil Dimensions and Average B", "define_coil"),
                       ("Define Bl and Rdc", "define_Bl_Re")
                       ]
     form.add_combo_box(input_form_layout, "motor_spec_type", combo_box_data)
     form.motor_spec_type["obj"].setStyleSheet("font-weight: bold")
 
-    # Make Widget for define coil and average B field
+    # %% Add widget for when motor input choice is "define coil and B_Average"
     motor_form_1 = QWidget()
     motor_form_1_layout = QFormLayout()
     motor_form_1.setLayout(motor_form_1_layout)
@@ -711,7 +714,7 @@ if __name__ == "__main__":
 
     form.add_combo_box(motor_form_1_layout, "coil_choice_box", [("--empty--", "")])
 
-    # Make Widget for define Bl and Rdc
+    # %% Add widget for when motor input choice is "define Bl and Rdc"
     motor_form_2 = QWidget()
     motor_form_2_layout = QFormLayout()
     motor_form_2.setLayout(motor_form_2_layout)
@@ -719,8 +722,8 @@ if __name__ == "__main__":
     form.add_double_float_var(motor_form_2_layout, "Rdc", "Rdc (ohm)", default=3.77)
     form.add_double_float_var(motor_form_2_layout, "Mmd", "Mmd (g)", default=3.98, unit_to_SI=1e-3)
 
-    # Make a stacked widget to show the motor input values based
-    # on combobox cohice
+    # %% Make a stacked widget to show the right motor input form based
+    # on motor input choice combobox
     motor_data_input = QStackedWidget()
     motor_data_input.addWidget(motor_form_1)
     motor_data_input.addWidget(motor_form_2)
@@ -729,7 +732,7 @@ if __name__ == "__main__":
         "activated(int)"), motor_data_input, SLOT("setCurrentIndex(int)"))
     input_form_layout.addRow(motor_data_input)
 
-    # Add mechanical stuff, clearances
+    # %% Add mechanical info to form
     form.add_line(input_form_layout)
     form.add_title(input_form_layout, "Motor mechanical specifications")
 
@@ -739,14 +742,14 @@ if __name__ == "__main__":
     form.add_integer_var(input_form_layout, "airgap_clearance_outer", "Airgap outer clearance (\u03BCm)", default=260, unit_to_SI=1e-6)
     form.add_double_float_var(input_form_layout, "former_extension_under_coil", "Former extension under coil (mm)", default=0.3, unit_to_SI=1e-3)
 
-    # Closed box specifications
+    # %% Add closed box info to form
     form.add_line(input_form_layout)
     form.add_title(input_form_layout, "Closed box specifications")
 
     form.add_double_float_var(input_form_layout, "Vb", "Box internal volume (l)", default=1, unit_to_SI=1e-3)
     form.add_double_float_var(input_form_layout, "Qal", "Ql - box losses", default=200)
 
-    # Second degree of freedom specifications
+    # %% Add second dof parameters to form
     form.add_line(input_form_layout)
     form.add_title(input_form_layout, "Second degree of freedom")
 
@@ -754,7 +757,7 @@ if __name__ == "__main__":
     form.add_double_float_var(input_form_layout, "m2", "Mass (g)", default=1000, unit_to_SI=1e-3)
     form.add_double_float_var(input_form_layout, "c2", "Damping coefficient (kg/s)", default=5)
 
-    # Excitation information
+    # %% Add excitation parameters to form
     form.add_line(input_form_layout)
     form.add_title(input_form_layout, "Excitation")
 
@@ -768,7 +771,7 @@ if __name__ == "__main__":
 
     form.add_double_float_var(input_form_layout, "nominal_impedance", "Nominal impedance", default=4)
 
-    # System type selection radio buttons
+    # %% Create layout for system type selection radio buttons (Closed, free-air, 1dof 2dof etc.)
     form.add_line(input_form_layout)
     form.add_title(input_form_layout, "System type")
     sys_type_selection = QVBoxLayout()
@@ -777,7 +780,7 @@ if __name__ == "__main__":
     sys_type_selection.addLayout(box_buttons_layout)
     sys_type_selection.addLayout(dof_buttons_layout)
 
-    # Box type
+    # %% Add box type radio buttons
     setattr(form, "box_type", {"obj": QButtonGroup()})
     rb_box = [QWidget] * 5
     rb_box[1] = QRadioButton("Free-air")
@@ -790,7 +793,7 @@ if __name__ == "__main__":
     form.box_type["obj"].addButton(rb_box[1])
     form.box_type["obj"].addButton(rb_box[2])
 
-    # DOF choice
+    # %% Add DOF choice radio buttons
     setattr(form, "dof", {"obj": QButtonGroup()})
     rb_dof = [QWidget] * 5
     rb_dof[1] = QRadioButton("1 dof")
@@ -803,61 +806,43 @@ if __name__ == "__main__":
     form.dof["obj"].addButton(rb_dof[1])
     form.dof["obj"].addButton(rb_dof[2])
 
-    # update form with system type toggle
-    def adjust_form_for_system_type():
-        """Update which buttons are enabled based on box type and dof."""
-        form.Vb["obj"].setEnabled(rb_box[2].isChecked())
-        form.Qal["obj"].setEnabled(rb_box[2].isChecked())
-        form.k2["obj"].setEnabled(rb_dof[2].isChecked())
-        form.m2["obj"].setEnabled(rb_dof[2].isChecked())
-        form.c2["obj"].setEnabled(rb_dof[2].isChecked())
-        rb_graph["x2"].setEnabled(rb_dof[2].isChecked())
-        rb_graph["x1-x2"].setEnabled(rb_dof[2].isChecked())
-
-    form.box_type["obj"].buttonClicked.connect(adjust_form_for_system_type)
-    form.dof["obj"].buttonClicked.connect(adjust_form_for_system_type)
-
-    # %% Make the widgets and layout for the right side of the GUI
+    # %% Create the graph choice buttons
     plot_data_selection = QWidget()
     layout = QHBoxLayout()
     plot_data_selection.setLayout(layout)
     plot_data_selection.setFixedHeight(60)
+    rb_screen_names = ["SPL",
+                       "Impedance",
+                       "Excursion (x1)",
+                       "Excursion (x2)",
+                       "Excursion (x1-x2)",
+                       "Phase"]
 
-    rb_graph = {}
-    rb_graph["SPL"] = QRadioButton("SPL")
-    rb_graph["SPL"].setChecked(True)
-    layout.addWidget(rb_graph["SPL"])
+    rb_graph_group = QButtonGroup()
+    for id, screen_name in enumerate(rb_screen_names):
+        button = QRadioButton(screen_name)
+        rb_graph_group.addButton(button, id)
+        layout.addWidget(button)
+        if screen_name == "SPL":
+            button.setChecked(True)
 
-    rb_graph["Impedance"] = QRadioButton("Impedance")
-    layout.addWidget(rb_graph["Impedance"])
-
-    rb_graph["x1"] = QRadioButton("Excursion (x1)")
-    layout.addWidget(rb_graph["x1"])
-
-    rb_graph["x2"] = QRadioButton("Excursion (x2)")
-    layout.addWidget(rb_graph["x2"])
-
-    rb_graph["x1-x2"] = QRadioButton("Excursion (x1-x2)")
-    layout.addWidget(rb_graph["x1-x2"])
-
-    rb_graph["phase"] = QRadioButton("Phase")
-    layout.addWidget(rb_graph["phase"])
-
-    # Message_box for output data
+    # %% Message_box to show calculated values
     message_box = QPlainTextEdit()
     message_box.setMinimumHeight(245)
     message_box.setMinimumWidth(350)
     message_box.setReadOnly(True)
-    # User notes box
+
+    # %% User notes box to take notes etc.
     setattr(form, "user_notes", {"obj": QPlainTextEdit()})
     form.user_notes["obj"].setPlainText("..")
 
+    # %% Plotting with Matplotlib
     def graph_ceil(x, step=5):
-        """Define max scale value for the graph based on highest value."""
+        """Define axis highest value based on curve highest value."""
         return step * np.ceil(x/step)
 
     def update_view():
-        """Update the output information such as graph, summary strings."""
+        """Update the graphs and the calculated values in message box."""
         global result_sys
         ax = figure.add_subplot(111)
         ax.clear()
@@ -866,7 +851,8 @@ if __name__ == "__main__":
                                      + "\n\r" + result_sys.spk.summary_mec
                                      + "\n\r" + result_sys.summary)
             beep()
-            if rb_graph["SPL"].isChecked():
+            chosen_graph = rb_graph_group.checkedId()
+            if chosen_graph == 0:
                 curve = result_sys.SPL
                 curve_2 = result_sys.SPL_Xmax_limited
                 upper_limit = graph_ceil(np.max(curve) + 2, 10)
@@ -879,14 +865,14 @@ if __name__ == "__main__":
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=lower_limit, upper=upper_limit)
 
-            if rb_graph["Impedance"].isChecked():
+            if chosen_graph == 1:
                 curve = np.real(result_sys.Z)
                 ax.semilogx(cons.f, curve)
                 ax.set_title("Electrical Impedance (inductance effects not calculated)")
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) + 2, 10)))
 
-            if rb_graph["x1"].isChecked():
+            if chosen_graph == 2:
                 curve = np.abs(result_sys.x1) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
@@ -895,7 +881,7 @@ if __name__ == "__main__":
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
-            if rb_graph["x2"].isChecked():
+            if chosen_graph == 3:
                 curve = np.abs(result_sys.x2) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
@@ -904,7 +890,7 @@ if __name__ == "__main__":
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
-            if rb_graph["x1-x2"].isChecked():
+            if chosen_graph == 4:
                 curve = np.abs(result_sys.x1 - result_sys.x2) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
@@ -913,7 +899,7 @@ if __name__ == "__main__":
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
-            if rb_graph["phase"].isChecked():
+            if chosen_graph == 5:
                 curve = np.angle(result_sys.x1, deg=True)
                 ax.semilogx(cons.f, curve, label="dof 1")
                 if form.get_value("dof") == "2 dof":
@@ -949,7 +935,7 @@ if __name__ == "__main__":
     button24.clicked.connect(partial(beep, frequency=int(1175/2)))
     button24.setFixedHeight(40)
 
-# %% Make the canvas and the navigation toolbar
+# %% Create the canvas and the navigation toolbar
     graphs = QWidget()
     # a figure instance to plot on
     figure = Figure(figsize=(5, 7), dpi=72, tight_layout=True)
@@ -966,8 +952,7 @@ if __name__ == "__main__":
 
 # %% Do the main layout
 
-    # Make a QGroupbox frame around all the around the user input information
-    # such as the crud, the form rows and the system type selection
+    # Make a QGroupbox frame around all the around the user form
     input_group_box = QGroupBox("Inputs")
     input_group_box.setFixedWidth(300)
     input_group_box_layout = QVBoxLayout()
@@ -977,21 +962,19 @@ if __name__ == "__main__":
     input_group_box_layout.addLayout(input_form_layout)
     input_group_box_layout.addLayout(sys_type_selection)
 
-    # Place things into the main widget
+    # Lay things into the main layout
     main_layout = QHBoxLayout()
     left_layout = QVBoxLayout()
     right_layout = QVBoxLayout()
-    main_layout.addLayout(left_layout)
-    main_layout.addLayout(right_layout)
 
     main_win = QWidget()
-    main_win.setWindowTitle("Speaker stuff calculator")
     main_win.setLayout(main_layout)
+    main_layout.addLayout(left_layout)
+    main_layout.addLayout(right_layout)
+    main_win.setWindowTitle("Speaker stuff calculator")
     main_win.setMinimumHeight(800)
 
-    # set the layout
     left_layout.addWidget(input_group_box)
-    # left_layout.addWidget(QWidget()) #  empty widget to scale up down - not helping
 
     if do_print:
         right_layout.addWidget(toolbar)
@@ -1010,7 +993,7 @@ if __name__ == "__main__":
     text_boxes.addWidget(form.user_notes["obj"])
     right_layout.addLayout(text_boxes)
 
-    # %% Some functions to modify the GUI based on user selections
+    # %% Assign functions to changing calculation type
     def adjust_form_for_calc_type():
         form.h_washer["obj"].setEnabled(form.get_value("motor_spec_type")[1] == "define_coil")
         form.airgap_clearance_inner["obj"].setEnabled(form.get_value("motor_spec_type")[1] == "define_coil")
@@ -1019,19 +1002,37 @@ if __name__ == "__main__":
         form.dead_mass["obj"].setEnabled(form.get_value("motor_spec_type")[1] == "define_coil")
     button_coil_choices_update.clicked.connect(partial(form.update_coil_choice_box))
 
-    rb_graph_group = QButtonGroup()
-    for key, val in rb_graph.items():
-        rb_graph_group.addButton(val)
+    # %% Assign functions to changing graph type
     rb_graph_group.buttonClicked.connect(update_view)
 
+    # %% Assign functions to changing excitation type
     def update_nominal_impedance_disability():
         form.nominal_impedance["obj"].setEnabled(form.get_value("excitation_unit")[1] == "Wn")
     form.excitation_unit["obj"].currentIndexChanged.connect(update_nominal_impedance_disability)
 
-    # %% Initiation actions
+    # %% Assign functions to changing system type
+    def adjust_form_for_system_type():
+        """Update which buttons are enabled based on box type and dof."""
+        form.Vb["obj"].setEnabled(rb_box[2].isChecked())
+        form.Qal["obj"].setEnabled(rb_box[2].isChecked())
+        form.k2["obj"].setEnabled(rb_dof[2].isChecked())
+        form.m2["obj"].setEnabled(rb_dof[2].isChecked())
+        form.c2["obj"].setEnabled(rb_dof[2].isChecked())
+
+    def update_available_graph_buttons():
+        try:
+            dof2_calculated = hasattr(result_sys, "x2")
+        except NameError:
+            dof2_calculated = False
+        rb_graph_group.button(3).setEnabled(dof2_calculated)  # x2 button
+        rb_graph_group.button(4).setEnabled(dof2_calculated)  # x2-x1 button
+
+    form.box_type["obj"].buttonClicked.connect(adjust_form_for_system_type)
+    form.dof["obj"].buttonClicked.connect(adjust_form_for_system_type)
+
+    # %% Initiate application
     adjust_form_for_calc_type()
     adjust_form_for_system_type()
     update_nominal_impedance_disability()
-    # update_model()
     main_win.show()
     sys.exit(app.exec_())
