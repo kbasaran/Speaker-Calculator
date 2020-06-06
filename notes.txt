@@ -12,8 +12,6 @@ add "add overlay from clipboard", export data to clipboard" and "clear overlays"
 
 windows resize ı iyileştirmen gerek
 
-give error if update_results failed
-
 user_notes load etmiyor
 
 tüm spin box'ları aynı genişlikte yap
