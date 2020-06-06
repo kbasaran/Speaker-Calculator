@@ -27,7 +27,7 @@ from matplotlib.figure import Figure
 do_print = 1
 
 
-def beep(frequency=1175, requested_duration=100):
+def beep(frequency=1175, requested_duration=80):
     """Beep without a click in the end."""
     period = 1000 / frequency  # ms
     requested_wave_number = requested_duration / period
@@ -498,9 +498,6 @@ class SpeakerDriver():
         self.summary_mec += \
             "\r\nXmech = %.2f mm (recommended minimum)" % (self.Xmech*1000)
 
-        if self.error != "":
-            raise Exception(self.error)
-
 
 @dataclass
 class SpeakerSystem():
@@ -650,15 +647,24 @@ def update_model():
     motor_spec_choice = form.get_value("motor_spec_type")["userData"]
     winding_name = form.get_value("coil_choice_box")["name"]
     winding_data = form.get_value("coil_choice_box")["userData"]
-    coil_choice = winding_name, winding_data
-
-    if winding_data != "" or motor_spec_choice == "define_Bl_Re":
+    try:
+        coil_choice = winding_name, winding_data
         speaker = SpeakerDriver(coil_choice)
         result_sys = SpeakerSystem(speaker)
         update_available_graph_buttons()
-        update_view()
-    else:
-        print("Cannot update model")
+        error_text = result_sys.error
+    except:
+        error_text = "--Cannot update results--"
+        try:
+            error_text += "\r\n" + speaker.error
+        except:
+            error_text += "\r\n" + "Invalid speaker model."
+        try:
+            error_text += "\r\n" + result_sys.error
+        except:
+            error_text += "\r\n" + "Invalid system model."
+    print(error_text)
+    update_view(error_text)
 
 
 if __name__ == "__main__":
@@ -686,6 +692,7 @@ if __name__ == "__main__":
     form.add_title(input_form_layout, "General speaker specifications")
 
     form.add_double_float_var(input_form_layout, "fs", "fs (Hz)", default=111)
+    form.fs["obj"].setDecimals(1)
     form.add_double_float_var(input_form_layout, "Qms", "Qms", default=6.51)
     form.add_double_float_var(input_form_layout, "Xmax", "Xmax (mm)", default=4, unit_to_SI=1e-3)
     form.add_double_float_var(input_form_layout, "dead_mass", "Dead mass (g)", default=3.54, unit_to_SI=1e-3)
@@ -771,8 +778,9 @@ if __name__ == "__main__":
                                      ("Watt@Rnom","Wn")
                                      ])
     form.add_combo_box(input_form_layout, "excitation_unit", excitation_combo_box_choices, combo_box_screen_name="Unit")
-    form.add_double_float_var(input_form_layout, "excitation_value", "Excitation value", default=2.83)
     form.set_value("excitation_unit", "V")
+    form.add_double_float_var(input_form_layout, "excitation_value", "Excitation value", default=2.83)
+    form.excitation_value["obj"].setDecimals(3)
 
     form.add_double_float_var(input_form_layout, "nominal_impedance", "Nominal impedance", default=4)
 
@@ -846,12 +854,12 @@ if __name__ == "__main__":
         """Define axis highest value based on curve highest value."""
         return step * np.ceil(x/step)
 
-    def update_view():
+    def update_view(error_text=""):
         """Update the graphs and the calculated values in message box."""
         global result_sys
         ax = figure.add_subplot(111)
         ax.clear()
-        if result_sys.error == "":
+        if error_text == "":
             message_box.setPlainText(result_sys.spk.summary_ace
                                      + "\n\r" + result_sys.spk.summary_mec
                                      + "\n\r" + result_sys.summary)
@@ -918,7 +926,7 @@ if __name__ == "__main__":
 
             ax.grid(True, which="both")
         else:
-            message_box.setPlainText("Error: %s" % result_sys.error)
+            message_box.setPlainText(error_text)
         if do_print:
             canvas.draw()  # refresh canvas
 
@@ -945,12 +953,10 @@ if __name__ == "__main__":
     # a figure instance to plot on
     figure = Figure(figsize=(5, 7), dpi=72, tight_layout=True)
     if do_print:
-        # this is the Canvas Widget that displays the `figure`
-        # it takes the `figure` instance as a parameter to __init__
+        # this is the Canvas Widget that displays `figure`
         canvas = FigureCanvas(figure)
 
-        # this is the Navigation widget
-        # it takes the Canvas widget and a parent
+        # this is the Navigation widget. arguments are Canvas widget and a parent
         toolbar = NavigationToolbar(canvas, parent=graphs)  # this crashes in Spyder........
         toolbar.setMinimumWidth(400)
 
