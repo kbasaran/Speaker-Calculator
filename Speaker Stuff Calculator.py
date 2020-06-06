@@ -235,21 +235,21 @@ class UserForm():
         self.set_value(var_name, default*unit_to_SI)
         to_layout.addRow(description,  getattr(self, var_name)["obj"])
 
-    def add_combo_box(self, to_layout, box_name, combo_list, box_screen_name=False):
+    def add_combo_box(self, to_layout, combo_box_name, combo_list, combo_box_screen_name=False):
         """Make a combo box.
 
-        box_name is the attribute name under form object
+        combo_box_name is the attribute name under form object
         item_list contains tuples as list items. first is visible name second is user_data.
         """
         item = {"obj": QComboBox()}
         item["obj"].setMaxVisibleItems(19)
         for choice in combo_list:
-            item["obj"].addItem(*choice)
-        setattr(self, box_name, item)
-        if isinstance(box_screen_name, str):
-            to_layout.addRow(box_screen_name, getattr(self, box_name)["obj"])
+            item["obj"].addItem(*choice)  # sometimes contains userData, therefore *
+        setattr(self, combo_box_name, item)
+        if combo_box_screen_name:
+            to_layout.addRow(combo_box_screen_name, getattr(self, combo_box_name)["obj"])
         else:
-            to_layout.addRow(getattr(self, box_name)["obj"])
+            to_layout.addRow(getattr(self, combo_box_name)["obj"])
 
     def add_integer_var(self, to_layout, var_name, description, min_val=1,
                         max_val=1e6, default=0, unit_to_SI=1):
@@ -289,12 +289,14 @@ class UserForm():
             else:
                 raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
-        elif isinstance(qwidget_obj, QComboBox):  # recevies tuple with entry_name
-            if isinstance(value[0], str):
-                qwidget_obj.setCurrentText(value[0])
-                # qwidget_obj.setCurrentData(value[1])
+        elif isinstance(qwidget_obj, QComboBox):  # recevies dict with entry_name
+            if isinstance(value, str):
+                qwidget_obj.setCurrentText(value)
+            elif isinstance(value, dict):
+                qwidget_obj.setCurrentText(value["name"])
+                qwidget_obj.setCurrentData(value["userData"])
             else:
-                raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
+                raise Exception("Incorrect type %s of %s for combobox.set_value" % (type(value), value))
 
         elif isinstance(qwidget_obj, QButtonGroup):
             for button in qwidget_obj.buttons():
@@ -317,8 +319,8 @@ class UserForm():
                 return qwidget_object.toPlainText()
             elif isinstance(qwidget_object, (QDoubleSpinBox, QSpinBox)):
                 return qwidget_object.value() * item["unit_to_SI"]
-            elif isinstance(qwidget_object, QComboBox):  # returns tuple (name, userData)
-                return (qwidget_object.currentText(), qwidget_object.currentData())
+            elif isinstance(qwidget_object, QComboBox):  # returns dict (name, userData)
+                return {"name": qwidget_object.currentText(), "userData": qwidget_object.currentData()}
             elif isinstance(qwidget_object, QButtonGroup):
                 return qwidget_object.checkedButton().text()
         except Exception:
@@ -354,7 +356,7 @@ class UserForm():
                                                              winding.h_winding)
         # if Rdc is usable, add to DataFrame
                 if winding.target_Rdc / 1.1 < Rdc < winding.target_Rdc * 1.15 and all(i > 0 for i in N_windings):
-                    winding_name = str(N_layers) + "x " + wire_type
+                    winding_name = (str(N_layers) + "x " + wire_type).strip()
                     winding_data = {}
                     for k in ["wire_type", "N_layers", "Rdc", "N_windings", "l_wire"]:
                         winding_data[k] = locals()[k]
@@ -370,8 +372,8 @@ class UserForm():
             Lm_string = ("Lm=%.2f" % self.coil_options_table.Lm[winding_name]).ljust(9)
             Qes_string = ("Qts=%.2f" % self.coil_options_table.Qts[winding_name]).ljust(10)
             name_in_combo_box = winding_name.ljust(14) + Rdc_string + Lm_string + Qes_string
-            user_data = self.coil_options_table.to_dict("index")[winding_name]
-            self.coil_choice_box["obj"].addItem(name_in_combo_box, user_data)
+            userData = self.coil_options_table.to_dict("index")[winding_name]
+            self.coil_choice_box["obj"].addItem(name_in_combo_box, userData)
         # if nothing to add to combobox
         if self.coil_choice_box["obj"].count() == 0:
             self.coil_choice_box["obj"].addItem("--no solution found--")
@@ -387,7 +389,7 @@ class SpeakerDriver():
     def __post_init__(self):
         """Post-init speaker."""
         self.error = ""
-        motor_spec_choice = form.get_value("motor_spec_type")[1]
+        motor_spec_choice = form.get_value("motor_spec_type")["userData"]
         read_from_form = ["fs", "Qms", "Xmax", "dead_mass", "Sd",
                           "nominal_impedance"]
         for k in read_from_form:
@@ -512,15 +514,15 @@ class SpeakerSystem():
     global cons
 
     def __post_init__(self):
+        """Add more attributes."""
         self.error = self.spk.error
-        """Calculate more attributes."""
         Bl = self.spk.Bl
         Rdc = self.spk.Rdc
         Mms = self.spk.Mms
         Rms = self.spk.Rms
         Kms = self.spk.Kms
         Sd = self.spk.Sd
-        excitation = [form.get_value("excitation_value"), form.get_value("excitation_unit")[1]]
+        excitation = [form.get_value("excitation_value"), form.get_value("excitation_unit")["userData"]]
         nominal_impedance = form.get_value("nominal_impedance")
         self.V_in = calculate_input_voltage(excitation, Rdc, nominal_impedance)
         self.box_type = form.get_value("box_type")
@@ -629,6 +631,8 @@ class SpeakerSystem():
 
             self.summary += "\r\nPeak relative displacement overall is %.3g mm" %\
                 np.max(np.abs(self.x1-self.x2)*1e3*2**0.5)
+
+            self.summary += "\r\n "
         else:
             self.summary += "Unable to identify the total degrees of freedom"
 
@@ -643,9 +647,10 @@ class SpeakerSystem():
 def update_model():
     """Update the mathematical model of the speaker."""
     global result_sys, form, cons
-    motor_spec_choice = form.get_value("motor_spec_type")[1]
-    coil_choice = form.get_value("coil_choice_box")
-    winding_name, winding_data = coil_choice
+    motor_spec_choice = form.get_value("motor_spec_type")["userData"]
+    winding_name = form.get_value("coil_choice_box")["name"]
+    winding_data = form.get_value("coil_choice_box")["userData"]
+    coil_choice = winding_name, winding_data
 
     if winding_data != "" or motor_spec_choice == "define_Bl_Re":
         speaker = SpeakerDriver(coil_choice)
@@ -765,7 +770,7 @@ if __name__ == "__main__":
                                      ("Watt@Rdc","W"),
                                      ("Watt@Rnom","Wn")
                                      ])
-    form.add_combo_box(input_form_layout, "excitation_unit", excitation_combo_box_choices, box_screen_name="Unit")
+    form.add_combo_box(input_form_layout, "excitation_unit", excitation_combo_box_choices, combo_box_screen_name="Unit")
     form.add_double_float_var(input_form_layout, "excitation_value", "Excitation value", default=2.83)
     form.set_value("excitation_unit", "V")
 
@@ -995,11 +1000,11 @@ if __name__ == "__main__":
 
     # %% Assign functions to changing calculation type
     def adjust_form_for_calc_type():
-        form.h_washer["obj"].setEnabled(form.get_value("motor_spec_type")[1] == "define_coil")
-        form.airgap_clearance_inner["obj"].setEnabled(form.get_value("motor_spec_type")[1] == "define_coil")
-        form.airgap_clearance_outer["obj"].setEnabled(form.get_value("motor_spec_type")[1] == "define_coil")
-        form.former_extension_under_coil["obj"].setEnabled(form.get_value("motor_spec_type")[1] == "define_coil")
-        form.dead_mass["obj"].setEnabled(form.get_value("motor_spec_type")[1] == "define_coil")
+        form.h_washer["obj"].setEnabled(form.get_value("motor_spec_type")["userData"] == "define_coil")
+        form.airgap_clearance_inner["obj"].setEnabled(form.get_value("motor_spec_type")["userData"] == "define_coil")
+        form.airgap_clearance_outer["obj"].setEnabled(form.get_value("motor_spec_type")["userData"] == "define_coil")
+        form.former_extension_under_coil["obj"].setEnabled(form.get_value("motor_spec_type")["userData"] == "define_coil")
+        form.dead_mass["obj"].setEnabled(form.get_value("motor_spec_type")["userData"] == "define_coil")
     button_coil_choices_update.clicked.connect(partial(form.update_coil_choice_box))
 
     # %% Assign functions to changing graph type
@@ -1007,7 +1012,7 @@ if __name__ == "__main__":
 
     # %% Assign functions to changing excitation type
     def update_nominal_impedance_disability():
-        form.nominal_impedance["obj"].setEnabled(form.get_value("excitation_unit")[1] == "Wn")
+        form.nominal_impedance["obj"].setEnabled(form.get_value("excitation_unit")["userData"] == "Wn")
     form.excitation_unit["obj"].currentIndexChanged.connect(update_nominal_impedance_disability)
 
     # %% Assign functions to changing system type
@@ -1020,6 +1025,7 @@ if __name__ == "__main__":
         form.c2["obj"].setEnabled(rb_dof[2].isChecked())
 
     def update_available_graph_buttons():
+        """Update the rb enabled statuses for graph."""
         try:
             dof2_calculated = hasattr(result_sys, "x2")
         except NameError:
