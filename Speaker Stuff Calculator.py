@@ -424,7 +424,7 @@ class SpeakerDriver():
             Bl = B_average * l_wire
             Mmd = self.dead_mass + coil_mass
             attributes = ["Rdc", "Bl", "Mmd", "Mms", "Kms", "Rms", "Ces",
-                          "Qts", "Qes", "Lm", "fr", "coil_mass", "w_coil",
+                          "Qts", "Qes", "Lm", "coil_mass", "w_coil",
                           "l_wire", "wire_type", "N_layers", "N_windings"]
 
         elif motor_spec_choice == "define_Bl_Re":
@@ -437,7 +437,7 @@ class SpeakerDriver():
             except Exception:
                 self.error += "Unable to get Bl, Re and Mmd values from user form"
         else:
-            raise Exception("Unknown motor specification type type")
+            raise Exception("Unknown motor specification type")
 
         # Calculate more acoustical parameters using Bl, Rdc and Mmd
         Mms = Mmd + calculate_air_mass(self.Sd)
@@ -447,7 +447,7 @@ class SpeakerDriver():
         Qts = (Mms*Kms)**0.5/(Rms+Ces)
         Qes = (Mms*Kms)**0.5/(Ces)
         Lm = calculate_Lm(Bl, Rdc, Mms, self.Sd)
-        fr = 1/2/np.pi*(Kms/Mms-(Bl**2/Rdc+Rms)**2/4/Mms**2)**0.5
+
 
         # Add all the calculated parameters as attribute to the object
         for v in attributes:
@@ -456,8 +456,8 @@ class SpeakerDriver():
         # Make a string for acoustical summary
         self.summary_ace = "Rdc=%.2f ohm    Lm=%.2f dBSPL    Qts=%.2f"\
             % (Rdc, Lm, Qts)
-        self.summary_ace += "\r\nBl=%.2f Tm    Qes=%.2f    fr=%.2f"\
-            % (Bl, Qes, fr)
+        self.summary_ace += "\r\nBl=%.2f Tm    Qes=%.2f"\
+            % (Bl, Qes)
         self.summary_ace += "\r\nKms=%.2f N/mm    Rms=%.2f kg/s    Mms=%.2f g"\
             % (Kms/1000, Rms, Mms*1000)
         if motor_spec_choice == "define_coil":

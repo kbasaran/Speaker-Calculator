@@ -10,4 +10,7 @@ tüm isimleri bi gözden geçir: Qwidget, speaker variable, layout, fonksiyon, o
 
 dict yaratmanın pek çok yolu var - p69. yaptığın dict'leri nasıl yaptın bi bak.
 
-add damped resonance freq of dof2 and dof1
+Stacked widget etrafında boşluklar var yine
+
+user_notes save load çalışmıyor
+
