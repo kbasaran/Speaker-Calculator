@@ -1,8 +1,4 @@
-Lm and SPL of graph doesn't match
-
 forces x1, x2 and x2-x1
-
-center the update coils button
 
 write manual
 
@@ -10,16 +6,8 @@ add a link to the manual
 
 add "add overlay from clipboard", export data to clipboard" and "clear overlays" buttons to graph. to add/remove you can use collections.deque
 
-windows resize ı iyileştirmen gerek
-
-user_notes load etmiyor
-
-tüm spin box'ları aynı genişlikte yap
-
 tüm isimleri bi gözden geçir: Qwidget, speaker variable, layout, fonksiyon, object
 
 dict yaratmanın pek çok yolu var - p69. yaptığın dict'leri nasıl yaptın bi bak.
-
-what to do with coil options table on file load??
 
 add damped resonance freq of dof2 and dof1
