@@ -28,7 +28,7 @@ version="0.1.1"
 do_print = 1
 
 
-def beep(frequency=1175, requested_duration=80):
+def beep(frequency=1175, requested_duration=100):
     """Beep without a click in the end."""
     period = 1000 / frequency  # ms
     requested_wave_number = requested_duration / period
@@ -73,6 +73,37 @@ def find_nearest_freq(array, value):
     err = [abs(i-value) for i in array]
     idx = err.index(min(err))
     return array[idx], idx
+
+
+def read_clipboard():
+    try:
+        return(0, pd.read_clipboard(header=None))
+    except Exception:
+        return(1, None)
+
+
+def analyze_clipboard_data(err, clpd):
+    if err == 0:
+        if not isinstance(clpd, pd.core.frame.DataFrame):
+            data_type = "Unknown"
+            data = clpd
+        elif isinstance(clpd, pd.core.frame.DataFrame):
+            data_type = type(clpd)
+            pddf = clpd
+            if len(pddf.columns) == 2:
+                for row_id, row_data in pddf.iterrows():
+                    for data in row_data:
+                        if not type(data) in (np.float64, np.float32, np.float, np.int, np.int32, np.int64):
+                            pddf.drop(index=row_id, inplace=True)
+                            print("dropped from row %s: %s with data type %s" % (row_id, data, type(data)))
+                            break
+                freqs = pddf[0].to_numpy()
+                vals = pddf[1].to_numpy()
+                return data_type, freqs, vals
+            else:
+                return(data_type, None, None)
+    else:
+        return(None, None, None)
 
 
 class Record(object):
@@ -876,7 +907,7 @@ if __name__ == "__main__":
 
     def update_view():
         """Update the graphs and the calculated values in message box."""
-        global result_sys, error_message
+        global result_sys, error_message, user_curve
         ax = figure.gca()
         ax.clear()
         if error_message == "":
@@ -884,6 +915,8 @@ if __name__ == "__main__":
                                      + "\n\r" + result_sys.spk.summary_mec
                                      + "\n\r" + result_sys.summary)
             beep()
+            if "user_curve" in globals():
+                ax.semilogx(*user_curve, ":r", label="User import")
             chosen_graph = rb_graph_group.checkedId()
             if chosen_graph == 0:
                 curve = result_sys.SPL
@@ -952,6 +985,25 @@ if __name__ == "__main__":
             ax.grid(True, which="both")
             canvas.draw()  # refresh canvas
 
+    def import_user_curve():
+        global cons, user_curve
+        err, clpd = read_clipboard()
+        if err != 0:
+            print("Unable to read clipboard")
+            return
+        _, freqs_in, vals_in = analyze_clipboard_data(err, clpd)
+        if isinstance(vals_in, np.ndarray):
+            user_curve = freqs_in, vals_in
+            update_view()
+
+    def clear_user_curve():
+        try:
+            global user_curve
+            del(user_curve)
+            update_view()
+        except:
+            pass
+
     button21 = QPushButton('Update results')
     button21.clicked.connect(update_model)
     button21.setFixedHeight(36)
@@ -961,13 +1013,13 @@ if __name__ == "__main__":
     button22.clicked.connect(partial(beep, frequency=int(1175/2)))
     button22.setFixedHeight(36)
 
-    button23 = QPushButton("Import overlay")
+    button23 = QPushButton("Import curve\nfrom clipboard")
     button23.setToolTip("Import a table from clipboard and add it to the graph as an overlay")
-    button23.clicked.connect(partial(beep, frequency=int(1175/2)))
+    button23.clicked.connect(import_user_curve)
     button23.setFixedHeight(36)
 
-    button24 = QPushButton("Clear overlays")
-    button24.clicked.connect(partial(beep, frequency=int(1175/2)))
+    button24 = QPushButton("Remove imported curve")
+    button24.clicked.connect(clear_user_curve)
     button24.setFixedHeight(36)
 
 # %% Create the canvas and the navigation toolbar
