@@ -41,7 +41,7 @@ def beep(frequency=1175, requested_duration=80):
     winsound.Beep(frequency, requested_duration)
 
 
-def generate_freqs(freq_start, freq_end, ppo):
+def generate_freq_list(freq_start, freq_end, ppo):
     """
     Create a numpy array for frequencies to use in calculation.
 
@@ -76,10 +76,10 @@ def find_nearest_freq(array, value):
 
 
 class Record(object):
-    """Make an object simply to store attributes."""
+    """Make a simple object to store attributes."""
 
     def setattrs(self, **kwargs):
-        """Set multiple attributes to the object."""
+        """Add multiple attributes to the object."""
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -94,7 +94,7 @@ cons.setattrs(GAMMA=1.401,  # adiabatic index of air
               vc_table_file_name=".\SSC_data\VC_TABLE.csv"
               )
 setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file_name, index_col="Name"))
-setattr(cons, "f", generate_freqs(10, 5000, 48*4))
+setattr(cons, "f", generate_freq_list(10, 5000, 48*4))
 setattr(cons, "w", 2*np.pi*cons.f)
 
 
