@@ -4,8 +4,6 @@ write manual
 
 add a link to the manual
 
-add export data to clipboard" and "clear overlays" buttons to graph
-
 tüm isimleri bi gözden geçir: Qwidget, speaker variable, layout, fonksiyon, object
 
 dict yaratmanın pek çok yolu var - p69. yaptığın dict'leri nasıl yaptın bi bak.
@@ -13,9 +11,5 @@ dict yaratmanın pek çok yolu var - p69. yaptığın dict'leri nasıl yaptın b
 Stacked widget etrafında boşluklar var yine
 
 user_notes save load çalışmıyor
-
-stacking density
-height
-width
 
 coil parameters to be shown

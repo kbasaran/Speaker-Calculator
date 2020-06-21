@@ -40,6 +40,8 @@ def beep(frequency=1175, requested_duration=100):
             return
     winsound.Beep(frequency, requested_duration)
 
+def beep_bad():
+    beep(frequency=int(1175/2))
 
 def generate_freq_list(freq_start, freq_end, ppo):
     """
@@ -154,19 +156,22 @@ def calculate_Xmech(Xmax):
 def calculate_windings(wire_type, N_layers, former_OD, h_winding):
     """Calculate coil mass, Rdc and l for a given coil."""
     global cons
-    d_wire = cons.VC_TABLE.loc[wire_type, "avg"] / 1000
+    w_wire = cons.VC_TABLE.loc[wire_type, "width, m*e-6, avg"] / 1e6
+    w_wire_max = cons.VC_TABLE.loc[wire_type, "width, m*e-6, max"] / 1e6
+    h_wire = cons.VC_TABLE.loc[wire_type, "height, m*e-6, avg"] / 1e6
+    stacking_coef = cons.VC_TABLE.loc[wire_type, "stacking coeff."]
 
     def calc_N_winding_per_layer(i_layer):
         """Calculate the number of windings that fit on one layer of coil."""
-        val = h_winding / d_wire - i_layer * 2  # 2 windings less on each stacked layer
+        val = h_winding / h_wire - i_layer * 2  # 2 windings less on each stacked layer
         return (-1 if val < 1 else val)
 
     def calc_length_of_one_turn_per_layer(i_layer):
         """Calculate the length of one turn of wire on a given coil layer."""
         if i_layer == 1:
-            turn_mean_radius = former_OD/2 + d_wire/2
+            turn_mean_radius = former_OD/2 + w_wire/2
         if i_layer > 1:
-            turn_mean_radius = former_OD/2 + d_wire/2 + np.pi/4 * (i_layer - 1) * d_wire 
+            turn_mean_radius = former_OD/2 + w_wire/2 + (stacking_coef * (i_layer - 1) * w_wire)
         # pi/4 is stacking coefficient
         return 2*np.pi*turn_mean_radius
 
@@ -182,9 +187,11 @@ def calculate_windings(wire_type, N_layers, former_OD, h_winding):
 
     l_wire = sum(total_length_wire_per_layer)
     Rdc = l_wire * cons.VC_TABLE.loc[wire_type, "ohm/m"]
+    w_coil_max = w_wire_max * (1 + (N_layers - 1) * stacking_coef)
+    coil_mass = l_wire * cons.VC_TABLE.loc[wire_type, "g/m"] / 1000
 
     N_windings_rounded = [int(np.round(i)) for i in N_windings]
-    return(Rdc, N_windings_rounded, l_wire)  # round is new since 8_s6
+    return(Rdc, N_windings_rounded, l_wire, w_coil_max, coil_mass)  # round is new since 8_s6
 
 
 def calculate_input_voltage(excitation, Rdc, nominal_impedance):
@@ -379,9 +386,10 @@ class UserForm():
         except Exception:
             self.error = "Invalid input in number of layer options"
             self.coil_choice_box["obj"].addItem("--" + self.error + "--")
+            beep_bad()
             return
         table_columns = ["N_layers", "wire_type", "Bl", "Rdc", "Lm", "Qts", "former_ID",
-                         "t_former", "h_winding", "N_windings", "l_wire"]
+                         "t_former", "h_winding", "N_windings", "l_wire", "w_coil_max", "coil_mass"]
         self.coil_options_table = pd.DataFrame(columns=table_columns)  # make a dataframe to store viable winding options
 
         # Scan through winding options
@@ -391,15 +399,15 @@ class UserForm():
 
         for N_layers in layer_options:
             for wire_type, row in cons.VC_TABLE.iterrows():
-                Rdc, N_windings, l_wire = calculate_windings(wire_type,
-                                                             N_layers,
-                                                             winding.former_ID + winding.t_former * 2,
-                                                             winding.h_winding)
+                Rdc, N_windings, l_wire, w_coil_max, coil_mass = calculate_windings(wire_type,
+                                                                                    N_layers,
+                                                                                    winding.former_ID + winding.t_former * 2,
+                                                                                    winding.h_winding)
         # if Rdc is usable, add to DataFrame
                 if winding.target_Rdc / 1.1 < Rdc < winding.target_Rdc * 1.15 and all(i > 0 for i in N_windings):
                     winding_name = (str(N_layers) + "x " + wire_type).strip()
                     winding_data = {}
-                    for k in ["wire_type", "N_layers", "Rdc", "N_windings", "l_wire"]:
+                    for k in ["wire_type", "N_layers", "Rdc", "N_windings", "l_wire", "w_coil_max", "coil_mass"]:
                         winding_data[k] = locals()[k]
                     coil_choice = (winding_name, winding_data)
                     speaker = SpeakerDriver(coil_choice)
@@ -417,7 +425,10 @@ class UserForm():
             self.coil_choice_box["obj"].addItem(name_in_combo_box, userData)
         # if nothing to add to combobox
         if self.coil_choice_box["obj"].count() == 0:
+            beep_bad()
             self.coil_choice_box["obj"].addItem("--no solution found--")
+        else:
+            beep()
 
 
 @dataclass
@@ -448,14 +459,13 @@ class SpeakerDriver():
             Rdc = winding_data["Rdc"]
             N_windings = winding_data["N_windings"]
             l_wire = winding_data["l_wire"]
-
-            d_max_wire = cons.VC_TABLE.loc[wire_type, "max"] / 1000
-            w_coil = d_max_wire * (1 + (N_layers - 1)*np.pi/4)
-            coil_mass = l_wire * cons.VC_TABLE.loc[wire_type, "g/m"] / 1000
+            # w_wire_max = winding_data["l_wire"] # cons.VC_TABLE.loc[wire_type, "width, m*e-6, max"] / 1e6
+            w_coil_max = winding_data["w_coil_max"] # = d_max_wire * (1 + (N_layers - 1)*np.pi/4)
+            coil_mass = winding_data["coil_mass"] # l_wire * cons.VC_TABLE.loc[wire_type, "g/m"] / 1000
             Bl = B_average * l_wire
             Mmd = self.dead_mass + coil_mass
             attributes = ["Rdc", "Bl", "Mmd", "Mms", "Kms", "Rms", "Ces",
-                          "Qts", "Qes", "Lm", "coil_mass", "w_coil",
+                          "Qts", "Qes", "Lm", "coil_mass", "w_coil_max",
                           "l_wire", "wire_type", "N_layers", "N_windings"]
 
         elif motor_spec_choice == "define_Bl_Re":
@@ -478,7 +488,6 @@ class SpeakerDriver():
         Qts = (Mms*Kms)**0.5/(Rms+Ces)
         Qes = (Mms*Kms)**0.5/(Ces)
         Lm = calculate_Lm(Bl, Rdc, Mms, self.Sd)
-
 
         # Add all the calculated parameters as attribute to the object
         for v in attributes:
@@ -511,7 +520,7 @@ class SpeakerDriver():
                 setattr(self, k, form.get_value(k))
 
             self.air_gap_width = (self.airgap_clearance_inner + self.t_former
-                                  + self.w_coil + self.airgap_clearance_outer)
+                                  + self.w_coil_max + self.airgap_clearance_outer)
 
             self.air_gap_dims = [self.former_ID/2 - self.airgap_clearance_inner,
                                  self.air_gap_width,
@@ -619,10 +628,12 @@ class SpeakerSystem():
         _, self.x1_1V = signal.freqresp(self.sysx1, w=cons.w)  # hata veriyo
         _, self.x1t_1V = signal.freqresp(self.sysx1t, w=cons.w)
         self.x1 = self.x1_1V * self.V_in
+        self.x1t = self.x1 * cons.w
         if self.dof > 1:
             _, self.x2_1V = signal.freqresp(self.sysx2, w=cons.w)
             _, self.x2t_1V = signal.freqresp(self.sysx2t, w=cons.w)
             self.x2 = self.x2_1V * self.V_in
+            self.x2t = self.x2 * cons.w
 
         # SPL calculation with simplified radiation impedance * acceleration
         a = np.sqrt(Sd/np.pi)  # piston radius
@@ -687,15 +698,18 @@ def update_model():
     """Update the mathematical model of the speaker."""
     global result_sys, form, cons, error_message
     motor_spec_choice = form.get_value("motor_spec_type")["userData"]
-    try:
-        winding_name = form.get_value("coil_choice_box")["name"]
-        winding_data = form.get_value("coil_choice_box")["userData"]
-        coil_choice = winding_name, winding_data
-        speaker = SpeakerDriver(coil_choice)
-    except:
-        error_message = "--Invalid speaker data.--"
-        update_view()
-        return
+    if motor_spec_choice == "define_coil":
+        try:
+            winding_name = form.get_value("coil_choice_box")["name"]
+            winding_data = form.get_value("coil_choice_box")["userData"]
+            coil_choice = winding_name, winding_data
+            speaker = SpeakerDriver(coil_choice)
+        except Exception as exception:
+            error_message = "--Invalid speaker data.-- \r\n%s" % exception
+            update_view()
+            return
+    if motor_spec_choice == "define_Bl_Re":
+        speaker = SpeakerDriver()
     try:
         result_sys = SpeakerSystem(speaker)
         if hasattr(result_sys, "x1tt"):
@@ -914,9 +928,6 @@ if __name__ == "__main__":
             message_box.setPlainText(result_sys.spk.summary_ace
                                      + "\n\r" + result_sys.spk.summary_mec
                                      + "\n\r" + result_sys.summary)
-            beep()
-            if "user_curve" in globals():
-                ax.semilogx(*user_curve, ":r", label="User import")
             chosen_graph = rb_graph_group.checkedId()
             if chosen_graph == 0:
                 curve = result_sys.SPL
@@ -931,14 +942,14 @@ if __name__ == "__main__":
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=lower_limit, upper=upper_limit)
 
-            elif chosen_graph == 1:
-                curve = np.real(result_sys.Z)
+            if chosen_graph == 1:
+                curve = np.abs(result_sys.Z)
                 ax.semilogx(cons.f, curve)
-                ax.set_title("Electrical Impedance (inductance effects not calculated)")
+                ax.set_title("Electrical Impedance (no inductance)")
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) + 2, 10)))
 
-            elif chosen_graph == 2:
+            if chosen_graph == 2:
                 curve = np.abs(result_sys.x1) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
@@ -947,7 +958,7 @@ if __name__ == "__main__":
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
-            elif chosen_graph == 3:
+            if chosen_graph == 3:
                 curve = np.abs(result_sys.x2) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
@@ -956,7 +967,7 @@ if __name__ == "__main__":
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
-            elif chosen_graph == 4:
+            if chosen_graph == 4:
                 curve = np.abs(result_sys.x1 - result_sys.x2) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
@@ -965,7 +976,7 @@ if __name__ == "__main__":
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
-            elif chosen_graph == 5:
+            if chosen_graph == 5:
                 curve = np.angle(result_sys.x1, deg=True)
                 ax.semilogx(cons.f, curve, label="dof 1")
                 if form.get_value("dof") == "2 dof":
@@ -976,25 +987,33 @@ if __name__ == "__main__":
                 ax.set_title("Absolute phase")
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=-180, upper=180)
-            else:
-                message_box.setPlainText("Not sure what plot is requested")
+
+            if "user_curve" in globals():
+                ax.autoscale(enable=False)
+                ax.semilogx(*user_curve, ":r", label="User import")
+                ax.legend()
+                    
+            if do_print:
+                ax.grid(True, which="both")
+                canvas.draw()  # refresh canvas
+                beep() # plot successful
 
         else:
             message_box.setPlainText(error_message)
-        if do_print:
-            ax.grid(True, which="both")
-            canvas.draw()  # refresh canvas
 
     def import_user_curve():
         global cons, user_curve
         err, clpd = read_clipboard()
         if err != 0:
             print("Unable to read clipboard")
+            beep_bad()
             return
         _, freqs_in, vals_in = analyze_clipboard_data(err, clpd)
-        if isinstance(vals_in, np.ndarray):
+        if isinstance(vals_in, np.ndarray) and len(vals_in)>1:
             user_curve = freqs_in, vals_in
             update_view()
+            return
+        beep_bad()
 
     def clear_user_curve():
         try:
@@ -1002,25 +1021,46 @@ if __name__ == "__main__":
             del(user_curve)
             update_view()
         except:
-            pass
+            beep_bad()
+
+    def export_results_to_clipboard():
+        global result_sys, cons
+        update_model()
+        pdall = pd.DataFrame(dtype=np.float32, index=cons.f)
+        pdall.index.name = "frequency"
+        pdall["SPL"] = np.abs(result_sys.x1)*1000
+        pdall["SPL, Half-space"] = result_sys.SPL
+        pdall["SPL, Half-space, Xmax limited"] = result_sys.SPL_Xmax_limited
+        pdall["x1, Displacement, RMS, mm"] = np.abs(result_sys.x1)*1000
+        pdall["x1, Displacement, peak, mm"] = np.abs(result_sys.x1)*1000*2**0.5
+        pdall["x1t, Velocity, RMS, m/s"] = np.abs(result_sys.x1t)
+        pdall["x1tt, Acceleration, RMS, m/s²"] = np.abs(result_sys.x1t)
+        pdall["Electrical Impedance, real part, no inductance"] = np.real(result_sys.Z)
+        if result_sys.dof > 1:
+            pdall["x2, Displacement, RMS, mm"] = np.abs(result_sys.x2)*1000
+            pdall["x2, Displacement, peak, mm"] = np.abs(result_sys.x2)*1000*2**0.5
+            pdall["x2t, Velocity, RMS, m/s"] = np.abs(result_sys.x2t)
+            pdall["x2tt, Acceleration, RMS, m/s²"] = np.abs(result_sys.x2t)
+        pdall.to_clipboard()
+        beep()
 
     button21 = QPushButton('Update results')
     button21.clicked.connect(update_model)
-    button21.setFixedHeight(36)
+    button21.setFixedHeight(42)
 
     button22 = QPushButton("Export values")
     button22.setToolTip("Export this graph to clipboard as a table")
-    button22.clicked.connect(partial(beep, frequency=int(1175/2)))
-    button22.setFixedHeight(36)
+    button22.clicked.connect(export_results_to_clipboard)
+    button22.setFixedHeight(42)
 
     button23 = QPushButton("Import curve\nfrom clipboard")
     button23.setToolTip("Import a table from clipboard and add it to the graph as an overlay")
     button23.clicked.connect(import_user_curve)
-    button23.setFixedHeight(36)
+    button23.setFixedHeight(42)
 
     button24 = QPushButton("Remove imported curve")
     button24.clicked.connect(clear_user_curve)
-    button24.setFixedHeight(36)
+    button24.setFixedHeight(42)
 
 # %% Create the canvas and the navigation toolbar
     graphs = QWidget()
