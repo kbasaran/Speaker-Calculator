@@ -21,5 +21,6 @@ Employs Numpy, Pandas, Matplotlib, and PySide2.
 * Electrical inductance
 * Change of acoustical impedance in higher frequencies
 
-**Screenshot:**
+**Screenshot:**  
+
 ![Image](./SSC0.1.1.png)
