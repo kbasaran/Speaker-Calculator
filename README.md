@@ -1,6 +1,8 @@
 # Speaker Stuff Calculator
 Calculation tool for loudspeaker driver and systems
+
 Written for Python 3.7.
+
 Employs Numpy, Pandas and Matplotlib.
 
 **Features**:
