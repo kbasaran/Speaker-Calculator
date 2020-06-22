@@ -1,13 +1,6 @@
-forces x1, x2 and x2-x1
-
+add forces x1, x2 and x2-x1
 write manual
-
 add a link to the manual
-
-tüm isimleri bi gözden geçir: Qwidget, speaker variable, layout, fonksiyon, object
-
-dict yaratmanın pek çok yolu var - p69. yaptığın dict'leri nasıl yaptın bi bak.
-
-user_notes save load çalışmıyor
-
-coil parameters to be shown
+check all names if they make sense
+alternate dict creation methods?
+user_notes save load broken
