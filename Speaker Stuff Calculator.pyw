@@ -782,7 +782,7 @@ if __name__ == "__main__":
     form.add_integer_var(motor_form_1_layout, "t_former", "Former thickness (\u03BCm)", default=100, unit_to_SI=1e-6)
     form.add_double_float_var(motor_form_1_layout, "h_winding", "Coil winding height (mm)", default=6.2, unit_to_SI=1e-3)
     form.add_double_float_var(motor_form_1_layout, "B_average", "Average B field on coil (T)", default=0.69)
-    form.add_string_var(motor_form_1_layout, "N_layer_options", "Number of layer options", default="2")
+    form.add_string_var(motor_form_1_layout, "N_layer_options", "Number of layer options", default="2, 4")
     form.N_layer_options["obj"].setToolTip("Enter the winding layer options"
                                            " as integers with \", \" (a comma"
                                            " and a space) in between")
