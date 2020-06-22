@@ -4,3 +4,4 @@ add a link to the manual
 check all names if they make sense
 alternate dict creation methods?
 user_notes save load broken
+load sometimes fails (try demo.pickle)
