@@ -3,6 +3,8 @@
 Written for Python 3.7.  
 Employs Numpy, Pandas, Matplotlib, and PySide2.
 
+![Image](./SSC0.1.1.png)
+
 **Features**:
 * Modelling of loudspeaker response in free-air and closed box.
   * SPL, electrical impedance, displacements, net forces
