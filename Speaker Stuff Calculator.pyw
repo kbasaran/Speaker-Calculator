@@ -774,7 +774,7 @@ if __name__ == "__main__":
     # %% Add widget for "define coil and B_Average"
     motor_form_1 = QWidget()
     motor_form_1_layout = QFormLayout()
-    # motor_form_1_layout.setContentsMargins(0, 0, 0, 0)
+    motor_form_1_layout.setContentsMargins(0, 0, 0, 0)
     motor_form_1_layout.setVerticalSpacing(form_1_layout.verticalSpacing())
     motor_form_1.setLayout(motor_form_1_layout)
     form.add_double_float_var(motor_form_1_layout, "target_Rdc", "Target Rdc (ohm)", default=3.9)
@@ -796,7 +796,7 @@ if __name__ == "__main__":
     motor_form_2 = QWidget()
     motor_form_2_layout = QFormLayout()
     motor_form_2_layout.setVerticalSpacing(form_1_layout.verticalSpacing())
-    # motor_form_2_layout.setContentsMargins(0, 0, 0, 0)
+    motor_form_2_layout.setContentsMargins(0, 0, 0, 0)
     motor_form_2.setLayout(motor_form_2_layout)
     form.add_double_float_var(motor_form_2_layout, "Bl", "Bl (Tm)", default=3.43)
     form.add_double_float_var(motor_form_2_layout, "Rdc", "Rdc (ohm)", default=3.77)
