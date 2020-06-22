@@ -3,9 +3,7 @@
 Written for Python 3.7.  
 Employs Numpy, Pandas, Matplotlib, and PySide2.
 
-![Image](./SSC0.1.1.png)
-
-**Features**:
+**Features:**
 * Modelling of loudspeaker response in free-air and closed box.
   * SPL, electrical impedance, displacements, net forces
 * Automatic calculation of most appropriate coil winding for given user parameters.
@@ -16,9 +14,12 @@ Employs Numpy, Pandas, Matplotlib, and PySide2.
 * Calculation of magnet system mechanical clearances.
 * Possible to save/load state.
 
-**Not features**:
+**Not features:**
 * Nonlinearities in the system
 * Calculation of magnetic flux
 * Calculation of moving mass of components (with the exception of the coil)
 * Electrical inductance
 * Change of acoustical impedance in higher frequencies
+
+**Screenshot:**
+![Image](./SSC0.1.1.png)
