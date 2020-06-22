@@ -14,7 +14,7 @@ Employs Numpy, Pandas and Matplotlib.
 * Calculation of magnet system mechanical clearances.
 * Possible to save/load state.
 
-**Does not include**:
+**Not features**:
 * Nonlinearities in the system
 * Calculation of magnetic flux
 * Calculation of moving mass of components (with the exception of the coil)
