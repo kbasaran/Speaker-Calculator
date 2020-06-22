@@ -215,7 +215,7 @@ class UserForm():
 
     def __post_init__(self):
         """Post-init the form."""
-        return
+        self.user_curves = []
 
     def load_pickle(self, pickle_to_load=""):
         try:
@@ -229,12 +229,15 @@ class UserForm():
             form_dict = pickle.load(handle)
             print("Loaded file .....%s" % filename[0][-20:])
 
-        setattr(self, "coil_options_table", form_dict.pop("coil_options_table"))
-        form.coil_choice_box["obj"].clear()
-        coil_choice = (form_dict["coil_choice_box"]["name"], form_dict["coil_choice_box"]["userData"])
-        form.coil_choice_box["obj"].addItem(*coil_choice)
-        for item_name, value in form_dict.items():
-            self.set_value(item_name, value)
+            setattr(self, "coil_options_table", form_dict.pop("coil_options_table"))
+            form.coil_choice_box["obj"].clear()
+            if form_dict["motor_spec_type"]["userData"] == "define_coil":
+                coil_choice = (form_dict["coil_choice_box"]["name"], form_dict["coil_choice_box"]["userData"])
+                form.coil_choice_box["obj"].addItem(*coil_choice)
+    
+            items_to_skip = ["result_sys"]
+            for item_name, value in form_dict.items():
+                if item_name not in items_to_skip: self.set_value(item_name, value)
 
         update_model()
 
@@ -348,10 +351,7 @@ class UserForm():
 
         elif isinstance(qwidget_obj, QButtonGroup):
             for button in qwidget_obj.buttons():
-                if button.isChecked():
-                    return button.text()
-            else:
-                raise Exception("No clicked button for %s" % item_name)
+                    button.setChecked(button.text() == value)    
 
         else:
             raise Exception("Don't know how to set %s with value %g" % (item_name,  value))
@@ -492,10 +492,10 @@ class SpeakerDriver():
             setattr(self, v, locals()[v])
 
         # Make a string for acoustical summary
-        self.summary_ace = "Rdc=%.2f ohm    Lm=%.2f dBSPL    Qts=%.2f"\
-            % (Rdc, Lm, Qts)
-        self.summary_ace += "\r\nBl=%.2f Tm    Qes=%.2f"\
-            % (Bl, Qes)
+        self.summary_ace = "Rdc=%.2f ohm    Lm=%.2f dBSPL    Bl=%.2f Tm"\
+            % (Rdc, Lm, Bl)
+        self.summary_ace += "\r\nQts=%.2f    Qes=%.2f"\
+            % (Qts, Qes)
         self.summary_ace += "\r\nKms=%.2f N/mm    Rms=%.2f kg/s    Mms=%.2f g"\
             % (Kms/1000, Rms, Mms*1000)
         if motor_spec_choice == "define_coil":
@@ -810,7 +810,7 @@ if __name__ == "__main__":
     motor_data_input.addWidget(motor_form_2)
     # motor_data_input.setFixedHeight(200)
     QObject.connect(form.motor_spec_type["obj"], SIGNAL(
-        "activated(int)"), motor_data_input, SLOT("setCurrentIndex(int)"))
+        "currentIndexChanged(int)"), motor_data_input, SLOT("setCurrentIndex(int)"))
     # input_form_layout.addRow(motor_data_input)
 
     # %% Start a form widget for left side of GUI
@@ -914,7 +914,7 @@ if __name__ == "__main__":
 
     # %% Message_box to show calculated values
     message_box = QPlainTextEdit()
-    message_box.setFixedHeight(320)
+    message_box.setFixedHeight(330)
     message_box.setFixedWidth(350)
     message_box.setReadOnly(True)
 
@@ -996,22 +996,24 @@ if __name__ == "__main__":
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=-180, upper=180)
 
-            if "user_curve" in globals():
+            if len(form.user_curves):
                 ax.autoscale(enable=False)
-                ax.semilogx(*user_curve, ":r", label="User import")
+                for idx, curve in enumerate(form.user_curves):
+                    ax.semilogx(*curve, ":r", label="User import %i" % (idx + 1))
                 ax.legend()
                     
             if do_print:
                 ax.grid(True, which="both")
                 canvas.draw()  # refresh canvas
-                beep() # plot successful
+
+            beep() # plot successful
 
         else:
             message_box.setPlainText(error_message)
 
     # %% Functions for buttons under the graph
     def import_user_curve():
-        global cons, user_curve
+        global cons, form
         err, clpd = read_clipboard()
         if err != 0:
             print("Unable to read clipboard")
@@ -1019,17 +1021,17 @@ if __name__ == "__main__":
             return
         _, freqs_in, vals_in = analyze_clipboard_data(err, clpd)
         if isinstance(vals_in, np.ndarray) and len(vals_in)>1:
-            user_curve = freqs_in, vals_in
+            form.user_curves.append([freqs_in, vals_in])
             update_view()
             return
         beep_bad()
 
     def clear_user_curve():
         try:
-            global user_curve
-            del(user_curve)
+            global form
+            form.user_curves.pop()
             update_view()
-        except:
+        except IndexError:
             beep_bad()
 
     def export_results_to_clipboard():
@@ -1067,6 +1069,8 @@ if __name__ == "__main__":
     
             df_to_export = pd.DataFrame.from_dict(table_spk, orient="index")
             df_to_export = df_to_export.append(pd.DataFrame.from_dict(table_result_sys, orient="index"))
+            for idx, curve in enumerate(form.user_curves):
+                df_to_export.loc["User import %i" % (idx + 1)] = str(form.user_curves[idx])
             df_to_export.to_clipboard()
             beep()
         except Exception as exception:

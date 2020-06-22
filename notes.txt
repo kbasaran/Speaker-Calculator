@@ -11,6 +11,3 @@ dict yaratmanın pek çok yolu var - p69. yaptığın dict'leri nasıl yaptın b
 user_notes save load çalışmıyor
 
 coil parameters to be shown
-
-choice in combobox not updated when load usued
-
