@@ -127,7 +127,7 @@ cons.setattrs(GAMMA=1.401,  # adiabatic index of air
               vc_table_file_name=".\SSC_data\VC_TABLE.csv"
               )
 setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file_name, index_col="Name"))
-setattr(cons, "f", generate_freq_list(10, 5000, 48*4))
+setattr(cons, "f", generate_freq_list(10, 5000, 48*8))
 setattr(cons, "w", 2*np.pi*cons.f)
 
 
@@ -442,8 +442,7 @@ class SpeakerDriver():
         """Post-init speaker."""
         self.error = str()
         motor_spec_choice = form.get_value("motor_spec_type")["userData"]
-        read_from_form = ["fs", "Qms", "Xmax", "dead_mass", "Sd",
-                          "nominal_impedance"]
+        read_from_form = ["fs", "Qms", "Xmax", "dead_mass", "Sd"]
         for k in read_from_form:
             setattr(self, k, form.get_value(k))
 
@@ -452,7 +451,6 @@ class SpeakerDriver():
             former_ID = form.get_value("former_ID")
             t_former = form.get_value("t_former")
             h_winding = form.get_value("h_winding")
-
             winding_name, winding_data = self.coil_choice
             wire_type = winding_data["wire_type"]
             N_layers = winding_data["N_layers"]
@@ -474,7 +472,7 @@ class SpeakerDriver():
                 Bl = form.get_value("Bl")
                 Mmd = form.get_value("Mmd")
                 attributes = ["Rdc", "Bl", "Mmd", "Mms", "Kms", "Rms", "Ces",
-                              "Qts", "Qes", "Lm", "fr"]
+                              "Qts", "Qes", "Lm"]
             except Exception:
                 self.error += "Unable to get Bl, Re and Mmd values from user form"
         else:
@@ -705,20 +703,29 @@ def update_model():
             coil_choice = winding_name, winding_data
             speaker = SpeakerDriver(coil_choice)
         except Exception as exception:
-            error_message = "--Invalid speaker data.-- \r\n%s" % exception
+            error_message = "--Invalid loudspeaker driver-- \r\n"
             update_view()
+            beep_bad()
             return
     if motor_spec_choice == "define_Bl_Re":
-        speaker = SpeakerDriver()
+        try:
+            speaker = SpeakerDriver((None, None))
+        except Exception as exception:
+            error_message = "--Invalid loudspeaker driver-- \r\n"
+            update_view()
+            beep_bad()
+            return
     try:
         result_sys = SpeakerSystem(speaker)
-        if hasattr(result_sys, "x1tt"):
+        if hasattr(result_sys, "x1tt"): # this checks if the result_sys is calculated and ready
             update_available_graph_buttons()
             error_message = result_sys.error
         else:
-            error_message = "--Invalid speaker system data.--"
+            error_message = "--Invalid loudspeaker system--"
+            beep_bad()
     except Exception as exception_message:
         error_message = "--Update failed with message: %s--" % str(exception_message)
+        beep_bad()
     update_view()
 
 
@@ -762,11 +769,12 @@ if __name__ == "__main__":
                       ]
     form.add_combo_box(form_1_layout, "motor_spec_type", combo_box_data)
     form.motor_spec_type["obj"].setStyleSheet("font-weight: bold")
+    # form.motor_spec_type["obj"].setFixedHeight(20)
 
     # %% Add widget for "define coil and B_Average"
     motor_form_1 = QWidget()
     motor_form_1_layout = QFormLayout()
-    motor_form_1_layout.setContentsMargins(0, 0, 0, 0)
+    # motor_form_1_layout.setContentsMargins(0, 0, 0, 0)
     motor_form_1_layout.setVerticalSpacing(form_1_layout.verticalSpacing())
     motor_form_1.setLayout(motor_form_1_layout)
     form.add_double_float_var(motor_form_1_layout, "target_Rdc", "Target Rdc (ohm)", default=3.9)
@@ -788,7 +796,7 @@ if __name__ == "__main__":
     motor_form_2 = QWidget()
     motor_form_2_layout = QFormLayout()
     motor_form_2_layout.setVerticalSpacing(form_1_layout.verticalSpacing())
-    motor_form_2_layout.setContentsMargins(0, 0, 0, 0)
+    # motor_form_2_layout.setContentsMargins(0, 0, 0, 0)
     motor_form_2.setLayout(motor_form_2_layout)
     form.add_double_float_var(motor_form_2_layout, "Bl", "Bl (Tm)", default=3.43)
     form.add_double_float_var(motor_form_2_layout, "Rdc", "Rdc (ohm)", default=3.77)
@@ -906,7 +914,7 @@ if __name__ == "__main__":
 
     # %% Message_box to show calculated values
     message_box = QPlainTextEdit()
-    message_box.setFixedHeight(245)
+    message_box.setFixedHeight(320)
     message_box.setFixedWidth(350)
     message_box.setReadOnly(True)
 
@@ -1001,6 +1009,7 @@ if __name__ == "__main__":
         else:
             message_box.setPlainText(error_message)
 
+    # %% Functions for buttons under the graph
     def import_user_curve():
         global cons, user_curve
         err, clpd = read_clipboard()
@@ -1028,7 +1037,6 @@ if __name__ == "__main__":
         update_model()
         pdall = pd.DataFrame(dtype=np.float32, index=cons.f)
         pdall.index.name = "frequency"
-        pdall["SPL"] = np.abs(result_sys.x1)*1000
         pdall["SPL, Half-space"] = result_sys.SPL
         pdall["SPL, Half-space, Xmax limited"] = result_sys.SPL_Xmax_limited
         pdall["x1, Displacement, RMS, mm"] = np.abs(result_sys.x1)*1000
@@ -1044,23 +1052,49 @@ if __name__ == "__main__":
         pdall.to_clipboard()
         beep()
 
+
+    def export_diagnose_data():
+        global result_sys
+        try:
+            table_spk = dict()
+            for key in vars(result_sys.spk).keys():
+                table_spk["spk.%s" % key] = str(getattr(result_sys.spk, key))
+    
+            table_result_sys = dict()
+            for key in vars(result_sys).keys():
+                if key != "spk":
+                    table_result_sys["result_sys.%s" % key] = str(getattr(result_sys, key))
+    
+            df_to_export = pd.DataFrame.from_dict(table_spk, orient="index")
+            df_to_export = df_to_export.append(pd.DataFrame.from_dict(table_result_sys, orient="index"))
+            df_to_export.to_clipboard()
+            beep()
+        except Exception as exception:
+            beep_bad()
+
+    # %% Buttons under the graph
     button21 = QPushButton('Update results')
     button21.clicked.connect(update_model)
     button21.setFixedHeight(42)
 
-    button22 = QPushButton("Export values")
-    button22.setToolTip("Export this graph to clipboard as a table")
+    button22 = QPushButton("Export graph\nvalues")
+    button22.setToolTip("Export graph values to clipboard as a table")
     button22.clicked.connect(export_results_to_clipboard)
     button22.setFixedHeight(42)
-
-    button23 = QPushButton("Import curve\nfrom clipboard")
-    button23.setToolTip("Import a table from clipboard and add it to the graph as an overlay")
-    button23.clicked.connect(import_user_curve)
+    
+    button23 = QPushButton("Export diagnose\ndata")
+    button23.setToolTip("Export all calculation data to clipboard for diagnosis purposes")
+    button23.clicked.connect(export_diagnose_data)
     button23.setFixedHeight(42)
 
-    button24 = QPushButton("Remove imported curve")
-    button24.clicked.connect(clear_user_curve)
+    button24 = QPushButton("Import curve")
+    button24.setToolTip("Import a table from clipboard and add it to the graph")
+    button24.clicked.connect(import_user_curve)
     button24.setFixedHeight(42)
+
+    button25 = QPushButton("Remove\nimported curve")
+    button25.clicked.connect(clear_user_curve)
+    button25.setFixedHeight(42)
 
 # %% Create the canvas and the navigation toolbar
     graphs = QWidget()
@@ -1089,7 +1123,7 @@ if __name__ == "__main__":
     input_group_box_layout.addWidget(motor_data_input)
     input_group_box_layout.addLayout(form_2_layout)
     input_group_box_layout.addLayout(sys_type_selection)
-    input_group_box_layout.addWidget(QWidget())
+    input_group_box_layout.addStretch()
 
     # Lay things into the main layout
     main_layout = QHBoxLayout()
@@ -1116,6 +1150,7 @@ if __name__ == "__main__":
     graph_buttons.addWidget(button22)
     graph_buttons.addWidget(button23)
     graph_buttons.addWidget(button24)
+    graph_buttons.addWidget(button25)
 
     right_layout.addLayout(graph_buttons)
     text_boxes = QHBoxLayout()

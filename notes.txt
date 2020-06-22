@@ -8,8 +8,9 @@ tüm isimleri bi gözden geçir: Qwidget, speaker variable, layout, fonksiyon, o
 
 dict yaratmanın pek çok yolu var - p69. yaptığın dict'leri nasıl yaptın bi bak.
 
-Stacked widget etrafında boşluklar var yine
-
 user_notes save load çalışmıyor
 
 coil parameters to be shown
+
+choice in combobox not updated when load usued
+
