@@ -177,7 +177,7 @@ def calculate_windings(wire_type, N_layers, former_OD, h_winding):
 
     # Windings amount for each layer
     N_windings = [calc_N_winding_per_layer(i)
-                          for i in range(N_layers)]
+                  for i in range(N_layers)]
 
     # Wire length for one full turn around for a given layer
     l_one_turn = [calc_length_of_one_turn_per_layer(i_layer) for i_layer in range(1, N_layers+1)]
@@ -220,24 +220,25 @@ class UserForm():
     def load_pickle(self, pickle_to_load=""):
         try:
             filename = open(pickle_to_load, "rb")
-        except:
+        except Exception:
             filename = QFileDialog.getOpenFileName(None, caption='Open file',
                                                    dir=os.getcwd(),
                                                    filter='Pickle Files(*.pickle)')[0]
 
         with open(filename, "rb") as handle:
             form_dict = pickle.load(handle)
-            print("Loaded file .....%s" % filename[0][-20:])
+            print("Loaded file %s" % filename)
 
             setattr(self, "coil_options_table", form_dict.pop("coil_options_table"))
             form.coil_choice_box["obj"].clear()
             if form_dict["motor_spec_type"]["userData"] == "define_coil":
                 coil_choice = (form_dict["coil_choice_box"]["name"], form_dict["coil_choice_box"]["userData"])
                 form.coil_choice_box["obj"].addItem(*coil_choice)
-    
+
             items_to_skip = ["result_sys"]
             for item_name, value in form_dict.items():
-                if item_name not in items_to_skip: self.set_value(item_name, value)
+                if item_name not in items_to_skip:
+                    self.set_value(item_name, value)
 
         update_model()
 
@@ -253,7 +254,7 @@ class UserForm():
                                                filter='Pickle Files(*.pickle)')[0]
         with open(filename, 'wb') as handle:
             pickle.dump(form_dict, handle)
-            print("Saved to file .....%s" % filename[0][-20:])
+            print("Saved to file %s" % filename)
 
     # Convenience functions to add rows to input_form_layout layout
     def add_line(self, to_layout):
@@ -321,40 +322,46 @@ class UserForm():
     def set_value(self, item_name, value):
         """Set value of a form item."""
         item = getattr(self, item_name)
-        qwidget_obj = item["obj"]
-        if isinstance(qwidget_obj, QLineEdit):
-            if isinstance(value, str):
-                qwidget_obj.setText(value)
-            else:
-                raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
-        elif isinstance(qwidget_obj, QPlainTextEdit):
-            if isinstance(value, str):
-                qwidget_obj.setPlainText(value)
-            else:
-                raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
+        try:
+            if isinstance(item["obj"], QWidget):
+                qwidget_obj = item["obj"]
+                if isinstance(qwidget_obj, QLineEdit):
+                    if isinstance(value, str):
+                        qwidget_obj.setText(value)
+                    else:
+                        raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
-        elif isinstance(qwidget_obj, (QDoubleSpinBox, QSpinBox)):
-            if isinstance(value, (float, int)):
-                qwidget_obj.setValue(value / item["unit_to_SI"])
-            else:
-                raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
+                elif isinstance(qwidget_obj, QPlainTextEdit):
+                    if isinstance(value, str):
+                        qwidget_obj.setPlainText(value)
+                    else:
+                        raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
-        elif isinstance(qwidget_obj, QComboBox):  # recevies dict with entry_name
-            if isinstance(value, str):
-                qwidget_obj.setCurrentText(value)
-            elif isinstance(value, dict):
-                qwidget_obj.setCurrentText(value["name"])
-                # qwidget_obj.setCurrentData(value["userData"])
-            else:
-                raise Exception("Incorrect type %s of %s for combobox.set_value" % (type(value), value))
+                elif isinstance(qwidget_obj, (QDoubleSpinBox, QSpinBox)):
+                    if isinstance(value, (float, int)):
+                        qwidget_obj.setValue(value / item["unit_to_SI"])
+                    else:
+                        raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
-        elif isinstance(qwidget_obj, QButtonGroup):
-            for button in qwidget_obj.buttons():
-                    button.setChecked(button.text() == value)    
+                elif isinstance(qwidget_obj, QComboBox):  # recevies dict with entry_name
+                    if isinstance(value, str):
+                        qwidget_obj.setCurrentText(value)
+                    elif isinstance(value, dict):
+                        qwidget_obj.setCurrentText(value["name"])
+                        # qwidget_obj.setCurrentData(value["userData"])
+                    else:
+                        raise Exception("Incorrect type %s of %s for combobox.set_value" % (type(value), value))
 
-        else:
-            raise Exception("Don't know how to set %s with value %g" % (item_name,  value))
+                elif isinstance(qwidget_obj, QButtonGroup):
+                    for button in qwidget_obj.buttons():
+                        button.setChecked(button.text() == value)
+                else:
+                    raise Exception("Don't know how to set %s with value %g" % (item_name,  value))
+
+        except Exception:
+            setattr(self, item_name, value)
+            return
 
     def get_value(self, item_name):
         """Get value of a form item."""
@@ -458,8 +465,8 @@ class SpeakerDriver():
             N_windings = winding_data["N_windings"]
             l_wire = winding_data["l_wire"]
             # w_wire_max = winding_data["l_wire"] # cons.VC_TABLE.loc[wire_type, "width, m*e-6, max"] / 1e6
-            w_coil_max = winding_data["w_coil_max"] # = d_max_wire * (1 + (N_layers - 1)*np.pi/4)
-            coil_mass = winding_data["coil_mass"] # l_wire * cons.VC_TABLE.loc[wire_type, "g/m"] / 1000
+            w_coil_max = winding_data["w_coil_max"]  # = d_max_wire * (1 + (N_layers - 1)*np.pi/4)
+            coil_mass = winding_data["coil_mass"]  # l_wire * cons.VC_TABLE.loc[wire_type, "g/m"] / 1000
             Bl = B_average * l_wire
             Mmd = self.dead_mass + coil_mass
             attributes = ["Rdc", "Bl", "Mmd", "Mms", "Kms", "Rms", "Ces",
@@ -499,7 +506,7 @@ class SpeakerDriver():
         self.summary_ace += "\r\nKms=%.2f N/mm    Rms=%.2f kg/s    Mms=%.2f g"\
             % (Kms/1000, Rms, Mms*1000)
         if motor_spec_choice == "define_coil":
-            self.summary_ace += "\r\nWindings=%.2f g" % (self.coil_mass*1000)
+            self.summary_ace += "\r\nMmd=%.2f g    Windings=%.2f g" % (self.Mmd*1000, self.coil_mass*1000)
 
         # Make a string for mechanical summary
         self.summary_mec = \
@@ -604,9 +611,9 @@ class SpeakerSystem():
                 dss = np.array([0])
             if self.dof == 2:
                 ass = np.array([
-                    [0,1,0,0],
+                    [0, 1, 0, 0],
                     [-(Kms+Kbox)/Mms, -(Rms+Rbox+Bl**2/Rdc)/Mms, (Kms+Kbox)/Mms, (Rms+Rbox+Bl**2/Rdc)/Mms],
-                    [0,0,0,1],
+                    [0, 0, 0, 1],
                     [(Kms+Kbox)/m2, (Rms+Rbox+Bl**2/Rdc)/m2, -(Kms+Kbox+k2)/m2, -(Rms+Rbox+Bl**2/Rdc+c2)/m2]
                     ])
                 bss = np.array([[0], [Bl/Rdc/Mms], [0], [-Bl/Rdc/m2]])
@@ -627,6 +634,7 @@ class SpeakerSystem():
         _, self.x1t_1V = signal.freqresp(self.sysx1t, w=cons.w)
         self.x1 = self.x1_1V * self.V_in
         self.x1t = self.x1 * cons.w
+
         if self.dof > 1:
             _, self.x2_1V = signal.freqresp(self.sysx2, w=cons.w)
             _, self.x2t_1V = signal.freqresp(self.sysx2t, w=cons.w)
@@ -652,9 +660,15 @@ class SpeakerSystem():
         # Calculate some extra parameters
         self.x1tt_1V = self.x1t_1V * cons.w * 1j
         self.x1tt = self.x1tt_1V * self.V_in
+        self.force_1 = self.x1tt * Mms
+        self.force_1_ref = self.x1 * (Kms+Kbox) + self.x1t * (Rms+Rbox+Bl**2/Rdc)
+
         if self.dof > 1:
             self.x2tt_1V = self.x2t_1V * cons.w * 1j
             self.x2tt = self.x2tt_1V * self.V_in
+            self.force_1_2 = (self.x1-self.x2) * (Kms+Kbox) + (self.x1t-self.x2t) * (Rms+Rbox+Bl**2/Rdc)
+            self.force_2 = self.x2tt * m2
+            self.force_2_ref = self.x2 * k2 + self.x2t * c2
 
         if self.box_type == "closed box":
             interested_frequency = self.fb * 4
@@ -702,7 +716,7 @@ def update_model():
             winding_data = form.get_value("coil_choice_box")["userData"]
             coil_choice = winding_name, winding_data
             speaker = SpeakerDriver(coil_choice)
-        except Exception as exception:
+        except Exception:
             error_message = "--Invalid loudspeaker driver-- \r\n"
             update_view()
             beep_bad()
@@ -710,14 +724,14 @@ def update_model():
     if motor_spec_choice == "define_Bl_Re":
         try:
             speaker = SpeakerDriver((None, None))
-        except Exception as exception:
+        except Exception:
             error_message = "--Invalid loudspeaker driver-- \r\n"
             update_view()
             beep_bad()
             return
     try:
         result_sys = SpeakerSystem(speaker)
-        if hasattr(result_sys, "x1tt"): # this checks if the result_sys is calculated and ready
+        if hasattr(result_sys, "x1tt"):  # this checks if the result_sys is calculated and ready
             update_available_graph_buttons()
             error_message = result_sys.error
         else:
@@ -822,7 +836,7 @@ if __name__ == "__main__":
     form.add_title(form_2_layout, "Motor mechanical specifications")
 
     form.add_double_float_var(form_2_layout, "h_washer", "Washer thickness (mm)",
-                         default=3, unit_to_SI=1e-3)
+                              default=3, unit_to_SI=1e-3)
     form.add_integer_var(form_2_layout, "airgap_clearance_inner", "Airgap inner clearance (\u03BCm)", default=260, unit_to_SI=1e-6)
     form.add_integer_var(form_2_layout, "airgap_clearance_outer", "Airgap outer clearance (\u03BCm)", default=260, unit_to_SI=1e-6)
     form.add_double_float_var(form_2_layout, "former_extension_under_coil", "Former bottom extension (mm)", default=0.3, unit_to_SI=1e-3)
@@ -838,7 +852,7 @@ if __name__ == "__main__":
     form.add_line(form_2_layout)
     form.add_title(form_2_layout, "Second degree of freedom")
 
-    form.add_double_float_var(form_2_layout, "k2", "Stiffness (N/mm)", default = 25, unit_to_SI=1e3)
+    form.add_double_float_var(form_2_layout, "k2", "Stiffness (N/mm)", default=25, unit_to_SI=1e3)
     form.add_double_float_var(form_2_layout, "m2", "Mass (g)", default=1000, unit_to_SI=1e-3)
     form.add_double_float_var(form_2_layout, "c2", "Damping coefficient (kg/s)", default=5)
 
@@ -846,9 +860,9 @@ if __name__ == "__main__":
     form.add_line(form_2_layout)
     form.add_title(form_2_layout, "Excitation")
 
-    excitation_combo_box_choices = ([("Volt","V"),
-                                     ("Watt@Rdc","W"),
-                                     ("Watt@Rnom","Wn")
+    excitation_combo_box_choices = ([("Volt", "V"),
+                                     ("Watt@Rdc", "W"),
+                                     ("Watt@Rnom", "Wn")
                                      ])
     form.add_combo_box(form_2_layout, "excitation_unit", excitation_combo_box_choices, combo_box_screen_name="Unit")
     form.set_value("excitation_unit", "V")
@@ -902,6 +916,7 @@ if __name__ == "__main__":
                        "Excursion (x1)",
                        "Excursion (x2)",
                        "Excursion (x1-x2)",
+                       "Forces",
                        "Phase"]
 
     rb_graph_group = QButtonGroup()
@@ -984,7 +999,24 @@ if __name__ == "__main__":
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
-            if chosen_graph == 5:
+            if chosen_graph == 5:  # Forces
+                curve = np.abs(result_sys.force_1)
+                ax.semilogx(cons.f, curve, label="Inertial force of first mass")
+                if form.get_value("dof") == "1 dof":
+                    curve_2 = np.abs(result_sys.force_1_ref)
+                    ax.semilogx(cons.f, curve_2, label="Force exerted from first mass on to reference frame")
+                if form.get_value("dof") == "2 dof":
+                    curve_3 = np.abs(result_sys.force_2)
+                    curve_4 = np.abs(result_sys.force_1_2)
+                    curve_5 = np.abs(result_sys.force_2_ref)
+                    ax.semilogx(cons.f, curve_3, label="Inertial force of second mass")
+                    ax.semilogx(cons.f, curve_4, label="Force exerted from second mass on to first mass")
+                    ax.semilogx(cons.f, curve_5, label="Force exerted from second mass on to reference frame")
+                ax.legend()
+                ax.set_title("Forces, N, RMS")
+                ax.set_xbound(lower=10, upper=3000)
+
+            if chosen_graph == 6:
                 curve = np.angle(result_sys.x1, deg=True)
                 ax.semilogx(cons.f, curve, label="dof 1")
                 if form.get_value("dof") == "2 dof":
@@ -996,17 +1028,19 @@ if __name__ == "__main__":
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=-180, upper=180)
 
-            if len(form.user_curves):
+            if len(form.user_curves) * (chosen_graph == 0):  # works only with SPL graph
                 ax.autoscale(enable=False)
                 for idx, curve in enumerate(form.user_curves):
                     ax.semilogx(*curve, ":r", label="User import %i" % (idx + 1))
                 ax.legend()
-                    
+
             if do_print:
                 ax.grid(True, which="both")
+                button24.setEnabled(chosen_graph == 0)
+                button25.setEnabled(chosen_graph == 0)
                 canvas.draw()  # refresh canvas
 
-            beep() # plot successful
+            beep()  # plot successful
 
         else:
             message_box.setPlainText(error_message)
@@ -1020,7 +1054,7 @@ if __name__ == "__main__":
             beep_bad()
             return
         _, freqs_in, vals_in = analyze_clipboard_data(err, clpd)
-        if isinstance(vals_in, np.ndarray) and len(vals_in)>1:
+        if isinstance(vals_in, np.ndarray) and len(vals_in) > 1:
             form.user_curves.append([freqs_in, vals_in])
             update_view()
             return
@@ -1038,19 +1072,28 @@ if __name__ == "__main__":
         global result_sys, cons
         update_model()
         pdall = pd.DataFrame(dtype=np.float32, index=cons.f)
-        pdall.index.name = "frequency"
-        pdall["SPL, Half-space"] = result_sys.SPL
-        pdall["SPL, Half-space, Xmax limited"] = result_sys.SPL_Xmax_limited
+        pdall.index.name = "frequency, Hz"
+        pdall["dBSPL, Half-space"] = result_sys.SPL
+        pdall["dBSPL, Half-space, Xmax limited"] = result_sys.SPL_Xmax_limited
         pdall["x1, Displacement, RMS, mm"] = np.abs(result_sys.x1)*1000
         pdall["x1, Displacement, peak, mm"] = np.abs(result_sys.x1)*1000*2**0.5
         pdall["x1t, Velocity, RMS, m/s"] = np.abs(result_sys.x1t)
         pdall["x1tt, Acceleration, RMS, m/s²"] = np.abs(result_sys.x1t)
         pdall["Electrical Impedance, real part, no inductance"] = np.real(result_sys.Z)
-        if result_sys.dof > 1:
+        pdall["Inertial force of first mass, N, RMS"] = np.abs(result_sys.force_1)
+
+        if result_sys.dof == 1:
+            pdall["Force exerted from first mass on to reference frame, N, RMS"] = np.abs(result_sys.force_1_ref)
+
+        if result_sys.dof == 2:
             pdall["x2, Displacement, RMS, mm"] = np.abs(result_sys.x2)*1000
             pdall["x2, Displacement, peak, mm"] = np.abs(result_sys.x2)*1000*2**0.5
             pdall["x2t, Velocity, RMS, m/s"] = np.abs(result_sys.x2t)
             pdall["x2tt, Acceleration, RMS, m/s²"] = np.abs(result_sys.x2t)
+            pdall["Inertial force of second mass, N, RMS"] = np.abs(result_sys.force_2)
+            pdall["Force exerted from second mass on to first mass, N, RMS"] = np.abs(result_sys.force_1_2)
+            pdall["Force exerted from second mass on to reference frame, N, RMS"] = np.abs(result_sys.force_2_ref)
+
         pdall.to_clipboard()
 
     def export_diagnose_data():
@@ -1059,19 +1102,19 @@ if __name__ == "__main__":
             table_spk = dict()
             for key in vars(result_sys.spk).keys():
                 table_spk["spk.%s" % key] = str(getattr(result_sys.spk, key))
-    
+
             table_result_sys = dict()
             for key in vars(result_sys).keys():
                 if key != "spk":
                     table_result_sys["result_sys.%s" % key] = str(getattr(result_sys, key))
-    
+
             df_to_export = pd.DataFrame.from_dict(table_spk, orient="index")
             df_to_export = df_to_export.append(pd.DataFrame.from_dict(table_result_sys, orient="index"))
             for idx, curve in enumerate(form.user_curves):
                 df_to_export.loc["User import %i" % (idx + 1)] = str(form.user_curves[idx])
             df_to_export.to_clipboard()
             beep()
-        except Exception as exception:
+        except Exception:
             beep_bad()
 
     # %% Buttons under the graph
@@ -1083,7 +1126,7 @@ if __name__ == "__main__":
     button22.setToolTip("Export graph values to clipboard as a table")
     button22.clicked.connect(export_results_to_clipboard)
     button22.setFixedHeight(42)
-    
+
     button23 = QPushButton("Export diagnose\ndata")
     button23.setToolTip("Export all calculation data to clipboard for diagnosis purposes")
     button23.clicked.connect(export_diagnose_data)
@@ -1116,7 +1159,7 @@ if __name__ == "__main__":
     # Make a QGroupbox frame around all the around the user form
     input_group_box = QGroupBox("Inputs")
     input_group_box.setFixedWidth(280)
-    
+
     input_group_box_layout = QVBoxLayout()
     input_group_box.setLayout(input_group_box_layout)
 
@@ -1137,7 +1180,6 @@ if __name__ == "__main__":
     main_layout.addLayout(left_layout)
     main_layout.addLayout(right_layout)
     main_win.setWindowTitle("Speaker stuff calculator {}".format(version))
-    
 
     left_layout.addWidget(input_group_box)
     left_layout.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Minimum, vPolicy=QSizePolicy.Ignored))

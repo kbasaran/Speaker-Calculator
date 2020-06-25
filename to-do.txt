@@ -1,7 +1,7 @@
-add forces x1, x2 and x2-x1
 write manual
 add a link to the manual
 check all names if they make sense
 alternate dict creation methods?
 user_notes save load broken
-load sometimes fails (try demo.pickle)
+for dof2 input f0 and not k2
+list k2 of dof2 in results
