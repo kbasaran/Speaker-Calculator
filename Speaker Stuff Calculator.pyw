@@ -322,9 +322,8 @@ class UserForm():
     def set_value(self, item_name, value):
         """Set value of a form item."""
         item = getattr(self, item_name)
-
         try:
-            if isinstance(item["obj"], QWidget):
+            if isinstance(item["obj"], QObject):
                 qwidget_obj = item["obj"]
                 if isinstance(qwidget_obj, QLineEdit):
                     if isinstance(value, str):
