@@ -23,4 +23,4 @@ Employs Numpy, Pandas, Matplotlib, and PySide2.
 
 **Screenshot:**  
 
-![Image](./SSC0.1.1.png)
+![Image](./SSC_data/SSC0.1.1.png)

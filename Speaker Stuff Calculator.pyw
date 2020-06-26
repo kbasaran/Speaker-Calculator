@@ -56,7 +56,7 @@ def generate_freq_list(freq_start, freq_end, ppo):
     return(freq_array)
 
 
-def find_nearest_freq(array, value):
+def find_nearest_freq(array, desired):
     """
     Lookup a table to find the nearest frequency to value argument.
 
@@ -72,7 +72,7 @@ def find_nearest_freq(array, value):
     idx : int
         Index of closest value.
     """
-    err = [abs(i-value) for i in array]
+    err = [np.abs(i-desired) for i in array]
     idx = err.index(min(err))
     return array[idx], idx
 
@@ -127,7 +127,7 @@ cons.setattrs(GAMMA=1.401,  # adiabatic index of air
               vc_table_file_name=".\SSC_data\WIRE_TABLE.csv"
               )
 setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file_name, index_col="Name"))
-setattr(cons, "f", generate_freq_list(10, 5000, 48*8))
+setattr(cons, "f", generate_freq_list(10, 3000, 48*8))
 setattr(cons, "w", 2*np.pi*cons.f)
 
 
@@ -463,9 +463,8 @@ class SpeakerDriver():
             Rdc = winding_data["Rdc"]
             N_windings = winding_data["N_windings"]
             l_wire = winding_data["l_wire"]
-            # w_wire_max = winding_data["l_wire"] # cons.VC_TABLE.loc[wire_type, "width, m*e-6, max"] / 1e6
-            w_coil_max = winding_data["w_coil_max"]  # = d_max_wire * (1 + (N_layers - 1)*np.pi/4)
-            coil_mass = winding_data["coil_mass"]  # l_wire * cons.VC_TABLE.loc[wire_type, "g/m"] / 1000
+            w_coil_max = winding_data["w_coil_max"]
+            coil_mass = winding_data["coil_mass"]
             Bl = B_average * l_wire
             Mmd = self.dead_mass + coil_mass
             attributes = ["Rdc", "Bl", "Mmd", "Mms", "Kms", "Rms", "Ces",
@@ -660,16 +659,13 @@ class SpeakerSystem():
         self.x1tt_1V = self.x1t_1V * cons.w * 1j
         self.x1tt = self.x1tt_1V * self.V_in
         self.force_1 = self.x1tt * Mms
-        self.force_1_ref = self.x1 * (Kms+Kbox) + self.x1t * (Rms+Rbox+Bl**2/Rdc)
 
         if self.dof > 1:
             self.x2tt_1V = self.x2t_1V * cons.w * 1j
             self.x2tt = self.x2tt_1V * self.V_in
-            self.force_1_2 = (self.x1-self.x2) * (Kms+Kbox) + (self.x1t-self.x2t) * (Rms+Rbox+Bl**2/Rdc)
             self.force_2 = self.x2tt * m2
-            self.force_2_ref = self.x2 * k2 + self.x2t * c2
 
-        if self.box_type == "closed box":
+        if self.box_type == "Closed box":
             interested_frequency = self.fb * 4
         else:
             interested_frequency = self.spk.fs * 4
@@ -954,7 +950,7 @@ if __name__ == "__main__":
             if chosen_graph == 0:
                 curve = result_sys.SPL
                 curve_2 = result_sys.SPL_Xmax_limited
-                upper_limit = graph_ceil(np.max(curve) + 2, 10)
+                upper_limit = graph_ceil(np.max(curve) + 5, 10)
                 lower_limit = upper_limit - 50
                 ax.semilogx(cons.f, curve)
                 ax.semilogx(cons.f, curve_2, "m", label="Xmax limited")
@@ -1000,16 +996,14 @@ if __name__ == "__main__":
 
             if chosen_graph == 5:  # Forces
                 curve = np.abs(result_sys.force_1)
-                ax.semilogx(cons.f, curve, label="Inertial force of first mass")
+                ax.semilogx(cons.f, curve, label="Net force on first mass")
                 if form.get_value("dof") == "1 dof":
-                    curve_2 = np.abs(result_sys.force_1_ref)
+                    curve_2 = -np.abs(result_sys.force_1)
                     ax.semilogx(cons.f, curve_2, label="Force exerted from first mass on to reference frame")
                 if form.get_value("dof") == "2 dof":
                     curve_3 = np.abs(result_sys.force_2)
-                    curve_4 = np.abs(result_sys.force_1_2)
-                    curve_5 = np.abs(result_sys.force_2_ref)
-                    ax.semilogx(cons.f, curve_3, label="Inertial force of second mass")
-                    ax.semilogx(cons.f, curve_4, label="Force exerted from second mass on to first mass")
+                    curve_5 = -np.abs(result_sys.force_2+result_sys.force_1)
+                    ax.semilogx(cons.f, curve_3, label="Net force on second mass")
                     ax.semilogx(cons.f, curve_5, label="Force exerted from second mass on to reference frame")
                 ax.legend()
                 ax.set_title("Forces, N, RMS")
@@ -1079,19 +1073,15 @@ if __name__ == "__main__":
         pdall["x1t, Velocity, RMS, m/s"] = np.abs(result_sys.x1t)
         pdall["x1tt, Acceleration, RMS, m/s²"] = np.abs(result_sys.x1t)
         pdall["Electrical Impedance, real part, no inductance"] = np.real(result_sys.Z)
-        pdall["Inertial force of first mass, N, RMS"] = np.abs(result_sys.force_1)
-
-        if result_sys.dof == 1:
-            pdall["Force exerted from first mass on to reference frame, N, RMS"] = np.abs(result_sys.force_1_ref)
+        pdall["Net force on first mass, N, RMS"] = np.abs(result_sys.force_1)
 
         if result_sys.dof == 2:
             pdall["x2, Displacement, RMS, mm"] = np.abs(result_sys.x2)*1000
             pdall["x2, Displacement, peak, mm"] = np.abs(result_sys.x2)*1000*2**0.5
             pdall["x2t, Velocity, RMS, m/s"] = np.abs(result_sys.x2t)
             pdall["x2tt, Acceleration, RMS, m/s²"] = np.abs(result_sys.x2t)
-            pdall["Inertial force of second mass, N, RMS"] = np.abs(result_sys.force_2)
-            pdall["Force exerted from second mass on to first mass, N, RMS"] = np.abs(result_sys.force_1_2)
-            pdall["Force exerted from second mass on to reference frame, N, RMS"] = np.abs(result_sys.force_2_ref)
+            pdall["Net force of second mass, N, RMS"] = np.abs(result_sys.force_2)
+            pdall["Force exerted from second mass on to reference frame, N, RMS"] = -np.abs(result_sys.force_2 + result_sys.force_1)
 
         pdall.to_clipboard()
 
@@ -1228,8 +1218,8 @@ if __name__ == "__main__":
         form.m2["obj"].setEnabled(rb_dof[2].isChecked())
         form.c2["obj"].setEnabled(rb_dof[2].isChecked())
 
-    form.box_type["obj"].buttonClicked.connect(adjust_form_for_system_type)
-    form.dof["obj"].buttonClicked.connect(adjust_form_for_system_type)
+    form.box_type["obj"].buttonToggled.connect(adjust_form_for_system_type)
+    form.dof["obj"].buttonToggled.connect(adjust_form_for_system_type)
 
     def update_available_graph_buttons():
         """Update the rb enabled statuses for graph."""
