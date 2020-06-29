@@ -997,14 +997,14 @@ if __name__ == "__main__":
 
             if chosen_graph == 5:  # Forces
                 curve = np.abs(result_sys.force_1)
-                ax.semilogx(cons.f, curve, label="Net force on first mass")
+                ax.semilogx(cons.f, curve, label="Inertial force from first mass")
                 if form.get_value("dof") == "1 dof":
                     curve_2 = -np.abs(result_sys.force_1)
                     ax.semilogx(cons.f, curve_2, label="Force exerted from first mass on to reference frame")
                 if form.get_value("dof") == "2 dof":
                     curve_3 = np.abs(result_sys.force_2)
                     curve_5 = -np.abs(result_sys.force_2+result_sys.force_1)
-                    ax.semilogx(cons.f, curve_3, label="Net force on second mass")
+                    ax.semilogx(cons.f, curve_3, label="Inertial force from second mass")
                     ax.semilogx(cons.f, curve_5, label="Force exerted from second mass on to reference frame")
                 ax.legend()
                 ax.set_title("Forces, N, RMS")
@@ -1074,14 +1074,14 @@ if __name__ == "__main__":
         pdall["x1t, Velocity, RMS, m/s"] = np.abs(result_sys.x1t)
         pdall["x1tt, Acceleration, RMS, m/s²"] = np.abs(result_sys.x1t)
         pdall["Electrical Impedance, real part, no inductance"] = np.real(result_sys.Z)
-        pdall["Net force on first mass, N, RMS"] = np.abs(result_sys.force_1)
+        pdall["Inertial force from first mass, N, RMS"] = np.abs(result_sys.force_1)
 
         if result_sys.dof == 2:
             pdall["x2, Displacement, RMS, mm"] = np.abs(result_sys.x2)*1000
             pdall["x2, Displacement, peak, mm"] = np.abs(result_sys.x2)*1000*2**0.5
             pdall["x2t, Velocity, RMS, m/s"] = np.abs(result_sys.x2t)
             pdall["x2tt, Acceleration, RMS, m/s²"] = np.abs(result_sys.x2t)
-            pdall["Net force of second mass, N, RMS"] = np.abs(result_sys.force_2)
+            pdall["Inertial force from second mass, N, RMS"] = np.abs(result_sys.force_2)
             pdall["Force exerted from second mass on to reference frame, N, RMS"] = -np.abs(result_sys.force_2 + result_sys.force_1)
 
         pdall.to_clipboard()
