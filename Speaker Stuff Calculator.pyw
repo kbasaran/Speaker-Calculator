@@ -1221,6 +1221,7 @@ if __name__ == "__main__":
 
     form.box_type["obj"].buttonToggled.connect(adjust_form_for_system_type)
     form.dof["obj"].buttonToggled.connect(adjust_form_for_system_type)
+    form.motor_spec_type["obj"].currentIndexChanged.connect(adjust_form_for_calc_type)
 
     def update_available_graph_buttons():
         """Update the rb enabled statuses for graph."""
@@ -1230,7 +1231,6 @@ if __name__ == "__main__":
             dof2_calculated = False
         rb_graph_group.button(3).setEnabled(dof2_calculated)  # x2 button
         rb_graph_group.button(4).setEnabled(dof2_calculated)  # x2-x1 button
-
 
     # %% Initiate application
     adjust_form_for_calc_type()
