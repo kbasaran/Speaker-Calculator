@@ -972,7 +972,7 @@ if __name__ == "__main__":
                 curve = np.abs(result_sys.x1) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
-                ax.set_title("Absolute Displacement, RMS and Peak, One-way")
+                ax.set_title("Absolute Displacement, One-way")
                 ax.set_xbound(lower=10, upper=3000)
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
@@ -981,7 +981,7 @@ if __name__ == "__main__":
                 curve = np.abs(result_sys.x2) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
-                ax.set_title("Absolute Displacement, RMS and Peak, One-way")
+                ax.set_title("Absolute Displacement, One-way")
                 ax.set_xbound(lower=10, upper=3000)
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
