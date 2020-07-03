@@ -545,7 +545,7 @@ class SpeakerDriver():
             self.summary_mec += \
                 "\r\nWindings per layer = %s" % (str(self.N_windings))
             self.summary_mec += \
-                "\r\nWasher to bottom plate = %.2f mm (recommended minimum)" \
+                "\r\nTop plate to bottom plate = %.2f mm (recommended minimum)" \
                 % (self.washer_to_bottom_plate*1000)
 
         self.Xmech = calculate_Xmech(self.Xmax)
@@ -831,7 +831,7 @@ if __name__ == "__main__":
     form.add_line(form_2_layout)
     form.add_title(form_2_layout, "Motor mechanical specifications")
 
-    form.add_double_float_var(form_2_layout, "h_washer", "Washer thickness (mm)",
+    form.add_double_float_var(form_2_layout, "h_washer", "Top plate thickness (mm)",
                               default=3, unit_to_SI=1e-3)
     form.add_integer_var(form_2_layout, "airgap_clearance_inner", "Airgap inner clearance (\u03BCm)", default=300, unit_to_SI=1e-6)
     form.add_integer_var(form_2_layout, "airgap_clearance_outer", "Airgap outer clearance (\u03BCm)", default=300, unit_to_SI=1e-6)
