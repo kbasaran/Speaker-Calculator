@@ -787,7 +787,7 @@ if __name__ == "__main__":
     motor_form_1_layout.setVerticalSpacing(form_1_layout.verticalSpacing())
     motor_form_1.setLayout(motor_form_1_layout)
     form.add_double_float_var(motor_form_1_layout, "target_Rdc", "Target Rdc (ohm)", default=3.9)
-    form.add_double_float_var(motor_form_1_layout, "former_ID", "Coil Former ID (mm)", default=25.46, unit_to_SI=1e-3)
+    form.add_double_float_var(motor_form_1_layout, "former_ID", "Coil Former ID (mm)", default=25, unit_to_SI=1e-3)
     form.add_integer_var(motor_form_1_layout, "t_former", "Former thickness (\u03BCm)", default=100, unit_to_SI=1e-6)
     form.add_double_float_var(motor_form_1_layout, "h_winding", "Coil winding height (mm)", default=6.2, unit_to_SI=1e-3)
     form.add_double_float_var(motor_form_1_layout, "B_average", "Average B field on coil (T)", default=0.69)
@@ -833,9 +833,9 @@ if __name__ == "__main__":
 
     form.add_double_float_var(form_2_layout, "h_washer", "Washer thickness (mm)",
                               default=3, unit_to_SI=1e-3)
-    form.add_integer_var(form_2_layout, "airgap_clearance_inner", "Airgap inner clearance (\u03BCm)", default=260, unit_to_SI=1e-6)
-    form.add_integer_var(form_2_layout, "airgap_clearance_outer", "Airgap outer clearance (\u03BCm)", default=260, unit_to_SI=1e-6)
-    form.add_double_float_var(form_2_layout, "former_extension_under_coil", "Former bottom extension (mm)", default=0.3, unit_to_SI=1e-3)
+    form.add_integer_var(form_2_layout, "airgap_clearance_inner", "Airgap inner clearance (\u03BCm)", default=300, unit_to_SI=1e-6)
+    form.add_integer_var(form_2_layout, "airgap_clearance_outer", "Airgap outer clearance (\u03BCm)", default=300, unit_to_SI=1e-6)
+    form.add_double_float_var(form_2_layout, "former_extension_under_coil", "Former bottom extension (mm)", default=0.5, unit_to_SI=1e-3)
 
     # %% Add closed box info to form
     form.add_line(form_2_layout)
@@ -925,7 +925,7 @@ if __name__ == "__main__":
 
     # %% Message_box to show calculated values
     message_box = QPlainTextEdit()
-    message_box.setFixedHeight(330)
+    message_box.setFixedHeight(260)
     message_box.setFixedWidth(350)
     message_box.setReadOnly(True)
 
