@@ -7,3 +7,4 @@ build
 Speaker Stuff Calculator.spec
 SSC_data/VC_TABLE_old.csv
 make_dist.bat
+run_win.lnk
