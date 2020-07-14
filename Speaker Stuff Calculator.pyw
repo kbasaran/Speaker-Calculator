@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Speaker Stuff Calculator main module."""
+"""
+Speaker Stuff Calculator main module.
+hosted on "github.com/kbasaran/Speaker-Stuff-Calculator"
+"""
 import os
 import sys
 import numpy as np
