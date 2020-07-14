@@ -736,7 +736,7 @@ def update_model():
             error_message = "--Invalid loudspeaker system--"
             beep_bad()
     except Exception as exception_message:
-        error_message = "--Update failed with message: %s--" % str(exception_message)
+        error_message = "--Update failed with message %s--" % str(exception_message)
         beep_bad()
     update_view()
 
@@ -959,7 +959,7 @@ if __name__ == "__main__":
                 ax.semilogx(cons.f, curve)
                 ax.semilogx(cons.f, curve_2, "m", label="Xmax limited")
                 ax.legend()
-                ax.set_title("SPL@1m, Half-space, %.2f Volt, %.2f Watt"
+                ax.set_title("SPL@1m, Half-space, %.2f Volt, %.2f Watt@Rdc"
                              % (result_sys.V_in, result_sys.P_real))
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=lower_limit, upper=upper_limit)
