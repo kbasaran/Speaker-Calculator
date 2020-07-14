@@ -845,7 +845,7 @@ if __name__ == "__main__":
     form.add_title(form_2_layout, "Closed box specifications")
 
     form.add_double_float_var(form_2_layout, "Vb", "Box internal volume (l)", default=1, unit_to_SI=1e-3)
-    form.add_double_float_var(form_2_layout, "Qal", "Ql - box losses", default=200)
+    form.add_double_float_var(form_2_layout, "Qa", "Qa - box losses", default=40)
 
     # %% Add second dof parameters to form
     form.add_line(form_2_layout)
