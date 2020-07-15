@@ -27,7 +27,7 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
-version="0.1.1"
+version="0.1.2"
 do_print = 1
 
 
@@ -584,16 +584,16 @@ class SpeakerSystem():
 
         # Read box parameters
         if self.box_type == "Closed box":
-            self.Vb, self.Qal = form.get_value("Vb"), form.get_value("Qal")
+            self.Vb, self.Qa = form.get_value("Vb"), form.get_value("Qa")
         else:
-            self.Vb, self.Qal = [np.inf] * 2
+            self.Vb, self.Qa = [np.inf] * 2
 
         # Read dof
         if self.dof > 1:
             m2, k2, c2 = form.get_value("m2"), form.get_value("k2"), form.get_value("c2")
 
         Kbox = Sd**2*cons.Kair/self.Vb
-        Rbox = ((Kms+Kbox)*(Mms/1000))**0.5/self.Qal
+        Rbox = ((Kms+Kbox)*(Mms/1000))**0.5/self.Qa
         self.fb = 1/2/np.pi * ((Kms+Kbox)/Mms)**0.5
         self.Qtc = ((Kms+Kbox)*Mms)**0.5 / (Rbox + Rms + Bl**2/Rdc)
         self.Vas = cons.Kair / Kms * Sd**2
@@ -845,7 +845,7 @@ if __name__ == "__main__":
     form.add_title(form_2_layout, "Closed box specifications")
 
     form.add_double_float_var(form_2_layout, "Vb", "Box internal volume (l)", default=1, unit_to_SI=1e-3)
-    form.add_double_float_var(form_2_layout, "Qa", "Qa - box losses", default=40)
+    form.add_double_float_var(form_2_layout, "Qa", "Qa - box absorption", default=40)
 
     # %% Add second dof parameters to form
     form.add_line(form_2_layout)
@@ -1217,7 +1217,7 @@ if __name__ == "__main__":
     def adjust_form_for_system_type():
         """Update which buttons are enabled based on box type and dof."""
         form.Vb["obj"].setEnabled(rb_box[2].isChecked())
-        form.Qal["obj"].setEnabled(rb_box[2].isChecked())
+        form.Qa["obj"].setEnabled(rb_box[2].isChecked())
         form.k2["obj"].setEnabled(rb_dof[2].isChecked())
         form.m2["obj"].setEnabled(rb_dof[2].isChecked())
         form.c2["obj"].setEnabled(rb_dof[2].isChecked())
