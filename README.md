@@ -19,7 +19,7 @@ Employs Numpy, Pandas, Matplotlib, and PySide2.
 * Calculation of magnetic flux
 * Calculation of moving mass of components (with the exception of the coil)
 * Electrical inductance
-* Change of acoustical impedance in higher frequencies
+* Change of acoustical impedance at higher frequencies
 
 **Screenshot:**  
 
