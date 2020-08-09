@@ -114,9 +114,9 @@ def analyze_clipboard_data(err, clpd):
 class Record(object):
     """Make a simple object to store attributes."""
 
-    def setattrs(self, **kwargs):
+    def setattrs(self, **dictionary):
         """Add multiple attributes to the object."""
-        for k, v in kwargs.items():
+        for k, v in dictionary.items():
             setattr(self, k, v)
 
 
