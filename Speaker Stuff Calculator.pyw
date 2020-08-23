@@ -845,6 +845,7 @@ if __name__ == "__main__":
     form.add_title(form_2_layout, "Closed box specifications")
 
     form.add_double_float_var(form_2_layout, "Vb", "Box internal volume (l)", default=1, unit_to_SI=1e-3)
+    form.Vb["obj"].setDecimals(3)
     form.add_double_float_var(form_2_layout, "Qa", "Qa - box absorption", default=40)
 
     # %% Add second dof parameters to form
