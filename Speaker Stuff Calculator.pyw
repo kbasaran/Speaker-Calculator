@@ -52,7 +52,6 @@ def generate_freq_list(freq_start, freq_end, ppo):
 
     ppo means points per octave
     """
-    import numpy as np
     numStart = np.floor(np.log2(freq_start/1000)*ppo)
     numEnd = np.ceil(np.log2(freq_end/1000)*ppo + 1)
     freq_array = 1000*np.array(2**(np.arange(numStart, numEnd)/ppo))
