@@ -1,7 +1,7 @@
 ## Speaker Stuff Calculator
 **Calculation tool for loudspeaker design**  
 Written for Python 3.7.  
-Uses additional modules: numpy, pandas, scipy.signal, matplotlib, pySide2
+Uses additional modules: numpy, pandas, scipy.signal, matplotlib, PySide2, python-sounddevice
 
 **Features:**
 * Modelling of loudspeaker response in free-air and closed box.
