@@ -19,7 +19,7 @@ from PySide2.QtWidgets import (QApplication, QWidget, QLabel, QPushButton,
                                QButtonGroup, QFileDialog, QSpacerItem,
                                QSizePolicy)
 from functools import partial
-import winsound
+import sounddevice as sd
 
 from matplotlib.backends.backend_qt5agg import (
         FigureCanvasQTAgg as FigureCanvas)
@@ -27,24 +27,9 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
-version="0.1.2"
+version = "0.1.2"
 do_print = 1
 
-
-def beep(frequency=1175, requested_duration=100):
-    """Beep without a click in the end."""
-    period = 1000 / frequency  # ms
-    requested_wave_number = requested_duration / period
-    for wave_number in range(int(requested_wave_number), 10, -1):
-        duration = wave_number * period
-        if np.abs(duration - np.round(duration)) < 0.01:
-            duration_no_click = int(np.round(duration))
-            winsound.Beep(frequency, duration_no_click)
-            return
-    winsound.Beep(frequency, requested_duration)
-
-def beep_bad():
-    beep(frequency=int(1175/2))
 
 def generate_freq_list(freq_start, freq_end, ppo):
     """
@@ -131,6 +116,20 @@ cons.setattrs(GAMMA=1.401,  # adiabatic index of air
 setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file_name, index_col="Name"))
 setattr(cons, "f", generate_freq_list(10, 3000, 48*8))
 setattr(cons, "w", 2*np.pi*cons.f)
+setattr(cons, "FS", 48000)
+
+
+def beep(frequency=1175, requested_duration=60):
+    """Beep without a click in the end."""
+    FS = cons.FS
+    N_wave = round(frequency * requested_duration / 1e3, 0)  # made integer to avoid clicking end of signal
+    N_sample = int(N_wave * FS / frequency) + 1
+    signal = (0.5 * np.sin(frequency * 2 * np.pi * (np.arange(N_sample)) / FS)).astype(np.float32)
+    sd.play(signal, FS)
+
+
+def beep_bad():
+    beep(frequency=int(1175/2))
 
 
 def calculate_air_mass(Sd):
