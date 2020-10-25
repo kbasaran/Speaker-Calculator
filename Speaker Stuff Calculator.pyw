@@ -27,7 +27,7 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
-version = "0.1.2"
+version = "0.1.2+"
 do_print = 1
 
 
@@ -40,7 +40,7 @@ def generate_freq_list(freq_start, freq_end, ppo):
     numStart = np.floor(np.log2(freq_start/1000)*ppo)
     numEnd = np.ceil(np.log2(freq_end/1000)*ppo + 1)
     freq_array = 1000*np.array(2**(np.arange(numStart, numEnd)/ppo))
-    return(freq_array)
+    return freq_array
 
 
 def find_nearest_freq(array, desired):
@@ -72,6 +72,8 @@ def read_clipboard():
 
 
 def analyze_clipboard_data(err, clpd):
+    """Check clipboard data and try to extract a 2D plot from it."""
+
     if err == 0:
         if not isinstance(clpd, pd.core.frame.DataFrame):
             data_type = "Unknown"
@@ -89,17 +91,15 @@ def analyze_clipboard_data(err, clpd):
                 freqs = pddf[0].to_numpy()
                 vals = pddf[1].to_numpy()
                 return data_type, freqs, vals
-            else:
-                return(data_type, None, None)
-    else:
-        return(None, None, None)
+            return data_type, None, None
+    return None, None, None
 
 
 class Record(object):
     """Make a simple object to store attributes."""
 
     def setattrs(self, **dictionary):
-        """Add multiple attributes to the object."""
+        """Add attributes to the object in a loop."""
         for k, v in dictionary.items():
             setattr(self, k, v)
 
@@ -111,7 +111,7 @@ cons.setattrs(GAMMA=1.401,  # adiabatic index of air
               RHO=1.1839,  # 25 degrees celcius
               Kair=101325 * 1.401,  # could not find a way to refer to RHO here
               c_air=(101325 * 1.401 / 1.1839)**0.5,
-              vc_table_file_name=".\SSC_data\WIRE_TABLE.csv"
+              vc_table_file_name=".\\SSC_data\\WIRE_TABLE.csv"
               )
 setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file_name, index_col="Name"))
 setattr(cons, "f", generate_freq_list(10, 3000, 48*8))
@@ -134,7 +134,7 @@ def beep_bad():
 
 def calculate_air_mass(Sd):
     """Air mass on diaphragm; the difference between Mms and Mmd."""
-    return(1.13*(Sd)**(3/2))  # m2 in, kg out
+    return 1.13*(Sd)**(3/2)  # m2 in, kg out
 
 
 def calculate_Lm(Bl, Re, Mms, Sd):
@@ -151,7 +151,7 @@ def calculate_Xmech(Xmax):
     All values in basic SI units.
     """
     Xclearance = 1e-3 + (Xmax - 3e-3) / 5
-    return(Xmax + Xclearance)
+    return Xmax + Xclearance
 
 
 def calculate_windings(wire_type, N_layers, former_OD, h_winding):
@@ -165,7 +165,7 @@ def calculate_windings(wire_type, N_layers, former_OD, h_winding):
     def calc_N_winding_per_layer(i_layer):
         """Calculate the number of windings that fit on one layer of coil."""
         val = h_winding / h_wire - i_layer * 2  # 2 windings less on each stacked layer
-        return (-1 if val < 1 else val)
+        return -1 if val < 1 else val
 
     def calc_length_of_one_turn_per_layer(i_layer):
         """Calculate the length of one turn of wire on a given coil layer."""
@@ -192,7 +192,7 @@ def calculate_windings(wire_type, N_layers, former_OD, h_winding):
     coil_mass = l_wire * cons.VC_TABLE.loc[wire_type, "g/m"] / 1000
 
     N_windings_rounded = [int(np.round(i)) for i in N_windings]
-    return(Rdc, N_windings_rounded, l_wire, w_coil_max, coil_mass)  # round is new since 8_s6
+    return(Rdc, N_windings_rounded, l_wire, w_coil_max, coil_mass)
 
 
 def calculate_input_voltage(excitation, Rdc, nominal_impedance):
@@ -207,8 +207,8 @@ def calculate_input_voltage(excitation, Rdc, nominal_impedance):
     else:
         print("Input options are [float, ""V""], \
               [float, ""W""], [float, ""Wn"", float]")
-        return(None)
-    return(input_voltage)
+        return None
+    return input_voltage
 
 
 @dataclass
@@ -381,7 +381,6 @@ class UserForm():
         except Exception:
             if not isinstance(item, QWidget):
                 return item
-            else:
                 raise Exception("Don't know how to read %s with type %s" %
                                 (item_name, type(item)))
 
