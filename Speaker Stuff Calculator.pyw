@@ -111,7 +111,7 @@ cons.setattrs(GAMMA=1.401,  # adiabatic index of air
               RHO=1.1839,  # 25 degrees celcius
               Kair=101325 * 1.401,  # could not find a way to refer to RHO here
               c_air=(101325 * 1.401 / 1.1839)**0.5,
-              vc_table_file_name=".\\SSC_data\\WIRE_TABLE.csv"
+              vc_table_file_name=os.path.join('SSC_data', 'WIRE_TABLE.csv')
               )
 setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file_name, index_col="Name"))
 setattr(cons, "f", generate_freq_list(10, 3000, 48*8))
