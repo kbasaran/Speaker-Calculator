@@ -3,7 +3,6 @@
 Speaker Stuff Calculator main module.
 hosted on "github.com/kbasaran/Speaker-Stuff-Calculator"
 """
-import os
 import sys
 import numpy as np
 import pandas as pd
@@ -19,6 +18,7 @@ from PySide2.QtWidgets import (QApplication, QWidget, QLabel, QPushButton,
                                QButtonGroup, QFileDialog, QSpacerItem,
                                QSizePolicy)
 from functools import partial
+from pathlib import Path
 import sounddevice as sd
 
 from matplotlib.backends.backend_qt5agg import (
@@ -111,9 +111,9 @@ cons.setattrs(GAMMA=1.401,  # adiabatic index of air
               RHO=1.1839,  # 25 degrees celcius
               Kair=101325 * 1.401,  # could not find a way to refer to RHO here
               c_air=(101325 * 1.401 / 1.1839)**0.5,
-              vc_table_file_name=os.path.join('SSC_data', 'WIRE_TABLE.csv')
+              vc_table_file=Path.cwd().joinpath('SSC_data', 'WIRE_TABLE.csv')
               )
-setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file_name, index_col="Name"))
+setattr(cons, "VC_TABLE", pd.read_csv(cons.vc_table_file, index_col="Name"))
 setattr(cons, "f", generate_freq_list(10, 3000, 48*8))
 setattr(cons, "w", 2*np.pi*cons.f)
 setattr(cons, "FS", 48000)
@@ -217,18 +217,24 @@ class UserForm():
     def __post_init__(self):
         """Post-init the form."""
         self.user_curves = []
+        self.pickles_path = Path.cwd()
 
-    def load_pickle(self, pickle_to_load=""):
+    def load_pickle(self, file=None):
         try:
-            filename = open(pickle_to_load, "rb")
+            if file.exists():
+                pass
+            else:
+                raise Exception("File not found")
         except Exception:
-            filename = QFileDialog.getOpenFileName(None, caption='Open file',
-                                                   dir=os.getcwd(),
-                                                   filter='Pickle Files(*.pickle)')[0]
+            file = Path(QFileDialog.getOpenFileName(None, caption='Open file',
+                                                    dir=str(self.pickles_path),
+                                                    filter='Pickle Files(*.pickle)')[0])
 
-        with open(filename, "rb") as handle:
+        self.pickles_path = file.parent  # remember what folder was used
+
+        with file.open(mode="rb") as handle:
             form_dict = pickle.load(handle)
-            print("Loaded file %s" % filename)
+            print("Loaded file %s" % file.name)
 
             setattr(self, "coil_options_table", form_dict.pop("coil_options_table"))
             form.coil_choice_box["obj"].clear()
@@ -236,7 +242,7 @@ class UserForm():
                 coil_choice = (form_dict["coil_choice_box"]["name"], form_dict["coil_choice_box"]["userData"])
                 form.coil_choice_box["obj"].addItem(*coil_choice)
 
-            items_to_skip = ["result_sys"]
+            items_to_skip = ["result_sys", "pickles_path"]
             for item_name, value in form_dict.items():
                 if item_name not in items_to_skip:
                     self.set_value(item_name, value)
@@ -245,17 +251,20 @@ class UserForm():
 
     def save_to_pickle(self):  # add save dialog
         """Save design to a file."""
+        # Need to add error handling to avoid invalid saves
         form_dict = {"result_sys": result_sys}
         for key, value in self.__dict__.items():
             obj_value = self.get_value(key)
             form_dict[key] = obj_value
 
-        filename = QFileDialog.getSaveFileName(None, caption='Save to file',
-                                               dir=os.getcwd(),
-                                               filter='Pickle Files(*.pickle)')[0]
-        with open(filename, 'wb') as handle:
+        file = Path(QFileDialog.getSaveFileName(None, caption='Save to file',
+                                                dir=str(self.pickles_path),
+                                                filter='Pickle Files(*.pickle)')[0])
+        self.pickles_path = file.parent  # remember what folder was used
+
+        with file.open('wb') as handle:
             pickle.dump(form_dict, handle)
-            print("Saved to file %s" % filename)
+            print("Saved to file %s" % file.name)
 
     # Convenience functions to add rows to input_form_layout layout
     def add_line(self, to_layout):
@@ -1238,4 +1247,8 @@ if __name__ == "__main__":
     adjust_form_for_system_type()
     update_nominal_impedance_disability()
     main_win.show()
+    if (file := Path.cwd().joinpath("default.pickle")).exists():
+        # Load "default.pickle" on startup if found in folder
+        print("I found it")
+        form.load_pickle(file)
     sys.exit(app.exec_())
