@@ -7,3 +7,4 @@ don't save if error in calculated result
 beep is laggy, can you make it more responsive?
 add transfer function to the graphs and to the export
 make a separate function to write form parameters into speaker object. put it outside the speaker object.
+Option to enter Mms directly
