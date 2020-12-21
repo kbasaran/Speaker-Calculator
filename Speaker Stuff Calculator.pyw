@@ -941,7 +941,7 @@ if __name__ == "__main__":
 
     # %% User notes box to take notes etc.
     setattr(form, "user_notes", {"obj": QPlainTextEdit()})
-    form.user_notes["obj"].setPlainText("..")
+    form.user_notes["obj"].setPlainText("Notes here")
 
     # %% Plotting with Matplotlib
     def graph_ceil(x, step=5):
