@@ -1,1 +1,0 @@
-pyinstaller "./Speaker Stuff Calculator.pyw" --add-data="./SSC_data/;./SSC_data" --add-data="./personal_space/platforms;./platforms" --noconfirm
