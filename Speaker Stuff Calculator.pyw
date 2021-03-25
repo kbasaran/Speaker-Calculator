@@ -506,11 +506,11 @@ class SpeakerDriver():
             setattr(self, v, locals()[v])
 
         # Make a string for acoustical summary
-        self.summary_ace = "Rdc=%.2f ohm    Lm=%.2f dBSPL    Bl=%.2f Tm"\
+        self.summary_ace = "Rdc=%.2f ohm    Lm=%.2f dBSPL    Bl=%.4g Tm"\
             % (Rdc, Lm, Bl)
-        self.summary_ace += "\r\nQts=%.2f    Qes=%.2f"\
+        self.summary_ace += "\r\nQts=%.3g    Qes=%.3g"\
             % (Qts, Qes)
-        self.summary_ace += "\r\nKms=%.2f N/mm    Rms=%.2f kg/s    Mms=%.2f g"\
+        self.summary_ace += "\r\nKms=%.4g N/mm    Rms=%.3g kg/s    Mms=%.4g g"\
             % (Kms/1000, Rms, Mms*1000)
         if motor_spec_choice == "define_coil":
             self.summary_ace += "\r\nMmd=%.2f g    Windings=%.2f g" % (self.Mmd*1000, self.coil_mass*1000)
@@ -549,7 +549,7 @@ class SpeakerDriver():
             self.summary_mec += \
                 "\r\nOverhang + 15%% = %.2f mm" % float(self.overhang*1.15*1000)
             self.summary_mec += \
-                "\r\nAir gap dims. = %s mm" \
+                "\r\nAirgap dims. = %s mm" \
                 % (str(np.round([i*1000 for i in self.air_gap_dims], 2)))
             self.summary_mec += \
                 "\r\nWindings per layer = %s" % (str(self.N_windings))
@@ -598,7 +598,7 @@ class SpeakerSystem():
         if self.dof > 1:
             m2, k2, c2 = form.get_value("m2"), form.get_value("k2"), form.get_value("c2")
 
-        Kbox = Sd**2*cons.Kair/self.Vb
+        self.Kbox = Kbox = Sd**2*cons.Kair/self.Vb
         Rbox = ((Kms+Kbox)*(Mms/1000))**0.5/self.Qa
         self.fb = 1/2/np.pi * ((Kms+Kbox)/Mms)**0.5
         self.Qtc = ((Kms+Kbox)*Mms)**0.5 / (Rbox + Rms + Bl**2/Rdc)
@@ -703,8 +703,8 @@ class SpeakerSystem():
             self.summary += "Unable to identify the total degrees of freedom"
 
         if self.box_type == "Closed box":
-            self.summary += "\r\nQtc: %.2f    fb: %.3g Hz    Vas: %.3g l" \
-                            % (self.Qtc, self.fb, self.Vas * 1e3)
+            self.summary += "\r\nQtc: %.3g    fb: %.3g Hz    Vas: %.3g l    Kbox: %.4g N/mm" \
+                            % (self.Qtc, self.fb, self.Vas * 1e3, self.Kbox/1000)
 
         self.summary += "\r\nF_motor(V_in) / F_suspension(Xmax/2) = {:.0%}".format(
             Bl * self.V_in / Rdc / Kms / self.spk.Xmax * 2)
