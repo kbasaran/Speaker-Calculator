@@ -9,14 +9,9 @@ import pandas as pd
 from scipy import signal
 from dataclasses import dataclass
 import pickle
-from PySide2.QtCore import SIGNAL, SLOT, QObject, Qt  # Qt isnecessary for alignment of titles
-from PySide2.QtWidgets import (QApplication, QWidget, QLabel, QPushButton,
-                               QDoubleSpinBox, QAbstractSpinBox, QGroupBox,
-                               QFormLayout, QPlainTextEdit, QStackedWidget,
-                               QVBoxLayout, QHBoxLayout, QFrame, QSpinBox,
-                               QRadioButton, QComboBox, QLineEdit,
-                               QButtonGroup, QFileDialog, QSpacerItem,
-                               QSizePolicy)
+from PySide2.QtCore import SIGNAL, SLOT, QObject, Qt  # Qt is necessary for alignment of titles
+from PySide2 import QtWidgets as qtw
+
 from functools import partial
 from pathlib import Path
 import sounddevice as sd
@@ -27,7 +22,7 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
-version = "0.1.3"
+version = "0.1.3+"
 do_print = 1
 
 
@@ -226,7 +221,7 @@ class UserForm():
             else:
                 raise Exception("File not found")
         except Exception:
-            file = Path(QFileDialog.getOpenFileName(None, caption='Open file',
+            file = Path(qtw.QFileDialog.getOpenFileName(None, caption='Open file',
                                                     dir=str(self.pickles_path),
                                                     filter='Pickle Files(*.pickle)')[0])
 
@@ -257,7 +252,7 @@ class UserForm():
             obj_value = self.get_value(key)
             form_dict[key] = obj_value
 
-        file = Path(QFileDialog.getSaveFileName(None, caption='Save to file',
+        file = Path(qtw.QFileDialog.getSaveFileName(None, caption='Save to file',
                                                 dir=str(self.pickles_path),
                                                 filter='Pickle Files(*.pickle)')[0])
         self.pickles_path = file.parent  # remember what folder was used
@@ -269,15 +264,15 @@ class UserForm():
     # Convenience functions to add rows to input_form_layout layout
     def add_line(self, to_layout):
         """Add a separator line in the form layout."""
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
+        line = qtw.QFrame()
+        line.setFrameShape(qtw.QFrame.HLine)
+        line.setFrameShadow(qtw.QFrame.Sunken)
         line.setContentsMargins(0, 10, 0, 10)
         to_layout.addRow(line)
 
     def add_title(self, to_layout, string):
         """Add a title to different user input form groups."""
-        title = QLabel()
+        title = qtw.QLabel()
         title.setText(string)
         title.setStyleSheet("font-weight: bold")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -286,10 +281,10 @@ class UserForm():
     def add_double_float_var(self, to_layout, var_name, description, min_val=0,
                              max_val=1e5, default=0, unit_to_SI=1):
         """Add a row for double float user variable input."""
-        item = {"obj": QDoubleSpinBox(), "unit_to_SI": unit_to_SI}
+        item = {"obj": qtw.QDoubleSpinBox(), "unit_to_SI": unit_to_SI}
         item["obj"].setMinimumSize(52, 18)
         item["obj"].setRange(min_val, max_val)
-        item["obj"].setStepType(QAbstractSpinBox.StepType.AdaptiveDecimalStepType)
+        item["obj"].setStepType(qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType)
         setattr(self, var_name, item)
         self.set_value(var_name, default*unit_to_SI)
         to_layout.addRow(description,  getattr(self, var_name)["obj"])
@@ -300,7 +295,7 @@ class UserForm():
         combo_box_name is the attribute name under form object
         item_list contains tuples as list items. first is visible name second is user_data.
         """
-        item = {"obj": QComboBox()}
+        item = {"obj": qtw.QComboBox()}
         item["obj"].setMaxVisibleItems(19)
         item["obj"].setMinimumSize(52, 18)
         for choice in combo_list:
@@ -314,7 +309,7 @@ class UserForm():
     def add_integer_var(self, to_layout, var_name, description, min_val=1,
                         max_val=1e6, default=0, unit_to_SI=1):
         """Add a row for integer value user variable input."""
-        item = {"obj": QSpinBox(), "unit_to_SI": unit_to_SI}
+        item = {"obj": qtw.QSpinBox(), "unit_to_SI": unit_to_SI}
         item["obj"].setMinimumSize(52, 18)
         item["obj"].setRange(min_val, max_val)
         setattr(self, var_name, item)
@@ -323,7 +318,7 @@ class UserForm():
 
     def add_string_var(self, to_layout, var_name, description, default=""):
         """Add string var."""
-        item = {"obj": QLineEdit()}
+        item = {"obj": qtw.QLineEdit()}
         item["obj"].setMinimumSize(52, 18)
         setattr(self, var_name, item)
         self.set_value(var_name, default)
@@ -335,25 +330,25 @@ class UserForm():
         try:
             if isinstance(item["obj"], QObject):
                 qwidget_obj = item["obj"]
-                if isinstance(qwidget_obj, QLineEdit):
+                if isinstance(qwidget_obj, qtw.QLineEdit):
                     if isinstance(value, str):
                         qwidget_obj.setText(value)
                     else:
                         raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
-                elif isinstance(qwidget_obj, QPlainTextEdit):
+                elif isinstance(qwidget_obj, qtw.QPlainTextEdit):
                     if isinstance(value, str):
                         qwidget_obj.setPlainText(value)
                     else:
                         raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
-                elif isinstance(qwidget_obj, (QDoubleSpinBox, QSpinBox)):
+                elif isinstance(qwidget_obj, (qtw.QDoubleSpinBox, qtw.QSpinBox)):
                     if isinstance(value, (float, int)):
                         qwidget_obj.setValue(value / item["unit_to_SI"])
                     else:
                         raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
 
-                elif isinstance(qwidget_obj, QComboBox):  # recevies dict with entry_name
+                elif isinstance(qwidget_obj, qtw.QComboBox):  # recevies dict with entry_name
                     if isinstance(value, str):
                         qwidget_obj.setCurrentText(value)
                     elif isinstance(value, dict):
@@ -362,7 +357,7 @@ class UserForm():
                     else:
                         raise Exception("Incorrect type %s of %s for combobox.set_value" % (type(value), value))
 
-                elif isinstance(qwidget_obj, QButtonGroup):
+                elif isinstance(qwidget_obj, qtw.QButtonGroup):
                     for button in qwidget_obj.buttons():
                         button.setChecked(button.text() == value)
                 else:
@@ -377,18 +372,18 @@ class UserForm():
         item = getattr(self, item_name)
         try:
             qwidget_object = item["obj"]
-            if isinstance(qwidget_object, QLineEdit):
+            if isinstance(qwidget_object, qtw.QLineEdit):
                 return qwidget_object.text()
-            elif isinstance(qwidget_object, QPlainTextEdit):
+            elif isinstance(qwidget_object, qtw.QPlainTextEdit):
                 return qwidget_object.toPlainText()
-            elif isinstance(qwidget_object, (QDoubleSpinBox, QSpinBox)):
+            elif isinstance(qwidget_object, (qtw.QDoubleSpinBox, qtw.QSpinBox)):
                 return qwidget_object.value() * item["unit_to_SI"]
-            elif isinstance(qwidget_object, QComboBox):  # returns dict (name, userData)
+            elif isinstance(qwidget_object, qtw.QComboBox):  # returns dict (name, userData)
                 return {"name": qwidget_object.currentText(), "userData": qwidget_object.currentData()}
-            elif isinstance(qwidget_object, QButtonGroup):
+            elif isinstance(qwidget_object, qtw.QButtonGroup):
                 return qwidget_object.checkedButton().text()
         except Exception:
-            if not isinstance(item, QWidget):
+            if not isinstance(item, qtw.QWidget):
                 return item
                 raise Exception("Don't know how to read %s with type %s" %
                                 (item_name, type(item)))
@@ -750,23 +745,23 @@ def update_model():
 if __name__ == "__main__":
 
     # %% Initiate PyQT Application
-    app = QApplication.instance()
+    app = qtw.QApplication.instance()
     if app is None:
-        app = QApplication(sys.argv)
+        app = qtw.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
     form = UserForm()  # initiate an object to hold all user form items
 
     # %% Add a Save/Load widget
-    crud = QHBoxLayout()
-    crud_load_button = QPushButton("Load")
+    crud = qtw.QHBoxLayout()
+    crud_load_button = qtw.QPushButton("Load")
     crud_load_button.clicked.connect(partial(form.load_pickle))
-    crud_save_button = QPushButton("Save")
+    crud_save_button = qtw.QPushButton("Save")
     crud_save_button.clicked.connect(partial(form.save_to_pickle))
     crud.addWidget(crud_load_button)
     crud.addWidget(crud_save_button)
 
     # %% Start a form widget for the left side of GUI
-    form_1_layout = QFormLayout()
+    form_1_layout = qtw.QFormLayout()
     form_1_layout.setVerticalSpacing(5)
 
     # %% Add basic speaker parameters to form
@@ -790,8 +785,8 @@ if __name__ == "__main__":
     # form.motor_spec_type["obj"].setFixedHeight(20)
 
     # %% Add widget for "define coil and B_Average"
-    motor_form_1 = QWidget()
-    motor_form_1_layout = QFormLayout()
+    motor_form_1 = qtw.QWidget()
+    motor_form_1_layout = qtw.QFormLayout()
     motor_form_1_layout.setContentsMargins(0, 0, 0, 0)
     motor_form_1_layout.setVerticalSpacing(form_1_layout.verticalSpacing())
     motor_form_1.setLayout(motor_form_1_layout)
@@ -805,15 +800,15 @@ if __name__ == "__main__":
     form.N_layer_options["obj"].setToolTip("Enter the winding layer options"
                                            " as integers with \", \" (a comma"
                                            " and a space) in between")
-    button_coil_choices_update = QPushButton("Update coil choices")
+    button_coil_choices_update = qtw.QPushButton("Update coil choices")
     button_coil_choices_update.setMaximumWidth(160)
     motor_form_1_layout.addRow(button_coil_choices_update)
 
     form.add_combo_box(motor_form_1_layout, "coil_choice_box", [("--empty--", "")])
 
     # %% Add widget for "define Bl and Rdc"
-    motor_form_2 = QWidget()
-    motor_form_2_layout = QFormLayout()
+    motor_form_2 = qtw.QWidget()
+    motor_form_2_layout = qtw.QFormLayout()
     motor_form_2_layout.setVerticalSpacing(form_1_layout.verticalSpacing())
     motor_form_2_layout.setContentsMargins(0, 0, 0, 0)
     motor_form_2.setLayout(motor_form_2_layout)
@@ -823,7 +818,7 @@ if __name__ == "__main__":
 
     # %% Make a stacked widget to show the right motor input form based
     # on motor input choice combobox
-    motor_data_input = QStackedWidget()
+    motor_data_input = qtw.QStackedWidget()
     motor_data_input.setMaximumHeight(250)
     motor_data_input.addWidget(motor_form_1)
     motor_data_input.addWidget(motor_form_2)
@@ -833,7 +828,7 @@ if __name__ == "__main__":
     # input_form_layout.addRow(motor_data_input)
 
     # %% Start a form widget for left side of GUI
-    form_2_layout = QFormLayout()
+    form_2_layout = qtw.QFormLayout()
     form_2_layout.setVerticalSpacing(form_1_layout.verticalSpacing())  # necessaqry?????????
 
     # %% Add mechanical info to form
@@ -880,41 +875,41 @@ if __name__ == "__main__":
     # %% Create layout for system type selection radio buttons (Closed, free-air, 1dof 2dof etc.)
     form.add_line(form_2_layout)
     form.add_title(form_2_layout, "System type")
-    sys_type_selection = QVBoxLayout()
-    box_buttons_layout = QHBoxLayout()
-    dof_buttons_layout = QHBoxLayout()
+    sys_type_selection = qtw.QVBoxLayout()
+    box_buttons_layout = qtw.QHBoxLayout()
+    dof_buttons_layout = qtw.QHBoxLayout()
     sys_type_selection.addLayout(box_buttons_layout)
     sys_type_selection.addLayout(dof_buttons_layout)
 
     # %% Add box type radio buttons
-    setattr(form, "box_type", {"obj": QButtonGroup()})
-    rb_box = [QWidget] * 5
-    rb_box[1] = QRadioButton("Free-air")
+    setattr(form, "box_type", {"obj": qtw.QButtonGroup()})
+    rb_box = [qtw.QWidget] * 5
+    rb_box[1] = qtw.QRadioButton("Free-air")
     rb_box[1].setChecked(True)
     box_buttons_layout.addWidget(rb_box[1])
 
-    rb_box[2] = QRadioButton("Closed box")
+    rb_box[2] = qtw.QRadioButton("Closed box")
     box_buttons_layout.addWidget(rb_box[2])
 
     form.box_type["obj"].addButton(rb_box[1])
     form.box_type["obj"].addButton(rb_box[2])
 
     # %% Add DOF choice radio buttons
-    setattr(form, "dof", {"obj": QButtonGroup()})
-    rb_dof = [QWidget] * 5
-    rb_dof[1] = QRadioButton("1 dof")
+    setattr(form, "dof", {"obj": qtw.QButtonGroup()})
+    rb_dof = [qtw.QWidget] * 5
+    rb_dof[1] = qtw.QRadioButton("1 dof")
     rb_dof[1].setChecked(True)
     dof_buttons_layout.addWidget(rb_dof[1])
 
-    rb_dof[2] = QRadioButton("2 dof")
+    rb_dof[2] = qtw.QRadioButton("2 dof")
     dof_buttons_layout.addWidget(rb_dof[2])
 
     form.dof["obj"].addButton(rb_dof[1])
     form.dof["obj"].addButton(rb_dof[2])
 
     # %% Create the graph choice buttons
-    plot_data_selection = QWidget()
-    layout = QHBoxLayout()
+    plot_data_selection = qtw.QWidget()
+    layout = qtw.QHBoxLayout()
     plot_data_selection.setLayout(layout)
     plot_data_selection.setFixedHeight(40)
     rb_screen_names = ["SPL",
@@ -925,22 +920,22 @@ if __name__ == "__main__":
                        "Forces",
                        "Phase"]
 
-    rb_graph_group = QButtonGroup()
+    rb_graph_group = qtw.QButtonGroup()
     for id, screen_name in enumerate(rb_screen_names):
-        button = QRadioButton(screen_name)
+        button = qtw.QRadioButton(screen_name)
         rb_graph_group.addButton(button, id)
         layout.addWidget(button)
         if screen_name == "SPL":
             button.setChecked(True)
 
     # %% Message_box to show calculated values
-    message_box = QPlainTextEdit()
+    message_box = qtw.QPlainTextEdit()
     message_box.setFixedHeight(260)
     message_box.setFixedWidth(350)
     message_box.setReadOnly(True)
 
     # %% User notes box to take notes etc.
-    setattr(form, "user_notes", {"obj": QPlainTextEdit()})
+    setattr(form, "user_notes", {"obj": qtw.QPlainTextEdit()})
     form.user_notes["obj"].setPlainText("Notes here")
 
     # %% Plotting with Matplotlib
@@ -1118,31 +1113,31 @@ if __name__ == "__main__":
             beep_bad()
 
     # %% Buttons under the graph
-    button21 = QPushButton('Update results')
+    button21 = qtw.QPushButton('Update results')
     button21.clicked.connect(update_model)
     button21.setFixedHeight(42)
 
-    button22 = QPushButton("Export graph\nvalues")
+    button22 = qtw.QPushButton("Export graph\nvalues")
     button22.setToolTip("Export graph values to clipboard as a table")
     button22.clicked.connect(export_results_to_clipboard)
     button22.setFixedHeight(42)
 
-    button23 = QPushButton("Export diagnose\ndata")
+    button23 = qtw.QPushButton("Export diagnose\ndata")
     button23.setToolTip("Export all calculation data to clipboard for diagnosis purposes")
     button23.clicked.connect(export_diagnose_data)
     button23.setFixedHeight(42)
 
-    button24 = QPushButton("Import curve")
+    button24 = qtw.QPushButton("Import curve")
     button24.setToolTip("Import a table from clipboard and add it to the graph")
     button24.clicked.connect(import_user_curve)
     button24.setFixedHeight(42)
 
-    button25 = QPushButton("Remove\nimported curve")
+    button25 = qtw.QPushButton("Remove\nimported curve")
     button25.clicked.connect(clear_user_curve)
     button25.setFixedHeight(42)
 
 # %% Create the canvas and the navigation toolbar
-    graphs = QWidget()
+    graphs = qtw.QWidget()
     # a figure instance to plot on
     figure = Figure(figsize=(5, 7), dpi=72, tight_layout=True)
     if do_print:
@@ -1157,10 +1152,10 @@ if __name__ == "__main__":
 # %% Do the main layout
 
     # Make a QGroupbox frame around all the around the user form
-    input_group_box = QGroupBox("Inputs")
+    input_group_box = qtw.QGroupBox("Inputs")
     input_group_box.setFixedWidth(280)
 
-    input_group_box_layout = QVBoxLayout()
+    input_group_box_layout = qtw.QVBoxLayout()
     input_group_box.setLayout(input_group_box_layout)
 
     input_group_box_layout.addLayout(crud)
@@ -1171,25 +1166,25 @@ if __name__ == "__main__":
     input_group_box_layout.addStretch()
 
     # Lay things into the main layout
-    main_layout = QHBoxLayout()
-    left_layout = QVBoxLayout()
-    right_layout = QVBoxLayout()
+    main_layout = qtw.QHBoxLayout()
+    left_layout = qtw.QVBoxLayout()
+    right_layout = qtw.QVBoxLayout()
 
-    main_win = QWidget()
+    main_win = qtw.QWidget()
     main_win.setLayout(main_layout)
     main_layout.addLayout(left_layout)
     main_layout.addLayout(right_layout)
     main_win.setWindowTitle("Speaker stuff calculator {}".format(version))
 
     left_layout.addWidget(input_group_box)
-    left_layout.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Minimum, vPolicy=QSizePolicy.Ignored))
+    left_layout.addSpacerItem(qtw.QSpacerItem(0, 0, hPolicy=qtw.QSizePolicy.Minimum, vPolicy=qtw.QSizePolicy.Ignored))
 
     if do_print:
         right_layout.addWidget(toolbar)
         right_layout.addWidget(canvas)
     right_layout.addWidget(plot_data_selection)
 
-    graph_buttons = QHBoxLayout()
+    graph_buttons = qtw.QHBoxLayout()
     graph_buttons.addWidget(button21)
     graph_buttons.addWidget(button22)
     graph_buttons.addWidget(button23)
@@ -1197,7 +1192,7 @@ if __name__ == "__main__":
     graph_buttons.addWidget(button25)
 
     right_layout.addLayout(graph_buttons)
-    text_boxes = QHBoxLayout()
+    text_boxes = qtw.QHBoxLayout()
     text_boxes.addWidget(message_box)
     text_boxes.addWidget(form.user_notes["obj"])
     form.user_notes["obj"].setFixedHeight(message_box.height())

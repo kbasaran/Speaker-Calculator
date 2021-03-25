@@ -10,3 +10,8 @@ make a separate function to write form parameters into speaker object. put it ou
 Option to enter Mms directly
 make the size of textedit boxes larger. text is being snipped.
 for layer options also accept comma, space, comma and space
+class record ya da bazı dictionary'ler yerine namedtuple kullanabilirsin
+make 2, 4, 8 layer options allow spaces
+change pickles to .ssc files and let open from explorer
+why is the Seas H1192-08 pickle file not working?
+make the size of textedit boxes larger. text is being snipped.
