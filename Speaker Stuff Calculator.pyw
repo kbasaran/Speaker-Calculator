@@ -508,7 +508,7 @@ class SpeakerDriver():
         self.summary_ace += "\r\nKms=%.4g N/mm    Rms=%.3g kg/s    Mms=%.4g g"\
             % (Kms/1000, Rms, Mms*1000)
         if motor_spec_choice == "define_coil":
-            self.summary_ace += "\r\nMmd=%.2f g    Windings=%.2f g" % (self.Mmd*1000, self.coil_mass*1000)
+            self.summary_ace += "\r\nMmd=%.4g g    Windings=%.2f g" % (self.Mmd*1000, self.coil_mass*1000)
 
         # Make a string for mechanical summary
         self.summary_mec = \
@@ -772,6 +772,7 @@ if __name__ == "__main__":
     form.add_double_float_var(form_1_layout, "Qms", "Qms", default=6.51)
     form.add_double_float_var(form_1_layout, "Xmax", "Xmax (mm)", default=4, unit_to_SI=1e-3)
     form.add_double_float_var(form_1_layout, "dead_mass", "Dead mass (g)", default=3.54, unit_to_SI=1e-3)
+    form.dead_mass["obj"].setDecimals(3)
     form.add_double_float_var(form_1_layout, "Sd", "Sd (cm²)", default=53.5, unit_to_SI=1e-4)
 
     form.add_line(form_1_layout)
@@ -815,6 +816,7 @@ if __name__ == "__main__":
     form.add_double_float_var(motor_form_2_layout, "Bl", "Bl (Tm)", default=3.43)
     form.add_double_float_var(motor_form_2_layout, "Rdc", "Rdc (ohm)", default=3.77)
     form.add_double_float_var(motor_form_2_layout, "Mmd", "Mmd (g)", default=3.98, unit_to_SI=1e-3)
+    form.Mmd["obj"].setDecimals(3)
 
     # %% Make a stacked widget to show the right motor input form based
     # on motor input choice combobox
