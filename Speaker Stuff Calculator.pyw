@@ -663,6 +663,7 @@ class SpeakerSystem():
         self.x1tt_1V = self.x1t_1V * cons.w * 1j
         self.x1tt = self.x1tt_1V * self.V_in
         self.force_1 = self.x1tt * Mms  # inertial force
+        self.force_coil = Bl * np.real(self.V_in / self.Z)
 
         if self.dof > 1:
             self.x2tt_1V = self.x2t_1V * cons.w * 1j
@@ -1003,16 +1004,18 @@ if __name__ == "__main__":
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
             if chosen_graph == 5:  # Forces
-                curve = np.abs(result_sys.force_1)
-                ax.semilogx(cons.f, curve, label="Inertial force from first mass")
+                curve_1 = np.abs(result_sys.force_coil)
+                ax.semilogx(cons.f, curve_1, label="Lorentz force")
+                curve_2 = np.abs(result_sys.force_1)
+                ax.semilogx(cons.f, curve_2, label="Inertial force from first mass")
                 if form.get_value("dof") == "1 dof":
-                    curve_2 = -np.abs(result_sys.force_1)
-                    ax.semilogx(cons.f, curve_2, label="Force exerted from first mass on to reference frame")
+                    curve_3 = -np.abs(result_sys.force_1)
+                    ax.semilogx(cons.f, curve_3, label="Force exerted from first mass on to reference frame")
                 if form.get_value("dof") == "2 dof":
-                    curve_3 = np.abs(result_sys.force_2)
-                    curve_5 = -np.abs(result_sys.force_2+result_sys.force_1)
-                    ax.semilogx(cons.f, curve_3, label="Inertial force from second mass")
-                    ax.semilogx(cons.f, curve_5, label="Force exerted from second mass on to reference frame")
+                    curve_4 = np.abs(result_sys.force_2)
+                    curve_6 = -np.abs(result_sys.force_2+result_sys.force_1)
+                    ax.semilogx(cons.f, curve_4, label="Inertial force from second mass")
+                    ax.semilogx(cons.f, curve_6, label="Force exerted from second mass on to reference frame")
                 ax.legend()
                 ax.set_title("Forces, N, RMS")
                 ax.set_xbound(lower=10, upper=3000)
