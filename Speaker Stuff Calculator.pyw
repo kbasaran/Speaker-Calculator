@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import pickle
 from PySide2.QtCore import SIGNAL, SLOT, QObject, Qt  # Qt is necessary for alignment of titles
 from PySide2 import QtWidgets as qtw
+from PySide2 import QtGui as qtg
 
 from functools import partial
 from pathlib import Path
@@ -214,18 +215,16 @@ class UserForm():
         self.user_curves = []
         self.pickles_path = Path.cwd()
 
-    def load_pickle(self, file=None):
+    def load_pickle(self, file=None):  # this function is messed up, improve it
         try:
-            if file.exists():
-                pass
-            else:
+            if not file.exists():
                 raise Exception("File not found")
         except Exception:
             file = Path(qtw.QFileDialog.getOpenFileName(None, caption='Open file',
                                                         dir=str(self.pickles_path),
-                                                        filter='Pickle Files(*.pickle)')[0])
+                                                        filter='Pickle Files (*.pickle)')[0])
 
-        self.pickles_path = file.parent  # remember what folder was used
+        self.pickles_path = file.parent  # remember what folder was used last time
 
         with file.open(mode="rb") as handle:
             form_dict = pickle.load(handle)
@@ -750,6 +749,7 @@ if __name__ == "__main__":
     if app is None:
         app = qtw.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
+    app.setWindowIcon(qtg.QIcon('ssc.png'))
     form = UserForm()  # initiate an object to hold all user form items
 
     # %% Add a Save/Load widget
@@ -1246,9 +1246,19 @@ if __name__ == "__main__":
     adjust_form_for_calc_type()
     adjust_form_for_system_type()
     update_nominal_impedance_disability()
-    main_win.show()
-    if (file := Path.cwd().joinpath("default.pickle")).exists():
+
+    if len(app.arguments()) > 1 and isinstance(app.arguments()[1], str):
+        file_name = app.arguments()[1]
+        try:
+            file = Path(file_name)
+            print(f"Requested to open file: {file}")
+            form.load_pickle(file)
+        except Exception as e:
+            message_box.setPlainText(f"Error loading file {file}.\nReason: {str(e)}")
+    elif (file := Path.cwd().joinpath("default.pickle")).exists():
         # Load "default.pickle" on startup if found in folder
-        print("I found it")
+        print("I found a default file.")
         form.load_pickle(file)
+
+    main_win.show()
     sys.exit(app.exec_())
