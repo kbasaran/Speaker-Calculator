@@ -222,8 +222,8 @@ class UserForm():
                 raise Exception("File not found")
         except Exception:
             file = Path(qtw.QFileDialog.getOpenFileName(None, caption='Open file',
-                                                    dir=str(self.pickles_path),
-                                                    filter='Pickle Files(*.pickle)')[0])
+                                                        dir=str(self.pickles_path),
+                                                        filter='Pickle Files(*.pickle)')[0])
 
         self.pickles_path = file.parent  # remember what folder was used
 
@@ -234,7 +234,8 @@ class UserForm():
             setattr(self, "coil_options_table", form_dict.pop("coil_options_table"))
             form.coil_choice_box["obj"].clear()
             if form_dict["motor_spec_type"]["userData"] == "define_coil":
-                coil_choice = (form_dict["coil_choice_box"]["name"], form_dict["coil_choice_box"]["userData"])
+                coil_choice = (form_dict["coil_choice_box"]["name"],
+                               form_dict["coil_choice_box"]["userData"])
                 form.coil_choice_box["obj"].addItem(*coil_choice)
 
             items_to_skip = ["result_sys", "pickles_path"]
@@ -253,8 +254,8 @@ class UserForm():
             form_dict[key] = obj_value
 
         file = Path(qtw.QFileDialog.getSaveFileName(None, caption='Save to file',
-                                                dir=str(self.pickles_path),
-                                                filter='Pickle Files(*.pickle)')[0])
+                                                    dir=str(self.pickles_path),
+                                                    filter='Pickle Files(*.pickle)')[0])
         self.pickles_path = file.parent  # remember what folder was used
 
         with file.open('wb') as handle:
@@ -334,19 +335,19 @@ class UserForm():
                     if isinstance(value, str):
                         qwidget_obj.setText(value)
                     else:
-                        raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
+                        raise Exception(f"Incorrect data type {type(value)} for {qwidget_obj}")
 
                 elif isinstance(qwidget_obj, qtw.QPlainTextEdit):
                     if isinstance(value, str):
                         qwidget_obj.setPlainText(value)
                     else:
-                        raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
+                        raise Exception(f"Incorrect data type {type(value)} for {qwidget_obj}")
 
                 elif isinstance(qwidget_obj, (qtw.QDoubleSpinBox, qtw.QSpinBox)):
                     if isinstance(value, (float, int)):
                         qwidget_obj.setValue(value / item["unit_to_SI"])
                     else:
-                        raise Exception("Incorrect data type %s for %s" % (type(value), qwidget_obj))
+                        raise Exception(f"Incorrect data type {type(value)} for {qwidget_obj}")
 
                 elif isinstance(qwidget_obj, qtw.QComboBox):  # recevies dict with entry_name
                     if isinstance(value, str):
@@ -355,13 +356,13 @@ class UserForm():
                         qwidget_obj.setCurrentText(value["name"])
                         # qwidget_obj.setCurrentData(value["userData"])
                     else:
-                        raise Exception("Incorrect type %s of %s for combobox.set_value" % (type(value), value))
+                        raise Exception(f"Incorrect type {type(value)} of {value} for combobox.set_value")
 
                 elif isinstance(qwidget_obj, qtw.QButtonGroup):
                     for button in qwidget_obj.buttons():
                         button.setChecked(button.text() == value)
                 else:
-                    raise Exception("Don't know how to set %s with value %g" % (item_name,  value))
+                    raise Exception(f"Don't know how to set {item_name} with value {value}")
 
         except Exception:
             setattr(self, item_name, value)
@@ -385,8 +386,7 @@ class UserForm():
         except Exception:
             if not isinstance(item, qtw.QWidget):
                 return item
-                raise Exception("Don't know how to read %s with type %s" %
-                                (item_name, type(item)))
+                raise Exception(f"Don't know how to read {item_name} with type {type(item)}")
 
     def update_coil_choice_box(self):
         """Scan best matching speaker coil options."""
@@ -662,12 +662,12 @@ class SpeakerSystem():
         # Calculate some extra parameters
         self.x1tt_1V = self.x1t_1V * cons.w * 1j
         self.x1tt = self.x1tt_1V * self.V_in
-        self.force_1 = self.x1tt * Mms
+        self.force_1 = self.x1tt * Mms  # inertial force
 
         if self.dof > 1:
             self.x2tt_1V = self.x2t_1V * cons.w * 1j
             self.x2tt = self.x2tt_1V * self.V_in
-            self.force_2 = self.x2tt * m2
+            self.force_2 = self.x2tt * m2  # inertial force
 
         if self.box_type == "Closed box":
             interested_frequency = self.fb * 4
