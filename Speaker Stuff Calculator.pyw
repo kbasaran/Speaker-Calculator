@@ -23,7 +23,7 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
-version = "0.1.3+"
+version = "0.1.4"
 do_print = 1
 
 
