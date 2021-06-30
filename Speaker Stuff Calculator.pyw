@@ -237,7 +237,7 @@ class UserForm():
         except Exception:
             file = Path(qtw.QFileDialog.getOpenFileName(None, caption='Open file',
                                                         dir=str(self.pickles_path),
-                                                        filter='Pickle Files (*.pickle)')[0])
+                                                        filter='Speaker stuff calculator files (*.sscf)')[0])
 
         self.pickles_path = file.parent  # remember what folder was used last time
 
@@ -269,7 +269,7 @@ class UserForm():
 
         file = Path(qtw.QFileDialog.getSaveFileName(None, caption='Save to file',
                                                     dir=str(self.pickles_path),
-                                                    filter='Pickle Files(*.pickle)')[0])
+                                                    filter='Speaker stuff calculator files (*.sscf)')[0])
         self.pickles_path = file.parent  # remember what folder was used
 
         with file.open('wb') as handle:
@@ -1274,8 +1274,8 @@ if __name__ == "__main__":
             form.load_pickle(file)
         except Exception as e:
             message_box.setPlainText(f"Error loading file {file}.\nReason: {str(e)}")
-    elif (file := Path.cwd().joinpath("default.pickle")).exists():
-        # Load "default.pickle" on startup if found in folder
+    elif (file := Path.cwd().joinpath("default.sscf")).exists():
+        # Load "default.sscf" on startup if found in folder
         print("I found a default file.")
         form.load_pickle(file)
 
