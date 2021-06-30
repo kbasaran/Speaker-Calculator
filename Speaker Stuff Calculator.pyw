@@ -69,25 +69,40 @@ def read_clipboard():
 def analyze_clipboard_data(err, clpd):
     """Check clipboard data and try to extract a 2D plot from it."""
 
-    if err == 0:
-        if not isinstance(clpd, pd.core.frame.DataFrame):
-            data_type = "Unknown"
-            data = clpd
-        elif isinstance(clpd, pd.core.frame.DataFrame):
-            data_type = type(clpd)
-            pddf = clpd
-            if len(pddf.columns) == 2:
-                for row_id, row_data in pddf.iterrows():
-                    for data in row_data:
-                        if not type(data) in (np.float64, np.float32, np.float, np.int, np.int32, np.int64):
-                            pddf.drop(index=row_id, inplace=True)
-                            print("dropped from row %s: %s with data type %s" % (row_id, data, type(data)))
-                            break
-                freqs = pddf[0].to_numpy()
-                vals = pddf[1].to_numpy()
-                return data_type, freqs, vals
-            return data_type, None, None
-    return None, None, None
+    def is_number(val):
+        try:
+            float(val)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    title = ""
+    if (err == 0) and isinstance(clpd, pd.core.frame.DataFrame):
+        pddf, data_type = clpd, type(clpd)
+        if len(pddf.columns) == 2 and len(pddf.index) > 1:
+            row_content = {"title": set(),
+                           "array": set(),
+                           }
+            for row_id, row_data in pddf.iterrows():
+                # row_data is a tuple of each column
+                if all([is_number(data) for data in row_data]):
+                    row_content["array"].add(row_id)
+                else:  # there are non-numeric values in the row
+                    if len(row_content["array"]) == 0:
+                        # didn't find the array yet, must still be the title
+                        row_content["title"].add(row_id)
+                        if row_data[0].split(" = ")[0] == "GraphTitle":
+                            title = row_data[0].rstrip("';").lstrip("GraphTitle = '")
+                    else:
+                        # array is finished
+                        break  # don't look any further
+
+            array_data = pddf.iloc[sorted(row_content["array"])].reset_index(drop=True).astype(float)
+            return data_type, title, array_data
+        else:
+            return data_type, title, None
+    else:
+        return None, None, None
 
 
 class Record(object):
@@ -1057,12 +1072,16 @@ if __name__ == "__main__":
             print("Unable to read clipboard")
             beep_bad()
             return
-        _, freqs_in, vals_in = analyze_clipboard_data(err, clpd)
-        if isinstance(vals_in, np.ndarray) and len(vals_in) > 1:
-            form.user_curves.append([freqs_in, vals_in])
-            update_view()
-            return
-        beep_bad()
+        else:
+            data_type, title, curve_data = analyze_clipboard_data(err, clpd)
+            print(data_type)
+            if isinstance(curve_data, pd.DataFrame) and len(curve_data.columns == 2):
+                # not using the title yet. to be implemented
+                print(curve_data.iloc[:,0])
+                form.user_curves.append([curve_data[0].to_numpy(), curve_data[1].to_numpy()])
+                update_view()
+                return
+            beep_bad()
 
     def clear_user_curve():
         try:
