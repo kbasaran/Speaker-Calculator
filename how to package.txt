@@ -1,3 +1,5 @@
 cxfreeze 'Speaker Stuff Calculator.pyw' --target-dir dist --packages "scipy,pandas,sounddevice,numpy,PySide2,matplotlib" --base-name Win32GUI --icon ssc.ico
 
 copy SSC_Data\ into dist
+copy ssc.png
+copy default.sscf
