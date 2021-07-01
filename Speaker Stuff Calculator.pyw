@@ -714,7 +714,7 @@ class SpeakerSystem():
             else:
                 q2_free = np.inf
             f2_undamped = (1/2/np.pi * (k2 / m2)**0.5)
-            f2_damped = f2_undamped * (1-2*zeta2_free**2)**0.5
+            f2_damped = np.abs(f2_undamped * (1-2*zeta2_free**2)**0.5)
 
             self.summary += ("\r\n\r\n" + "Assuming decoupled m1:")
 
