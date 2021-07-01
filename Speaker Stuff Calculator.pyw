@@ -718,10 +718,10 @@ class SpeakerSystem():
 
             self.summary += ("\r\n\r\n" + "Assuming decoupled m1:")
 
-            self.summary += ("\r\n" + "dof2 zeta / Q : %.3g / %.3g" %
+            self.summary += ("\r\n" + "dof2 zeta / Q: %.3g / %.3g" %
                              (zeta2_free, q2_free))
 
-            self.summary += ("\r\n" + "dof2 undamped / damped resonance : %.3g Hz / %.3g Hz" %
+            self.summary += ("\r\n" + "dof2 undamped / damped resonance: %.3g Hz / %.3g Hz" %
                              (f2_undamped, f2_damped))
 
             self.summary += "\r\n "
