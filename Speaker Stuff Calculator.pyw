@@ -708,6 +708,22 @@ class SpeakerSystem():
             self.summary += "\r\nPeak relative displacement overall is %.3g mm" %\
                 np.max(np.abs(self.x1-self.x2)*1e3*2**0.5)
 
+            zeta2_free = c2 / 2 / (m2 * k2)**0.5
+            if c2 > 0:
+                q2_free = 1 / 2 / zeta2_free
+            else:
+                q2_free = np.inf
+            f2_undamped = (1/2/np.pi * (k2 / m2)**0.5)
+            f2_damped = f2_undamped * (1-2*zeta2_free**2)**0.5
+
+            self.summary += ("\r\n\r\n" + "Assuming decoupled m1:")
+
+            self.summary += ("\r\n" + "dof2 zeta / Q : %.3g / %.3g" %
+                             (zeta2_free, q2_free))
+
+            self.summary += ("\r\n" + "dof2 undamped / damped resonance : %.3g Hz / %.3g Hz" %
+                             (f2_undamped, f2_damped))
+
             self.summary += "\r\n "
         else:
             self.summary += "Unable to identify the total degrees of freedom"
@@ -752,7 +768,7 @@ def update_model():
             error_message = "--Invalid loudspeaker system--"
             beep_bad()
     except Exception as exception_message:
-        error_message = "--Update failed with message %s--" % str(exception_message)
+        error_message = "--Update failed with message: %s--" % str(exception_message)
         beep_bad()
     update_view()
 
@@ -873,6 +889,7 @@ if __name__ == "__main__":
 
     form.add_double_float_var(form_2_layout, "k2", "Stiffness (N/mm)", default=25, unit_to_SI=1e3)
     form.add_double_float_var(form_2_layout, "m2", "Mass (g)", default=1000, unit_to_SI=1e-3)
+    form.m2["obj"].setMinimum(0.01)
     form.add_double_float_var(form_2_layout, "c2", "Damping coefficient (kg/s)", default=5)
 
     # %% Add excitation parameters to form
