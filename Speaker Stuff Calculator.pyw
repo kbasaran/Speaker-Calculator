@@ -23,7 +23,7 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
-version = "0.1.4"
+version = "0.1.5"
 do_print = 1
 
 
@@ -508,6 +508,8 @@ class SpeakerDriver():
         Ces = Bl**2 / Rdc
         Qts = (Mms*Kms)**0.5/(Rms+Ces)
         Qes = (Mms*Kms)**0.5/(Ces)
+        zeta_speaker = 1 / 2 / Qts
+        fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5
         Lm = calculate_Lm(Bl, Rdc, Mms, self.Sd)
 
         # Add all the calculated parameters as attribute to the object
@@ -517,8 +519,8 @@ class SpeakerDriver():
         # Make a string for acoustical summary
         self.summary_ace = "Rdc=%.2f ohm    Lm=%.2f dBSPL    Bl=%.4g Tm"\
             % (Rdc, Lm, Bl)
-        self.summary_ace += "\r\nQts=%.3g    Qes=%.3g"\
-            % (Qts, Qes)
+        self.summary_ace += "\r\nQts=%.3g    Qes=%.3g    fs(damped)=%.3g Hz"\
+            % (Qts, Qes, fs_damped)
         self.summary_ace += "\r\nKms=%.4g N/mm    Rms=%.3g kg/s    Mms=%.4g g"\
             % (Kms/1000, Rms, Mms*1000)
         if motor_spec_choice == "define_coil":
@@ -609,8 +611,9 @@ class SpeakerSystem():
 
         self.Kbox = Kbox = Sd**2*cons.Kair/self.Vb
         Rbox = ((Kms+Kbox)*(Mms/1000))**0.5/self.Qa
-        self.fb = 1/2/np.pi * ((Kms+Kbox)/Mms)**0.5
-        self.Qtc = ((Kms+Kbox)*Mms)**0.5 / (Rbox + Rms + Bl**2/Rdc)
+        zeta_boxed_speaker = (Rbox + Rms + Bl**2/Rdc) / 2 / ((Kms+Kbox) * Mms)**0.5
+        self.fb_d = 1/2/np.pi * ((Kms+Kbox)/Mms)**0.5 * (1 - 2 * zeta_boxed_speaker**2)**0.5
+        self.Qtc = 1 / 2 / zeta_boxed_speaker
         self.Vas = cons.Kair / Kms * Sd**2
 
         # State space model
@@ -685,7 +688,7 @@ class SpeakerSystem():
             self.force_2 = self.x2tt * m2  # inertial force
 
         if self.box_type == "Closed box":
-            interested_frequency = self.fb * 4
+            interested_frequency = self.fb_d * 4
         else:
             interested_frequency = self.spk.fs * 4
 
@@ -714,7 +717,7 @@ class SpeakerSystem():
             else:
                 q2_free = np.inf
             f2_undamped = (1/2/np.pi * (k2 / m2)**0.5)
-            f2_damped = np.abs(f2_undamped * (1-2*zeta2_free**2)**0.5)
+            f2_damped = np.abs(f2_undamped * (1 - 2 * zeta2_free**2)**0.5)
 
             self.summary += ("\r\n\r\n" + "Assuming decoupled m1:")
 
@@ -729,8 +732,8 @@ class SpeakerSystem():
             self.summary += "Unable to identify the total degrees of freedom"
 
         if self.box_type == "Closed box":
-            self.summary += "\r\nQtc: %.3g    fb: %.3g Hz    Vas: %.3g l    Kbox: %.4g N/mm" \
-                            % (self.Qtc, self.fb, self.Vas * 1e3, self.Kbox/1000)
+            self.summary += "\r\nQtc: %.3g    fb(damped): %.3g Hz    Vas: %.3g l    Kbox: %.4g N/mm" \
+                            % (self.Qtc, self.fb_d, self.Vas * 1e3, self.Kbox/1000)
 
         self.summary += "\r\nF_motor(V_in) / F_suspension(Xmax/2) = {:.0%}".format(
             Bl * self.V_in / Rdc / Kms / self.spk.Xmax * 2)
