@@ -23,6 +23,9 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 version = "0.1.5"
 do_print = 1
 
@@ -34,14 +37,14 @@ def generate_freq_list(freq_start, freq_end, ppo):
     ppo means points per octave
     """
     numStart = np.floor(np.log2(freq_start/1000)*ppo)
-    numEnd = np.ceil(np.log2(freq_end/1000)*ppo + 1)
-    freq_array = 1000*np.array(2**(np.arange(numStart, numEnd)/ppo))
+    numEnd = np.ceil(np.log2(freq_end/1000)*ppo)
+    freq_array = 1000*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
 
-def find_nearest_freq(array, desired):
+def find_nearest_freq(array: np.array, desired: (int, float)):
     """
-    Lookup a table to find the nearest frequency to value argument.
+    Lookup a table to find the nearest frequency to argument 'desired'.
 
     Parameters
     ----------
