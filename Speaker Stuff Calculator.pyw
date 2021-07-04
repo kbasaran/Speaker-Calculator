@@ -879,6 +879,7 @@ if __name__ == "__main__":
     form.add_double_float_var(motor_form_1_layout, "h_winding", "Coil winding height (mm)", default=6.2, unit_to_SI=1e-3)
     form.add_double_float_var(motor_form_1_layout, "B_average", "Average B field on coil (T)", default=0.69)
     form.B_average["obj"].setDecimals(3)
+    form.B_average["obj"].setMinimum(0.001)
     form.add_string_var(motor_form_1_layout, "N_layer_options", "Number of layer options", default="2, 4")
     form.N_layer_options["obj"].setToolTip("Enter the winding layer options"
                                            " as integers with \", \" (a comma"
