@@ -1026,7 +1026,7 @@ if __name__ == "__main__":
 
     # %% Message_box to show calculated values
     message_box = qtw.QPlainTextEdit()
-    message_box.setFixedHeight(400)
+    message_box.setFixedHeight(366)
     message_box.setFixedWidth(360)
     message_box.setReadOnly(True)
 
