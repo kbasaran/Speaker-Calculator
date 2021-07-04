@@ -23,7 +23,10 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
-version = "0.1.4"
+import logging
+logging.basicConfig(level=logging.INFO)
+
+version = "0.1.5"
 do_print = 1
 
 
@@ -34,14 +37,14 @@ def generate_freq_list(freq_start, freq_end, ppo):
     ppo means points per octave
     """
     numStart = np.floor(np.log2(freq_start/1000)*ppo)
-    numEnd = np.ceil(np.log2(freq_end/1000)*ppo + 1)
-    freq_array = 1000*np.array(2**(np.arange(numStart, numEnd)/ppo))
+    numEnd = np.ceil(np.log2(freq_end/1000)*ppo)
+    freq_array = 1000*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
 
-def find_nearest_freq(array, desired):
+def find_nearest_freq(array: np.array, desired: (int, float)):
     """
-    Lookup a table to find the nearest frequency to value argument.
+    Lookup a table to find the nearest frequency to argument 'desired'.
 
     Parameters
     ----------
@@ -508,6 +511,12 @@ class SpeakerDriver():
         Ces = Bl**2 / Rdc
         Qts = (Mms*Kms)**0.5/(Rms+Ces)
         Qes = (Mms*Kms)**0.5/(Ces)
+        zeta_speaker = 1 / 2 / Qts
+
+        fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5
+        if np.iscomplex(fs_damped):
+            fs_damped = None
+
         Lm = calculate_Lm(Bl, Rdc, Mms, self.Sd)
 
         # Add all the calculated parameters as attribute to the object
@@ -515,18 +524,24 @@ class SpeakerDriver():
             setattr(self, v, locals()[v])
 
         # Make a string for acoustical summary
-        self.summary_ace = "Rdc=%.2f ohm    Lm=%.2f dBSPL    Bl=%.4g Tm"\
+        self.summary_ace = "Rdc: %.2f ohm    Lm: %.2f dBSPL    Bl: %.4g Tm"\
             % (Rdc, Lm, Bl)
-        self.summary_ace += "\r\nQts=%.3g    Qes=%.3g"\
+        self.summary_ace += "\r\nQts: %.3g    Qes: %.3g"\
             % (Qts, Qes)
-        self.summary_ace += "\r\nKms=%.4g N/mm    Rms=%.3g kg/s    Mms=%.4g g"\
+
+        if fs_damped:
+            self.summary_ace += f"    fs: {fs_damped:.3g} Hz (damped)"
+        else:
+            self.summary_ace += f"    fs: {self.fs:.3g} Hz (overdamped)"
+
+        self.summary_ace += "\r\nKms: %.4g N/mm    Rms: %.3g kg/s    Mms: %.4g g"\
             % (Kms/1000, Rms, Mms*1000)
         if motor_spec_choice == "define_coil":
-            self.summary_ace += "\r\nMmd=%.4g g    Windings=%.2f g" % (self.Mmd*1000, self.coil_mass*1000)
+            self.summary_ace += "\r\nMmd: %.4g g    Windings: %.2f g" % (self.Mmd*1000, self.coil_mass*1000)
 
         # Make a string for mechanical summary
         self.summary_mec = \
-            "Target Xmax = %.2f mm" % (self.Xmax*1000)
+            "Target Xmax: %.2f mm" % (self.Xmax*1000)
 
         if motor_spec_choice == "define_coil":
             # Add mechanical variables from user form as instance variables
@@ -556,19 +571,19 @@ class SpeakerDriver():
                                            - self.h_washer / 2)
 
             self.summary_mec += \
-                "\r\nOverhang + 15%% = %.2f mm" % float(self.overhang*1.15*1000)
+                "\r\nOverhang + 15%%: %.2f mm" % float(self.overhang*1.15*1000)
             self.summary_mec += \
-                "\r\nAirgap dims. = %s mm" \
+                "\r\nAirgap dims: %s mm" \
                 % (str(np.round([i*1000 for i in self.air_gap_dims], 2)))
             self.summary_mec += \
-                "\r\nWindings per layer = %s" % (str(self.N_windings))
+                "\r\nWindings per layer: %s" % (str(self.N_windings))
             self.summary_mec += \
-                "\r\nTop plate to bottom plate = %.2f mm (recommended minimum)" \
+                "\r\nTop plate to bottom plate ≥ %.2f mm (recommended)" \
                 % (self.washer_to_bottom_plate*1000)
 
         self.Xmech = calculate_Xmech(self.Xmax)
         self.summary_mec += \
-            "\r\nXmech = %.2f mm (recommended minimum)" % (self.Xmech*1000)
+            "\r\nXmech ≥ %.2f mm (recommended)" % (self.Xmech*1000)
 
 
 @dataclass
@@ -609,8 +624,14 @@ class SpeakerSystem():
 
         self.Kbox = Kbox = Sd**2*cons.Kair/self.Vb
         Rbox = ((Kms+Kbox)*(Mms/1000))**0.5/self.Qa
-        self.fb = 1/2/np.pi * ((Kms+Kbox)/Mms)**0.5
-        self.Qtc = ((Kms+Kbox)*Mms)**0.5 / (Rbox + Rms + Bl**2/Rdc)
+        zeta_boxed_speaker = (Rbox + Rms + Bl**2/Rdc) / 2 / ((Kms+Kbox) * Mms)**0.5
+        self.Qtc = 1 / 2 / zeta_boxed_speaker
+        self.fb = 1 / 2 / np.pi * ((Kms+Kbox) / Mms)**0.5
+
+        self.fb_d = self.fb * (1 - 2 * zeta_boxed_speaker**2)**0.5
+        if np.iscomplex(self.fb_d):
+            self.fb_d = None
+
         self.Vas = cons.Kair / Kms * Sd**2
 
         # State space model
@@ -676,62 +697,90 @@ class SpeakerSystem():
         # Calculate some extra parameters
         self.x1tt_1V = self.x1t_1V * cons.w * 1j
         self.x1tt = self.x1tt_1V * self.V_in
-        self.force_1 = self.x1tt * Mms  # inertial force
+        self.force_1 = - self.x1tt * Mms  # inertial force
         self.force_coil = Bl * np.real(self.V_in / self.Z)
 
         if self.dof > 1:
             self.x2tt_1V = self.x2t_1V * cons.w * 1j
             self.x2tt = self.x2tt_1V * self.V_in
-            self.force_2 = self.x2tt * m2  # inertial force
+            self.force_2 = - self.x2tt * m2  # inertial force
 
-        if self.box_type == "Closed box":
+        if self.box_type == "Closed box" and self.fb_d:
+            interested_frequency = self.fb_d * 4
+        elif self.box_type == "Closed box":
             interested_frequency = self.fb * 4
         else:
             interested_frequency = self.spk.fs * 4
 
         f_interest, f_inter_idx = find_nearest_freq(cons.f, interested_frequency)
 
-        self.summary = "SPL at %iHz is %.1f dB" %\
+        self.summary = "SPL at %iHz: %.1f dB" %\
             (f_interest, self.SPL[f_inter_idx])
 
-        if self.dof == 1:
-            self.summary += "\r\nPeak displacement at %iHz is %.3g mm" %\
-                (f_interest, np.abs(self.x1)[f_inter_idx]*1e3*2**0.5)
+        # Info over closed box
+        if self.box_type == "Closed box":
 
-            self.summary += "\r\nPeak displacement overall is %.3g mm" %\
-                np.max(np.abs(self.x1)*1e3*2**0.5)
+            self.summary += "\r\n"
 
-        elif self.dof == 2:
-            self.summary += "\r\nPeak relative displacement at %iHz is %.3g mm" %\
-                (f_interest, np.abs(self.x1[f_inter_idx]-self.x2[f_inter_idx])*1e3*2**0.5)
+            if self.fb_d:  # not overdamped
+                self.summary += "\r\nQtc: %.3g    fb: %.3g Hz / %.3g Hz (damped / undamped)" \
+                                % (self.Qtc, self.fb_d, self.fb)
+            else:  # overdamped
+                self.summary += "\r\nQtc: %.3g    fb: %.3g Hz (overdamped)" \
+                                % (self.Qtc, self.fb)
 
-            self.summary += "\r\nPeak relative displacement overall is %.3g mm" %\
-                np.max(np.abs(self.x1-self.x2)*1e3*2**0.5)
+            self.summary += "\r\nVas: %.3g l    Kbox: %.4g N/mm" \
+                            % (self.Vas * 1e3, self.Kbox/1000)
 
-            zeta2_free = c2 / 2 / (m2 * k2)**0.5
+        # Info over second degree of freedom damping and invalid loudsp
+        if self.dof == 2:
+
+            zeta2_free = c2 / 2 / ((Mms + m2) * k2)**0.5
             if c2 > 0:
                 q2_free = 1 / 2 / zeta2_free
             else:
                 q2_free = np.inf
-            f2_undamped = (1/2/np.pi * (k2 / m2)**0.5)
-            f2_damped = np.abs(f2_undamped * (1-2*zeta2_free**2)**0.5)
 
-            self.summary += ("\r\n\r\n" + "Assuming decoupled m1:")
+            f2_undamped = 1 / 2 / np.pi * (k2 / (Mms + m2))**0.5
+            f2_damped = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
+            if np.iscomplex(f2_damped):
+                f2_damped = None
 
-            self.summary += ("\r\n" + "dof2 zeta / Q: %.3g / %.3g" %
+            self.summary += "\r\n"
+
+            self.summary += ("\r\n" + "While M2 is rigidly coupled with Mms;")
+
+            self.summary += ("\r\n" + "ζ2: %.3g    Q2: %.3g" %
                              (zeta2_free, q2_free))
 
-            self.summary += ("\r\n" + "dof2 undamped / damped resonance: %.3g Hz / %.3g Hz" %
-                             (f2_undamped, f2_damped))
+            if f2_damped:  # not overdamped
+                self.summary += ("\r\n" + "f2: %.3g Hz / %.3g Hz (damped / undamped)" %
+                                 (f2_damped, f2_undamped))
+            else:  # overdamped
+                self.summary += ("\r\n" + "f2: %.3g Hz (overdamped)" %
+                                 (f2_undamped))
 
-            self.summary += "\r\n "
+        # Info over displacements
+        self.summary += "\r\n"
+
+        if self.dof == 1:
+            self.summary += "\r\nPeak displacement at %iHz: %.3g mm" %\
+                (f_interest, np.abs(self.x1)[f_inter_idx] * 1e3 * 2**0.5)
+
+            self.summary += "\r\nPeak displacement overall: %.3g mm" %\
+                np.max(np.abs(self.x1) * 1e3 * 2**0.5)
+
+        elif self.dof == 2:
+            self.summary += "\r\nPeak relative displacement at %iHz: %.3g mm" %\
+                (f_interest, np.abs(self.x1[f_inter_idx]-self.x2[f_inter_idx])*1e3*2**0.5)
+
+            self.summary += "\r\nPeak relative displacement overall: %.3g mm" %\
+                np.max(np.abs(self.x1-self.x2) * 1e3 * 2**0.5)
+
         else:
             self.summary += "Unable to identify the total degrees of freedom"
 
-        if self.box_type == "Closed box":
-            self.summary += "\r\nQtc: %.3g    fb: %.3g Hz    Vas: %.3g l    Kbox: %.4g N/mm" \
-                            % (self.Qtc, self.fb, self.Vas * 1e3, self.Kbox/1000)
-
+        # Suspension feasibility
         self.summary += "\r\nF_motor(V_in) / F_suspension(Xmax/2) = {:.0%}".format(
             Bl * self.V_in / Rdc / Kms / self.spk.Xmax * 2)
 
@@ -746,16 +795,16 @@ def update_model():
             winding_data = form.get_value("coil_choice_box")["userData"]
             coil_choice = winding_name, winding_data
             speaker = SpeakerDriver(coil_choice)
-        except Exception:
-            error_message = "--Invalid loudspeaker driver-- \r\n"
+        except Exception as e:
+            error_message = f"--Invalid loudspeaker driver-- \r\n {e}"
             update_view()
             beep_bad()
             return
     if motor_spec_choice == "define_Bl_Re":
         try:
             speaker = SpeakerDriver((None, None))
-        except Exception:
-            error_message = "--Invalid loudspeaker driver-- \r\n"
+        except Exception as e:
+            error_message = f"--Invalid loudspeaker driver-- \r\n {e}"
             update_view()
             beep_bad()
             return
@@ -803,6 +852,7 @@ if __name__ == "__main__":
     form.fs["obj"].setDecimals(1)
     form.add_double_float_var(form_1_layout, "Qms", "Qms", default=6.51)
     form.add_double_float_var(form_1_layout, "Xmax", "Xmax (mm)", default=4, unit_to_SI=1e-3)
+    form.Xmax["obj"].setToolTip("Peak excursion allowed, one way.")
     form.add_double_float_var(form_1_layout, "dead_mass", "Dead mass (g)", default=3.54, unit_to_SI=1e-3)
     form.dead_mass["obj"].setDecimals(3)
     form.add_double_float_var(form_1_layout, "Sd", "Sd (cm²)", default=53.5, unit_to_SI=1e-4)
@@ -846,6 +896,7 @@ if __name__ == "__main__":
     motor_form_2_layout.setContentsMargins(0, 0, 0, 0)
     motor_form_2.setLayout(motor_form_2_layout)
     form.add_double_float_var(motor_form_2_layout, "Bl", "Bl (Tm)", default=3.43)
+    form.Bl["obj"].setMinimum(0.01)
     form.add_double_float_var(motor_form_2_layout, "Rdc", "Rdc (ohm)", default=3.77)
     form.add_double_float_var(motor_form_2_layout, "Mmd", "Mmd (g)", default=3.98, unit_to_SI=1e-3)
     form.Mmd["obj"].setDecimals(3)
@@ -882,6 +933,7 @@ if __name__ == "__main__":
     form.add_double_float_var(form_2_layout, "Vb", "Box internal volume (l)", default=1, unit_to_SI=1e-3)
     form.Vb["obj"].setDecimals(3)
     form.add_double_float_var(form_2_layout, "Qa", "Qa - box absorption", default=40)
+    form.Qa["obj"].setMinimum(0.01)
 
     # %% Add second dof parameters to form
     form.add_line(form_2_layout)
@@ -965,8 +1017,8 @@ if __name__ == "__main__":
 
     # %% Message_box to show calculated values
     message_box = qtw.QPlainTextEdit()
-    message_box.setFixedHeight(260)
-    message_box.setFixedWidth(350)
+    message_box.setFixedHeight(400)
+    message_box.setFixedWidth(360)
     message_box.setReadOnly(True)
 
     # %% User notes box to take notes etc.
@@ -1038,16 +1090,16 @@ if __name__ == "__main__":
             if chosen_graph == 5:  # Forces
                 curve_1 = np.abs(result_sys.force_coil)
                 ax.semilogx(cons.f, curve_1, label="Lorentz force")
-                curve_2 = np.abs(result_sys.force_1)
+                curve_2 = - np.abs(result_sys.force_1)
                 ax.semilogx(cons.f, curve_2, label="Inertial force from first mass")
                 if form.get_value("dof") == "1 dof":
-                    curve_3 = -np.abs(result_sys.force_1)
-                    ax.semilogx(cons.f, curve_3, label="Force exerted from first mass on to reference frame")
+                    curve_3 = np.abs(result_sys.force_1)
+                    ax.semilogx(cons.f, curve_3, label="Reaction force from reference frame")
                 if form.get_value("dof") == "2 dof":
                     curve_4 = np.abs(result_sys.force_2)
-                    curve_6 = -np.abs(result_sys.force_2+result_sys.force_1)
-                    ax.semilogx(cons.f, curve_4, label="Inertial force from second mass")
-                    ax.semilogx(cons.f, curve_6, label="Force exerted from second mass on to reference frame")
+                    curve_6 = np.abs(result_sys.force_2+result_sys.force_1)
+                    ax.semilogx(cons.f, curve_4, label="Reaction force from second mass")
+                    ax.semilogx(cons.f, curve_6, label="Reaction force from reference frame")
                 ax.legend()
                 ax.set_title("Forces, N, RMS")
                 ax.set_xbound(lower=10, upper=3000)
