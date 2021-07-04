@@ -932,7 +932,8 @@ if __name__ == "__main__":
                               default=3, unit_to_SI=1e-3)
     form.add_integer_var(form_2_layout, "airgap_clearance_inner", "Airgap inner clearance (\u03BCm)", default=300, unit_to_SI=1e-6)
     form.add_integer_var(form_2_layout, "airgap_clearance_outer", "Airgap outer clearance (\u03BCm)", default=300, unit_to_SI=1e-6)
-    form.add_double_float_var(form_2_layout, "former_extension_under_coil", "Former bottom extension (mm)", default=0.5, unit_to_SI=1e-3)
+    form.add_double_float_var(form_2_layout, "former_extension_under_coil", "Former bottom ext. (mm)", default=0.5, unit_to_SI=1e-3)
+    form.former_extension_under_coil["obj"].setToolTip("Additional length of former below the windings.")
 
     # %% Add closed box info to form
     form.add_line(form_2_layout)
@@ -948,6 +949,7 @@ if __name__ == "__main__":
     form.add_title(form_2_layout, "Second degree of freedom")
 
     form.add_double_float_var(form_2_layout, "k2", "Stiffness (N/mm)", default=25, unit_to_SI=1e3)
+    form.k2["obj"].setMinimum(0.01)
     form.add_double_float_var(form_2_layout, "m2", "Mass (g)", default=1000, unit_to_SI=1e-3)
     form.m2["obj"].setMinimum(0.01)
     form.add_double_float_var(form_2_layout, "c2", "Damping coefficient (kg/s)", default=5)
@@ -956,11 +958,15 @@ if __name__ == "__main__":
     form.add_line(form_2_layout)
     form.add_title(form_2_layout, "Excitation")
 
-    excitation_combo_box_choices = ([("Volt", "V"),
-                                     ("Watt@Rdc", "W"),
-                                     ("Watt@Rnom", "Wn")
+    excitation_combo_box_choices = ([("Volts", "V"),
+                                     ("W@Rdc", "W"),
+                                     ("W@Rnom", "Wn")
                                      ])
     form.add_combo_box(form_2_layout, "excitation_unit", excitation_combo_box_choices, combo_box_screen_name="Unit")
+    form.excitation_unit["obj"].setToolTip("Choose input value in\n"
+                                           "Volts\n"
+                                           "Watts into Rdc (V_in² / Rdc)\n"
+                                           "Watts into nominal impedance (V_in² / Rnom)")
     form.set_value("excitation_unit", "V")
     form.add_double_float_var(form_2_layout, "excitation_value", "Excitation value", default=2.83)
     form.excitation_value["obj"].setDecimals(3)
