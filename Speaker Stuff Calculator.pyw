@@ -1009,11 +1009,12 @@ if __name__ == "__main__":
     plot_data_selection.setFixedHeight(40)
     rb_screen_names = ["SPL",
                        "Impedance",
-                       "Excursion (x1)",
-                       "Excursion (x2)",
-                       "Excursion (x1-x2)",
+                       "Displacement",
+                       "Relative",
                        "Forces",
-                       "Phase"]
+                       "Accelerations",
+                       "Phase",
+                       ]
 
     rb_graph_group = qtw.QButtonGroup()
     for id, screen_name in enumerate(rb_screen_names):
@@ -1070,57 +1071,69 @@ if __name__ == "__main__":
 
             if chosen_graph == 2:
                 curve = np.abs(result_sys.x1) * 1000
-                ax.semilogx(cons.f, curve, label="RMS")
-                ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
-                ax.set_title("Absolute Displacement, One-way")
+                ax.semilogx(cons.f, curve, label="dof 1, RMS")
+                ax.semilogx(cons.f, curve * 2**0.5, "m", label="dof 1, Peak")
+                # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
+
+                if result_sys.dof > 1:
+                    curve = np.abs(result_sys.x2) * 1000
+                    ax.semilogx(cons.f, curve, label="dof 2, RMS")
+                    ax.semilogx(cons.f, curve * 2**0.5, label="dof 2, Peak")
+
+                ax.set_title("Absolute Displacement, mm, One-way")
                 ax.set_xbound(lower=10, upper=3000)
                 ax.legend()
-                # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
             if chosen_graph == 3:
-                curve = np.abs(result_sys.x2) * 1000
-                ax.semilogx(cons.f, curve, label="RMS")
-                ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
-                ax.set_title("Absolute Displacement, One-way")
-                ax.set_xbound(lower=10, upper=3000)
-                ax.legend()
-                # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
-
-            if chosen_graph == 4:
                 curve = np.abs(result_sys.x1 - result_sys.x2) * 1000
                 ax.semilogx(cons.f, curve, label="RMS")
                 ax.semilogx(cons.f, curve * 2**0.5, "m", label="Peak")
-                ax.set_title("Relative Displacement, RMS and Peak, One-way")
+                ax.set_title("Relative Displacement, mm, One-way")
                 ax.set_xbound(lower=10, upper=3000)
                 ax.legend()
                 # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
 
-            if chosen_graph == 5:  # Forces
+            if chosen_graph == 4:  # Forces
                 curve_1 = np.abs(result_sys.force_coil)
                 ax.semilogx(cons.f, curve_1, label="Lorentz force")
                 curve_2 = - np.abs(result_sys.force_1)
                 ax.semilogx(cons.f, curve_2, label="Inertial force from first mass")
-                if form.get_value("dof") == "1 dof":
+                if result_sys.dof == 1:
                     curve_3 = np.abs(result_sys.force_1)
                     ax.semilogx(cons.f, curve_3, label="Reaction force from reference frame")
-                if form.get_value("dof") == "2 dof":
+                if result_sys.dof > 1:
                     curve_4 = np.abs(result_sys.force_2)
                     curve_6 = np.abs(result_sys.force_2+result_sys.force_1)
-                    ax.semilogx(cons.f, curve_4, label="Reaction force from second mass")
+                    ax.semilogx(cons.f, curve_4, label="Inertial force from second mass")
                     ax.semilogx(cons.f, curve_6, label="Reaction force from reference frame")
                 ax.legend()
                 ax.set_title("Forces, N, RMS")
                 ax.set_xbound(lower=10, upper=3000)
 
+            if chosen_graph == 5:
+                curve = np.abs(result_sys.x1tt)
+                ax.semilogx(cons.f, curve, label="dof 1, RMS")
+                ax.semilogx(cons.f, curve * 2**0.5, "m", label="dof 1, Peak")
+                # ax.set_ybound(lower=0, upper=(graph_ceil(np.max(curve) * 1.5, 1)))
+
+                if result_sys.dof > 1:
+                    curve = np.abs(result_sys.x2tt)
+                    ax.semilogx(cons.f, curve, label="dof 2, RMS")
+                    ax.semilogx(cons.f, curve * 2**0.5, label="dof 2, Peak")
+
+                ax.set_title("Acceleration, m/s²")
+                ax.set_xbound(lower=10, upper=3000)
+                ax.legend()
+
             if chosen_graph == 6:
                 curve = np.angle(result_sys.x1, deg=True)
                 ax.semilogx(cons.f, curve, label="dof 1")
-                if form.get_value("dof") == "2 dof":
+                if result_sys.dof > 1:
                     curve_2 = np.angle(result_sys.x2, deg=True)
                     ax.semilogx(cons.f, curve_2, label="dof 2")
                 ax.legend()
                 ax.set_yticks(range(-180, 180+1, 90))
-                ax.set_title("Absolute phase")
+                ax.set_title("Absolute phase, °")
                 ax.set_xbound(lower=10, upper=3000)
                 ax.set_ybound(lower=-180, upper=180)
 
@@ -1335,8 +1348,7 @@ if __name__ == "__main__":
             dof2_calculated = hasattr(result_sys, "x2")
         except NameError:
             dof2_calculated = False
-        rb_graph_group.button(3).setEnabled(dof2_calculated)  # x2 button
-        rb_graph_group.button(4).setEnabled(dof2_calculated)  # x2-x1 button
+        rb_graph_group.button(3).setEnabled(dof2_calculated)  # x1-x2 button
 
     # %% Initiate application
     adjust_form_for_calc_type()
