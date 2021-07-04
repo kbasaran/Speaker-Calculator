@@ -409,7 +409,7 @@ class UserForm():
         """Scan best matching speaker coil options."""
         self.coil_choice_box["obj"].clear()
         try:  # try to read the N_layer_options string
-            layer_options = [int(str) for str in self.N_layer_options["obj"].text().split(", ")]
+            layer_options = [int(str) for str in self.N_layer_options["obj"].text().replace(" ", "").split(",")]
         except Exception:
             self.error = "Invalid input in number of layer options"
             self.coil_choice_box["obj"].addItem("--" + self.error + "--")
@@ -881,9 +881,9 @@ if __name__ == "__main__":
     form.B_average["obj"].setDecimals(3)
     form.B_average["obj"].setMinimum(0.001)
     form.add_string_var(motor_form_1_layout, "N_layer_options", "Number of layer options", default="2, 4")
-    form.N_layer_options["obj"].setToolTip("Enter the winding layer options"
-                                           " as integers with \", \" (a comma"
-                                           " and a space) in between")
+    form.N_layer_options["obj"].setToolTip("Enter the winding layer options as "
+                                           "integers with a comma in between\n"
+                                           "e.g.: 4, 6")
     button_coil_choices_update = qtw.QPushButton("Update coil choices")
     button_coil_choices_update.setMaximumWidth(160)
     motor_form_1_layout.addRow(button_coil_choices_update)
