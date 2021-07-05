@@ -540,7 +540,7 @@ class SpeakerDriver():
             self.summary_ace += "\r\nMmd: %.4g g    Windings: %.2f g" % (self.Mmd*1000, self.coil_mass*1000)
 
         self.summary_ace += \
-            "\r\nTarget Xmax: %.2f mm    Bl² / Re: %.3g N²/W" % (self.Xmax*1000, Bl**2 / Rdc)
+            "\r\nXmax: %.2f mm    Bl² / Re: %.3g N²/W" % (self.Xmax*1000, Bl**2 / Rdc)
 
         # Make a string for mechanical summary
         if motor_spec_choice == "define_coil":
