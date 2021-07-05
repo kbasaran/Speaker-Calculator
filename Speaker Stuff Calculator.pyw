@@ -539,10 +539,10 @@ class SpeakerDriver():
         if motor_spec_choice == "define_coil":
             self.summary_ace += "\r\nMmd: %.4g g    Windings: %.2f g" % (self.Mmd*1000, self.coil_mass*1000)
 
-        # Make a string for mechanical summary
-        self.summary_mec = \
-            "Target Xmax: %.2f mm" % (self.Xmax*1000)
+        self.summary_ace += \
+            "\r\nTarget Xmax: %.2f mm    Bl² / Re: %.3g N²/W" % (self.Xmax*1000, Bl**2 / Rdc)
 
+        # Make a string for mechanical summary
         if motor_spec_choice == "define_coil":
             # Add mechanical variables from user form as instance variables
             read_from_form = ["airgap_clearance_inner",
@@ -570,8 +570,8 @@ class SpeakerDriver():
                                            + calculate_Xmech(self.Xmax)
                                            - self.h_washer / 2)
 
-            self.summary_mec += \
-                "\r\nOverhang + 15%%: %.2f mm" % float(self.overhang*1.15*1000)
+            self.summary_mec = \
+                "Overhang + 15%%: %.2f mm" % float(self.overhang*1.15*1000)
             self.summary_mec += \
                 "\r\nAirgap dims: %s mm" \
                 % (str(np.round([i*1000 for i in self.air_gap_dims], 2)))
