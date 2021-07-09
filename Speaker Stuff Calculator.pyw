@@ -830,7 +830,7 @@ if __name__ == "__main__":
     if app is None:
         app = qtw.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
-    app.setWindowIcon(qtg.QIcon('ssc.png'))
+    app.setWindowIcon(qtg.QIcon('.\\SSC_data\\ssc.png'))
     form = UserForm()  # initiate an object to hold all user form items
 
     # %% Add a Save/Load widget
