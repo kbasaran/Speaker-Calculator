@@ -26,7 +26,7 @@ from matplotlib.figure import Figure
 import logging
 logging.basicConfig(level=logging.INFO)
 
-version = "0.1.5"
+version = "0.1.5+"
 do_print = 1
 
 
@@ -624,12 +624,14 @@ class SpeakerSystem():
             m2, k2, c2 = form.get_value("m2"), form.get_value("k2"), form.get_value("c2")
 
         self.Kbox = Kbox = Sd**2*cons.Kair/self.Vb
-        Rbox = ((Kms+Kbox)*(Mms/1000))**0.5/self.Qa
+
+        Rbox = ((Kms + Kbox) * Mms)**0.5 / self.Qa
         zeta_boxed_speaker = (Rbox + Rms + Bl**2/Rdc) / 2 / ((Kms+Kbox) * Mms)**0.5
         self.Qtc = 1 / 2 / zeta_boxed_speaker
-        self.fb = 1 / 2 / np.pi * ((Kms+Kbox) / Mms)**0.5
 
+        self.fb = 1 / 2 / np.pi * ((Kms+Kbox) / Mms)**0.5
         self.fb_d = self.fb * (1 - 2 * zeta_boxed_speaker**2)**0.5
+
         if np.iscomplex(self.fb_d):
             self.fb_d = None
 
@@ -693,7 +695,7 @@ class SpeakerSystem():
 
         self.SPL = SPL_1V + 20*np.log10(self.V_in)
         self.P_real = self.V_in ** 2 / Rdc
-        self.Z = Rdc / (1-Bl*(self.x1t_1V))
+        self.Z = Rdc / (1 - Bl*self.x1t_1V)
 
         # Calculate some extra parameters
         self.x1tt_1V = self.x1t_1V * cons.w * 1j
