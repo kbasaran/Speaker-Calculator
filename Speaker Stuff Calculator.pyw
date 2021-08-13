@@ -1072,7 +1072,7 @@ if __name__ == "__main__":
                 ax.set_ybound(lower=lower_limit, upper=upper_limit)
 
             if chosen_graph == 1:
-                curve = np.abs(result_sys.Z)
+                curve = np.real(result_sys.Z)
                 ax.semilogx(cons.f, curve)
                 ax.set_title("Electrical Impedance (no inductance)")
                 ax.set_xbound(lower=10, upper=3000)
