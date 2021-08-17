@@ -26,8 +26,7 @@ from matplotlib.figure import Figure
 import logging
 logging.basicConfig(level=logging.INFO)
 
-version = "0.1.5+"
-do_print = 1
+version = "0.1.6"
 
 
 def generate_freq_list(freq_start, freq_end, ppo):
@@ -1152,11 +1151,10 @@ if __name__ == "__main__":
                     ax.semilogx(*curve, ":r", label="User import %i" % (idx + 1))
                 ax.legend()
 
-            if do_print:
-                ax.grid(True, which="both")
-                button24.setEnabled(chosen_graph == 0)
-                button25.setEnabled(chosen_graph == 0)
-                canvas.draw()  # refresh canvas
+            ax.grid(True, which="both")
+            button24.setEnabled(chosen_graph == 0)
+            button25.setEnabled(chosen_graph == 0)
+            canvas.draw()  # refresh canvas
 
             beep()  # plot successful
 
@@ -1263,13 +1261,13 @@ if __name__ == "__main__":
     graphs = qtw.QWidget()
     # a figure instance to plot on
     figure = Figure(figsize=(5, 7), dpi=72, tight_layout=True)
-    if do_print:
-        # this is the Canvas Widget that displays `figure`
-        canvas = FigureCanvas(figure)
 
-        # this is the Navigation widget. arguments are Canvas widget and a parent
-        toolbar = NavigationToolbar(canvas, parent=graphs)  # this crashes in Spyder........
-        toolbar.setMinimumWidth(400)
+    # this is the Canvas Widget that displays `figure`
+    canvas = FigureCanvas(figure)
+
+    # this is the Navigation widget. arguments are Canvas widget and a parent
+    toolbar = NavigationToolbar(canvas, parent=graphs)  # this crashes in Spyder........
+    toolbar.setMinimumWidth(400)
 
 
 # %% Do the main layout
@@ -1302,9 +1300,8 @@ if __name__ == "__main__":
     left_layout.addWidget(input_group_box)
     left_layout.addSpacerItem(qtw.QSpacerItem(0, 0, hPolicy=qtw.QSizePolicy.Minimum, vPolicy=qtw.QSizePolicy.Ignored))
 
-    if do_print:
-        right_layout.addWidget(toolbar)
-        right_layout.addWidget(canvas)
+    right_layout.addWidget(toolbar)
+    right_layout.addWidget(canvas)
     right_layout.addWidget(plot_data_selection)
 
     graph_buttons = qtw.QHBoxLayout()
