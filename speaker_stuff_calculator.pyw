@@ -26,7 +26,7 @@ from matplotlib.figure import Figure
 import logging
 logging.basicConfig(level=logging.INFO)
 
-version = "0.1.6"
+version = "0.1.6+"
 
 
 def generate_freq_list(freq_start, freq_end, ppo):
@@ -230,7 +230,11 @@ class UserForm():
     def __post_init__(self):
         """Post-init the form."""
         self.user_curves = []
-        self.pickles_path = Path.cwd()
+        my_path = "C:\\Users\\user\\Documents\\SSC files"
+        if Path(my_path).exists():
+            self.pickles_path = Path(my_path)
+        else:
+            self.pickles_path = Path.cwd()
 
     def load_pickle(self, file=None):  # this function is messed up, improve it
         try:
