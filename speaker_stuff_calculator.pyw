@@ -26,7 +26,7 @@ from matplotlib.figure import Figure
 import logging
 logging.basicConfig(level=logging.INFO)
 
-version = "0.1.6+"
+version = "0.2.0rc"
 
 
 def generate_freq_list(freq_start, freq_end, ppo):
