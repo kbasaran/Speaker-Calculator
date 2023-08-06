@@ -64,6 +64,11 @@ class BeeperThread(qtc.QThread):
     def bad_beep(self):
         self.beep(settings.T_beep, settings.freq_bad_beep)
 
+class UserForm(qtc.QObject):
+    signal_parameter_updated = qtc.Signal(dict)
+    def __init__(self):
+        super().__init__()
+
 
 
 
