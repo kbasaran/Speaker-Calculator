@@ -13,6 +13,7 @@ from __feature__ import true_property
 import sounddevice as sd
 from pathlib import Path
 import electroacoustical as eac
+from collections import OrderedDict
 
 # https://realpython.com/python-super/#an-overview-of-pythons-super-function
 # super(super_of_which_class?=this class, in_which_object?=self)
@@ -22,12 +23,12 @@ import electroacoustical as eac
 @dataclass
 class Settings:
     FS: int = 44100
-    GAMMA: float = 1.401 # adiabatic index of air
+    GAMMA: float = 1.401  # adiabatic index of air
     P0: int = 101325
-    RHO: float = 1.1839 # 25 degrees celcius
+    RHO: float = 1.1839  # 25 degrees celcius
     Kair: float = 101325 * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
-    vc_table_file=Path.cwd().joinpath('SSC_data', 'WIRE_TABLE.csv')
+    vc_table_file = Path.cwd().joinpath('SSC_data', 'WIRE_TABLE.csv')
     f_min: int = 10
     f_max: int = 3000
     ppo: int = 48 * 8
@@ -41,7 +42,8 @@ class Settings:
         assert type(self.getattr(attr_name)) == type(new_val)
         self.setattr(attr_name, new_val)
 
-class BeeperThread(qtc.QThread):
+
+class BeeperEngine(qtc.QObject):
     def __init__(self, settings):
         super().__init__()
         self.FS = settings.FS
@@ -59,79 +61,53 @@ class BeeperThread(qtc.QThread):
     @qtc.Slot()
     def good_beep(self):
         self.beep(settings.T_beep, settings.freq_good_beep)
-        
+
     @qtc.Slot()
     def bad_beep(self):
         self.beep(settings.T_beep, settings.freq_bad_beep)
 
+
 class UserForm(qtc.QObject):
-    signal_parameter_updated = qtc.Signal(dict)
+    signal_field_changed = qtc.Signal(dict)
+
     def __init__(self):
         super().__init__()
+        self.widget = qtw.QWidget()
+        self.build_form_widget()
 
+    def build_form_widget(self):
+        self._form_layout = qtw.QFormLayout()
+        self.widget.set_layout(self._form_layout)
 
+        form_items = OrderedDict()
+        form_items["fs"] = qtw.QDoubleSpinBox()
 
+        for key, val in form_items.items():
+            self._form_layout.add_row(key, val)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class BeeperSimple(qtc.QThread):
-
-    def __init__(self, settings):
-        super().__init__()
-        self.FS = settings.FS
-
-    def run(self, T=0.5, freq=440):
-        t = np.arange(T * self.FS) / self.FS
-        y = np.sin(t * 2 * np.pi * freq)
-        sd.play(y, samplerate=self.FS)
-
-
-class BeeperAdvanced(qtc.QThread):
-    signal_state = qtc.Signal(str)
-
-    def __init__(self, settings):
-        super().__init__()
-        self.FS = settings.FS
-
-    def run(self):
-        self.beep(0.1, 440)
-
-    @qtc.Slot(float, float)
-    def beep(self, T, freq):
-        t = np.arange(T * self.FS) / self.FS
-        y = np.sin(t * 2 * np.pi * freq)
-        sd.play(y, samplerate=self.FS)
 
 class MainWindow(qtw.QMainWindow):
 
     def __init__(self, settings):
         super().__init__()
         self.global_settings = settings
+        self.create_core_objects()
         self.create_widgets()
         self.place_widgets()
-        self.start_threads()
         self.make_connections()
-        # self.connect_signals()
+        self.start_threads()
+
+    def create_core_objects(self):
+        self._beeper_advanced = BeeperEngine(settings)
+        self._beeper_advanced_thread = qtc.QThread()
+        self._beeper_advanced.move_to_thread(self._beeper_advanced_thread)
+
+        self._user_form = UserForm()
 
     def create_widgets(self):
         self._top_label = qtw.QLabel("Hello World!")
-        self._beep_simple_pusbutton = qtw.QPushButton("Beep simple")
-        self._beep_freq_dial = qtw.QDial(minimum=50,
-                                         maximum=5000,
+        self._beep_freq_dial = qtw.QDial(minimum=100,
+                                         maximum=10000,
                                          wrapping=False,
                                          )
         self._beep_freq_display = qtw.QLCDNumber()
@@ -141,27 +117,23 @@ class MainWindow(qtw.QMainWindow):
         self._center_widget = qtw.QWidget()
         self._center_layout = qtw.QVBoxLayout()
         self._center_widget.set_layout(self._center_layout)
+        self.set_central_widget(self._center_widget)
 
         self._center_layout.add_widget(self._top_label)
-        self._center_layout.add_widget(self._beep_simple_pusbutton)
         self._center_layout.add_widget(self._beep_freq_dial)
         self._center_layout.add_widget(self._beep_freq_display)
         self._center_layout.add_widget(self._beep_advanced_pusbutton)
-
-        self.set_central_widget(self._center_widget)
-
-    def start_threads(self):
-        self._beeper_simple = BeeperSimple(settings)
-        self._beeper_advanced = BeeperAdvanced(settings)
+        self._center_layout.add_widget(self._user_form.widget)
 
     def make_connections(self):
-        self._beep_simple_pusbutton.clicked.connect(self._beep_simple)
-        self._beep_advanced_pusbutton.clicked.connect(lambda: self._beeper_advanced.beep(1, self._beep_freq_dial.value))
+        self._beep_advanced_pusbutton.clicked.connect(
+            lambda: self._beeper_advanced.beep(1, self._beep_freq_dial.value)
+            )
         self._beep_freq_display.display(self._beep_freq_dial.value)
         self._beep_freq_dial.valueChanged.connect(self._beep_freq_display.display)
 
-    def _beep_simple(self):
-        self._beeper_simple.start(qtc.QThread.HighPriority)
+    def start_threads(self):
+        self._beeper_advanced_thread.start(qtc.QThread.LowPriority)
 
 
 if __name__ == "__main__":
