@@ -15,3 +15,8 @@ make 2, 4, 8 layer options allow spaces
 change pickles to .ssc files and let open from explorer
 why is the Seas H1192-08 pickle file not working?
 make the size of textedit boxes larger. text is being snipped.
+Adding a series resistor into model
+Tooltip for dead weight should be added
+Separate target winding height from calculated winding height. Show calculated one in results.
+N_winding should reduce 1 per layer
+"analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
