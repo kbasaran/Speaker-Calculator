@@ -6,9 +6,13 @@ from dataclasses import dataclass
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
+from PySide6 import QtGui as qtg
 
 from __feature__ import snake_case
 from __feature__ import true_property
+# doesn't always work.
+# e.g. can't do "main_window.central_widget = my_widget". you need to use set.
+# but can do "line_edit_widget.text = text"
 
 import sounddevice as sd
 from pathlib import Path
@@ -73,17 +77,80 @@ class UserForm(qtc.QObject):
     def __init__(self):
         super().__init__()
         self.widget = qtw.QWidget()
-        self.build_form_widget()
-
-    def build_form_widget(self):
         self._form_layout = qtw.QFormLayout()
         self.widget.set_layout(self._form_layout)
+        self.create_form_items()
 
-        form_items = OrderedDict()
-        form_items["fs"] = qtw.QDoubleSpinBox()
+    def add_line(self):
+        line = qtw.QFrame()
+        line.frame_shape = qtw.QFrame.HLine
+        line.frame_shadow = qtw.QFrame.Sunken
+        line.content_margins = (0, 10, 0, 10)
+        n_line =  [name[:4] == "line" for name in self._form_items.keys()].count(True)
+        self._form_items["line_" + str(n_line)] = line
+        self._form_layout.add_row(line)
 
-        for key, val in form_items.items():
-            self._form_layout.add_row(key, val)
+    def add_title(self, text):
+        title = qtw.QLabel()
+        title.text = text
+        title.style_sheet = "font-weight: bold"
+        title.alignment = qtg.Qt.AlignmentFlag.AlignCenter
+        n_title =  [name[:5] == "title" for name in self._form_items.keys()].count(True)
+        self._form_items["title_" + str(n_title)] = title
+        self._form_layout.add_row(title)
+
+    def add_spin_box(self, name, description,
+                     data_type,
+                     min_max_vals,
+                     coeff_to_SI=1,
+                     ):
+        match data_type:
+            case "double_float":
+                obj = qtw.QDoubleSpinBox()
+                obj.step_type = qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
+            case "integer":
+                obj = qtw.QSpinBox()
+            case _:
+                raise ValueError("'data_type' not recognized")
+        # obj.setMinimumSize(52, 18)
+        obj.range = min_max_vals
+        self._form_items[name] = obj
+        self._form_layout.add_row(description, obj)
+
+    def add_text_edit_box(self, name, description):
+        obj = qtw.QLineEdit()
+        # obj.setMinimumSize(52, 18)
+        self._form_items[name] = obj
+        self._form_layout.add_row(description, obj)
+
+    def add_combo_box(self, name, description=None,
+                     item_list=[],
+                     ):
+        # item_list can contain elements that are tuples.
+        # in that case the second part is user data
+        obj = qtw.QComboBox()
+        # obj.setMinimumSize(52, 18)
+        for item in item_list:
+            obj.add_item(*item)  # tuple with userData, therefore *
+        self._form_items[name] = obj
+        if description:
+            self._form_layout.add_row(description, obj)
+        else:
+            self._form_layout.add_row(obj)
+
+    def create_form_items(self):
+        self._form_items = OrderedDict()
+        self.add_line()
+        self.add_title("Test 1")
+        self.add_line()
+        self.add_title("Test 2")
+        self.add_spin_box("fs", "resonance", "double_float", (0, 99))
+        self.add_spin_box("n", "amount", "integer", (0, 9))
+        self.add_combo_box("coil_options", "coil options", [("SV", "data"),
+                                                            ("CCAW", "data"),
+                                                            ("MEGA", "data"),
+                                                            ])
+        self.add_text_edit_box("comments", "Comments..")
 
 
 class MainWindow(qtw.QMainWindow):
