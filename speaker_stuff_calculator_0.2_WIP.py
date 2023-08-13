@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 import json
 
 from PySide6 import QtWidgets as qtw
@@ -30,13 +30,14 @@ logging.basicConfig(level=logging.INFO)
 
 @dataclass
 class Settings:
+    version: str = '0.2.0'
     FS: int = 44100
     GAMMA: float = 1.401  # adiabatic index of air
     P0: int = 101325
     RHO: float = 1.1839  # 25 degrees celcius
     Kair: float = 101325 * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
-    vc_table_file = Path.cwd().joinpath('SSC_data', 'WIRE_TABLE.csv')
+    vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
     f_min: int = 10
     f_max: int = 3000
     ppo: int = 48 * 8
@@ -45,21 +46,38 @@ class Settings:
     T_beep = 0.1
     freq_good_beep: float = 1175
     freq_bad_beep: float = freq_good_beep / 2
+    last_used_folder: str = os.path.expanduser('~')
 
     def update_attr(self, attr_name, new_val):
-        assert type(self.getattr(attr_name)) == type(new_val)
-        self.setattr(attr_name, new_val)
+        assert type(getattr(self, attr_name)) == type(new_val)
+        setattr(self, attr_name, new_val)
+        self.settings_sys.set_value(attr_name, getattr(self, attr_name))
+
+    def write_all_to_system(self):
+        for field in fields(self):
+            self.settings_sys.set_value(field.name, getattr(self, field.name))
+
+    def read_all_from_system(self):
+        for field in fields(self):
+            setattr(self, field.name, self.settings_sys.value(field.name, field.default, type=type(field.default)))
+
+    def __post_init__(self):
+        self.settings_sys = qtc.QSettings('kbasaran', f'Speaker Stuff {self.version}')
+        self.read_all_from_system()
+
+settings = Settings()
 
 
 class SoundEngine(qtc.QThread):
     def __init__(self, settings):
         super().__init__()
         self.FS = settings.FS
+        self.start_stream()
 
     def run(self):
         self.start_stream()
         # do a start beep
-        self.beep(2, 100)
+        self.beep(1, 100)
 
     def start_stream(self):
         self.stream = sd.Stream(samplerate=self.FS, channels=2)
@@ -301,7 +319,6 @@ class MainWindow(qtw.QMainWindow):
         self.create_widgets()
         self.place_widgets()
         self.make_connections()
-        self.start_threads()
         if user_form_dict:
             self._user_form.update_user_form_values(user_form_dict)
 
@@ -334,31 +351,56 @@ class MainWindow(qtw.QMainWindow):
         self._beep_advanced_pusbutton.clicked.connect(
             lambda: self.signal_beep.emit(1, self._beep_freq_dial.value)
             )
-        self.signal_beep.connect(sound_engine.beep)
+        self.signal_beep.connect(sound_engine.beep, qtc.Qt.QueuedConnection)
 
         self._beep_freq_display.display(self._beep_freq_dial.value)
         self._beep_freq_dial.valueChanged.connect(self._beep_freq_display.display)
 
-        self._user_form.signal_save_clicked.connect(self.save_preset_file)
-        self._user_form.signal_load_clicked.connect(self.load_preset_file)
+        self._user_form.signal_save_clicked.connect(self.save_preset_to_pick_file)
+        self._user_form.signal_load_clicked.connect(self.load_preset_with_pick_file)
         self._user_form.signal_new_clicked.connect(self.new_window)
 
-    def start_threads(self):
-    #     self._beeper_advanced_thread.start(qtc.QThread.LowPriority)
-        pass
+    def save_preset_to_pick_file(self):
 
-    def save_preset_file(self):
-        save_file_path = os.path.join(os.getcwd(), "my_save.json")
+        path_unverified = qtw.QFileDialog.get_save_file_name(self, caption='Save to file..',
+                                                             dir=self.global_settings.last_used_folder,
+                                                             filter='Speaker stuff files (*.ssf)',
+                                                             )
+        
         try:
-            json_string = json.dumps(self._user_form.get_user_form_values(), indent=4)
-            with open(save_file_path, "wt") as f:
-                f.write(json_string)
-        except Exception as e:
-            raise e
+            file = path_unverified[0]
+            if file:
+                assert os.path.isdir(os.path.dirname(file))
+                self.global_settings.update_attr("last_used_folder", os.path.dirname(file))
+            else:
+                return  # nothing was selected, pick file canceled
+        except:
+            raise NotADirectoryError
 
-    def load_preset_file(self):
-        load_file_path = os.path.join(os.getcwd(), "my_save.json")
-        with open(load_file_path, "rt") as f:
+        json_string = json.dumps(self._user_form.get_user_form_values(), indent=4)
+        with open(file, "wt") as f:
+            f.write(json_string)
+
+
+    def load_preset_with_pick_file(self):
+        path_unverified = qtw.QFileDialog.get_open_file_name(self, caption='Open file..',
+                                                             dir=self.global_settings.last_used_folder,
+                                                             filter='Speaker stuff files (*.ssf)',
+                                                             )
+        try:
+            file = path_unverified[0]
+            if file:
+                assert os.path.isfile(file)
+            else:
+                return  # nothing was selected, pick file canceled
+        except:
+            raise FileNotFoundError()
+
+        self.global_settings.update_attr("last_used_folder", os.path.dirname(file))
+        self.load_preset(file)
+
+    def load_preset(self, file=None):
+        with open(file, "rt") as f:
             self._user_form.update_user_form_values(json.load(f))
 
     def new_window(self):
@@ -367,8 +409,8 @@ class MainWindow(qtw.QMainWindow):
 
 if __name__ == "__main__":
     app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
-    settings = Settings()
 
+    settings = Settings()
     sound_engine = SoundEngine(settings)
     sound_engine.start(qtc.QThread.HighPriority)
 
