@@ -120,25 +120,28 @@ class UserForm(qtc.QObject):
         self.create_form_items()
         self.make_connections()
 
-    def add_line(self):
+    def add_line(self, into_layout=None):
+        into_layout = self._form_layout if not into_layout else into_layout
         line = qtw.QFrame()
         line.frame_shape = qtw.QFrame.HLine
         line.frame_shadow = qtw.QFrame.Sunken
         line.content_margins = (0, 10, 0, 10)
         # n_line =  [name[:4] == "line" for name in self._form_items.keys()].count(True)
         # self._form_items["line_" + str(n_line)] = line
-        self._form_layout.add_row(line)
+        into_layout.add_row(line)
 
-    def add_title(self, text: str):
+    def add_title(self, text: str, into_layout=None):
+        into_layout = self._form_layout if not into_layout else into_layout
         title = qtw.QLabel()
         title.text = text
         title.style_sheet = "font-weight: bold"
         title.alignment = qtg.Qt.AlignmentFlag.AlignCenter
         # n_title =  [name[:5] == "title" for name in self._form_items.keys()].count(True)
         # self._form_items["title_" + str(n_title)] = title
-        self._form_layout.add_row(title)
+        into_layout.add_row(title)
 
-    def add_pushbuttons(self, buttons: dict, vertical=False):
+    def add_pushbuttons(self, buttons: dict, vertical=False, into_layout=None):
+        into_layout = self._form_layout if not into_layout else into_layout
         layout = qtw.QVBoxLayout() if vertical else qtw.QHBoxLayout()
         obj = qtw.QWidget()
         obj.set_layout(layout)
@@ -147,13 +150,15 @@ class UserForm(qtc.QObject):
             button = qtw.QPushButton(val)
             self._form_items[name] = button
             layout.add_widget(button)
-        self._form_layout.add_row(obj)
+        into_layout.add_row(obj)
 
     def add_spin_box(self, name: str, description: str,
                      data_type,
                      min_max_vals,
                      coeff_to_SI=1,
+                     into_layout=None,
                      ):
+        into_layout = self._form_layout if not into_layout else into_layout
         match data_type:
             case "double_float":
                 obj = qtw.QDoubleSpinBox()
@@ -165,17 +170,20 @@ class UserForm(qtc.QObject):
         # obj.setMinimumSize(52, 18)
         obj.range = min_max_vals
         self._form_items[name] = obj
-        self._form_layout.add_row(description, obj)
+        into_layout.add_row(description, obj)
 
-    def add_text_edit_box(self, name: str, description: str):
+    def add_text_edit_box(self, name: str, description: str, into_layout=None):
+        into_layout = self._form_layout if not into_layout else into_layout
         obj = qtw.QLineEdit()
         # obj.setMinimumSize(52, 18)
         self._form_items[name] = obj
-        self._form_layout.add_row(description, obj)
+        into_layout.add_row(description, obj)
 
     def add_combo_box(self, name: str, description=None,
                      items=[],
+                     into_layout=None,
                      ):
+        into_layout = self._form_layout if not into_layout else into_layout
         # items can contain elements that are tuples.
         # in that case the second part is user data
         obj = qtw.QComboBox()
@@ -184,11 +192,12 @@ class UserForm(qtc.QObject):
             obj.add_item(*item)  # tuple with userData, therefore *
         self._form_items[name] = obj
         if description:
-            self._form_layout.add_row(description, obj)
+            into_layout.add_row(description, obj)
         else:
-            self._form_layout.add_row(obj)
+            into_layout.add_row(obj)
 
-    def add_choice_buttons(self, name: str, choices: dict, vertical=False):
+    def add_choice_buttons(self, name: str, choices: dict, vertical=False, into_layout=None):
+        into_layout = self._form_layout if not into_layout else into_layout
         button_group = qtw.QButtonGroup()
         layout = qtw.QVBoxLayout() if vertical else qtw.QHBoxLayout()
         obj = qtw.QWidget()
@@ -201,7 +210,7 @@ class UserForm(qtc.QObject):
 
         button_group.buttons()[0].set_checked(True)
         self._form_items[name] = button_group
-        self._form_layout.add_row(obj)
+        into_layout.add_row(obj)
         
 
     def set_widget_value(self, obj, value):
@@ -235,7 +244,7 @@ class UserForm(qtc.QObject):
         self.add_pushbuttons({"error": "Raise exception"})
 
     def update_user_form_values(self, values_new: dict):
-        no_dict_key_for_widget = set(self._form_items.keys())
+        no_dict_key_for_widget = set([key for key in self._form_items.keys() if "_button" not in key])
         no_widget_for_dict_key = set()
         for key, value_new in values_new.items():                
             try:
@@ -254,7 +263,7 @@ class UserForm(qtc.QObject):
                     obj.text = value_new
 
                 elif isinstance(obj, qtw.QPushButton):
-                    pass
+                    raise TypeError(f"Don't know what to do with value_new={value_new} for button {key}.")
 
                 elif isinstance(obj, qtw.QButtonGroup):
                     obj.button(value_new).set_checked(True)
@@ -277,6 +286,9 @@ class UserForm(qtc.QObject):
     def get_user_form_values(self) -> dict:
         values = {}
         for key, obj in self._form_items.items():
+            
+            if "_button" in key:
+                continue
 
             if isinstance(obj, qtw.QComboBox):
                 obj_value = {"items": [], "current_index": 0}
@@ -288,9 +300,6 @@ class UserForm(qtc.QObject):
 
             elif isinstance(obj, qtw.QLineEdit):
                 obj_value = obj.text
-
-            elif isinstance(obj, qtw.QPushButton):
-                obj_value = None
 
             elif isinstance(obj, qtw.QButtonGroup):
                 obj_value = obj.checked_id()
