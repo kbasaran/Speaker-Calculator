@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, fields
@@ -16,7 +17,6 @@ from __feature__ import true_property
 # but can do "line_edit_widget.text = text"
 
 import sounddevice as sd
-from pathlib import Path
 import electroacoustical as eac
 from collections import OrderedDict
 
@@ -217,7 +217,6 @@ class UserForm(qtc.QObject):
         else:
             return
 
-
     def create_form_items(self):
         self._form_items = OrderedDict()
         self.add_line()
@@ -233,6 +232,7 @@ class UserForm(qtc.QObject):
                                                             ])
         self.add_text_edit_box("comments", "Comments..")
         self.add_choice_buttons("box_type", {0: "small", 1:"large", 2:"off"}, vertical=False)
+        self.add_pushbuttons({"error": "Raise exception"})
 
     def update_user_form_values(self, values_new: dict):
         no_dict_key_for_widget = set(self._form_items.keys())
@@ -303,9 +303,12 @@ class UserForm(qtc.QObject):
         return values
 
     def make_connections(self):
+        def raise_error():
+            raise FileExistsError
         self._form_items["load_button"].clicked.connect(self.signal_load_clicked)
         self._form_items["save_button"].clicked.connect(self.signal_save_clicked)
         self._form_items["new_button"].clicked.connect(self.signal_new_clicked)
+        self._form_items["error_button"].clicked.connect(raise_error)
 
 
 class MainWindow(qtw.QMainWindow):
@@ -407,9 +410,31 @@ class MainWindow(qtw.QMainWindow):
         self.signal_new_window.emit(self._user_form.get_user_form_values())
 
 
-if __name__ == "__main__":
-    app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
+def error_handler(etype, value, tb):
+    global app
+    error_msg = ''.join(traceback.format_exception(etype, value, tb))
+    message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
+                                  "Error",
+                                  error_msg +
+                                  "\nThis event will be logged unless ignored."
+                                  "\nYour application may now be in an unstable state.",
+                                  # buttons = qtw.QMessageBox.NoButton,
+                                  )
+    message_box.add_button(qtw.QMessageBox.Ignore)
+    message_box.add_button(qtw.QMessageBox.Close)
 
+    message_box.set_escape_button(qtw.QMessageBox.Ignore)
+    message_box.set_default_button(qtw.QMessageBox.Close)
+
+    message_box.default_button().clicked.connect(logging.warning(error_msg))
+    # how to connect this signal to the Close button directly instead of
+    # connecting to the default button
+    message_box.exec()
+
+if __name__ == "__main__":
+    sys.excepthook = error_handler
+
+    app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
     settings = Settings()
     sound_engine = SoundEngine(settings)
     sound_engine.start(qtc.QThread.HighPriority)
