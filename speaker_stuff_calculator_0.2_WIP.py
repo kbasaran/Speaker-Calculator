@@ -591,6 +591,7 @@ class MainWindow(qtw.QMainWindow):
         self.create_core_objects()
         self.create_widgets()
         self.place_widgets()
+        self.add_status_bar()
         self.make_connections()
         if user_form_dict:
             self._user_form.update_user_form_values(user_form_dict)
@@ -620,6 +621,10 @@ class MainWindow(qtw.QMainWindow):
         self._user_form.signal_save_clicked.connect(self.save_preset_to_pick_file)
         self._user_form.signal_load_clicked.connect(self.load_preset_with_pick_file)
         self._user_form.signal_new_clicked.connect(self.new_window)
+
+    def add_status_bar(self):
+        self.set_status_bar(qtw.QStatusBar())
+        self.status_bar().show_message("Test", 2000)
 
     def save_preset_to_pick_file(self):
 
@@ -676,15 +681,14 @@ def error_handler(etype, value, tb):
                                   "\nThis event will be logged unless ignored."
                                   "\nYour application may now be in an unstable state.",
                                   )
-    message_box.add_button(qtw.QMessageBox.Ignore)
-    message_box.add_button(qtw.QMessageBox.Close)
+    ignore_button = message_box.add_button(qtw.QMessageBox.Ignore)
+    close_button = message_box.add_button(qtw.QMessageBox.Close)
 
     message_box.set_escape_button(qtw.QMessageBox.Ignore)
     message_box.set_default_button(qtw.QMessageBox.Close)
 
-    message_box.default_button().clicked.connect(logging.warning(error_msg))
-    # how to connect this signal to the Close button directly instead of
-    # connecting to the default button
+    close_button.clicked.connect(logging.warning(error_msg))
+
     message_box.exec()
 
 if __name__ == "__main__":
