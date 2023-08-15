@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, fields
 import json
+import fileinput
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
@@ -585,7 +586,7 @@ class MainWindow(qtw.QMainWindow):
     signal_new_window = qtc.Signal(dict)
     signal_beep = qtc.Signal(float, float)
 
-    def __init__(self, settings, sound_engine, user_form_dict=None):
+    def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
         self.global_settings = settings
         self.create_core_objects()
@@ -595,6 +596,8 @@ class MainWindow(qtw.QMainWindow):
         self.make_connections()
         if user_form_dict:
             self._user_form.update_user_form_values(user_form_dict)
+        elif open_user_file:
+            self.load_preset_file(open_user_file)
 
     def create_core_objects(self):
         pass
@@ -648,23 +651,25 @@ class MainWindow(qtw.QMainWindow):
 
 
     def load_preset_with_pick_file(self):
-        path_unverified = qtw.QFileDialog.get_open_file_name(self, caption='Open file..',
-                                                             dir=self.global_settings.last_used_folder,
-                                                             filter='Speaker stuff files (*.ssf)',
-                                                             )
+        file = qtw.QFileDialog.get_open_file_name(self, caption='Open file..',
+                                                  dir=self.global_settings.last_used_folder,
+                                                  filter='Speaker stuff files (*.ssf)',
+                                                  )[0]
+        if file:
+            self.load_preset_file(file)
+        else:
+            pass  # canceled file select
+
+
+    def load_preset_file(self, file):
+
         try:
-            file = path_unverified[0]
-            if file:
-                assert os.path.isfile(file)
-            else:
-                return  # nothing was selected, pick file canceled
+            os.path.isfile(file)
         except:
             raise FileNotFoundError()
+            return
 
         self.global_settings.update_attr("last_used_folder", os.path.dirname(file))
-        self.load_preset(file)
-
-    def load_preset(self, file=None):
         with open(file, "rt") as f:
             self._user_form.update_user_form_values(json.load(f))
 
@@ -691,20 +696,39 @@ def error_handler(etype, value, tb):
 
     message_box.exec()
 
+
+def parse_args(settings):
+    import argparse
+    
+    parser = argparse.ArgumentParser(prog=f"Speaker stuff calculator version {settings.version}",
+                                     description="Main module for application.",
+                                     epilog="Kerem Basaran - 2023",
+                                     )
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+                        help="Path to a '*.ssf' file. This will open with preset values.")
+    
+    return parser.parse_args()
+    
+
 if __name__ == "__main__":
-    sys.excepthook = error_handler
+    settings = Settings()
+    args = parse_args(settings)
 
     app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
-    settings = Settings()
     sound_engine = SoundEngine(settings)
     sound_engine.start(qtc.QThread.HighPriority)
+    sys.excepthook = error_handler
 
-    def new_window(user_form_dict=None):
-        mw = MainWindow(settings, sound_engine, user_form_dict)
+    def new_window(open_user_file=None):
+        mw = MainWindow(settings, sound_engine, open_user_file=open_user_file)
         mw.signal_new_window.connect(new_window)
         mw.show()
         return mw
 
-    new_window()
+    if args.infile:
+        mw = new_window(open_user_file=args.infile.name)
+        mw.status_bar().show_message(f"Opened file '{args.infile.name}'")
+    else:
+        _ = new_window()
     
     app.exec()
