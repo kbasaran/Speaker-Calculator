@@ -77,7 +77,7 @@ class SoundEngine(qtc.QThread):
     def run(self):
         self.start_stream()
         # do a start beep
-        self.beep(1, 100)
+        # self.beep(1, 100)
 
     def start_stream(self):
         self.stream = sd.Stream(samplerate=self.FS, channels=2)
@@ -114,6 +114,7 @@ class UserForm(qtc.QObject):
 
     def __init__(self):
         super().__init__()
+        self._form_items = OrderedDict()
         self._form_layout = qtw.QFormLayout()
         self.widget = qtw.QWidget()
         self.widget.set_layout(self._form_layout)
@@ -140,7 +141,7 @@ class UserForm(qtc.QObject):
         # self._form_items["title_" + str(n_title)] = title
         into_layout.add_row(title)
 
-    def add_pushbuttons(self, buttons: dict, vertical=False, into_layout=None):
+    def add_pushbuttons(self, buttons: dict, tooltip: dict, vertical=False, into_layout=None):
         into_layout = self._form_layout if not into_layout else into_layout
         layout = qtw.QVBoxLayout() if vertical else qtw.QHBoxLayout()
         obj = qtw.QWidget()
@@ -148,14 +149,16 @@ class UserForm(qtc.QObject):
         for key, val in buttons.items():
             name = key + "_button"
             button = qtw.QPushButton(val)
+            button.tool_tip = tooltip[key]
             self._form_items[name] = button
             layout.add_widget(button)
         into_layout.add_row(obj)
 
-    def add_spin_box(self, name: str, description: str,
-                     data_type,
-                     min_max_vals,
-                     coeff_to_SI=1,
+    def add_spin_box(self, name: str, description: str, tooltip: str,
+                     data_type: str,
+                     decimals=2,
+                     min_max=(0.01, 999.99),
+                     ratio_to_SI=1,
                      into_layout=None,
                      ):
         into_layout = self._form_layout if not into_layout else into_layout
@@ -163,24 +166,28 @@ class UserForm(qtc.QObject):
             case "double_float":
                 obj = qtw.QDoubleSpinBox()
                 obj.step_type = qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
+                obj.decimals = decimals
             case "integer":
                 obj = qtw.QSpinBox()
             case _:
                 raise ValueError("'data_type' not recognized")
         # obj.setMinimumSize(52, 18)
-        obj.range = min_max_vals
+        if min_max:
+            obj.set_range(*min_max)
+        obj.tool_tip = tooltip
         self._form_items[name] = obj
         into_layout.add_row(description, obj)
 
-    def add_text_edit_box(self, name: str, description: str, into_layout=None):
+    def add_text_edit_box(self, name: str, description: str, tooltip: str, into_layout=None):
         into_layout = self._form_layout if not into_layout else into_layout
         obj = qtw.QLineEdit()
+        obj.tool_tip = tooltip
         # obj.setMinimumSize(52, 18)
         self._form_items[name] = obj
         into_layout.add_row(description, obj)
 
-    def add_combo_box(self, name: str, description=None,
-                     items=[],
+    def add_combo_box(self, name: str, description: str, tooltip: str,
+                     items: list,
                      into_layout=None,
                      ):
         into_layout = self._form_layout if not into_layout else into_layout
@@ -190,13 +197,14 @@ class UserForm(qtc.QObject):
         # obj.setMinimumSize(52, 18)
         for item in items:
             obj.add_item(*item)  # tuple with userData, therefore *
+        obj.tool_tip = tooltip
         self._form_items[name] = obj
         if description:
             into_layout.add_row(description, obj)
         else:
             into_layout.add_row(obj)
 
-    def add_choice_buttons(self, name: str, choices: dict, vertical=False, into_layout=None):
+    def add_choice_buttons(self, name: str, tooltip: dict, choices: dict, vertical=False, into_layout=None):
         into_layout = self._form_layout if not into_layout else into_layout
         button_group = qtw.QButtonGroup()
         layout = qtw.QVBoxLayout() if vertical else qtw.QHBoxLayout()
@@ -205,13 +213,19 @@ class UserForm(qtc.QObject):
 
         for key, val in choices.items():
             button = qtw.QRadioButton(val)
+            button.tool_tip = tooltip[key]
             button_group.add_button(button, key)
             layout.add_widget(button)
 
         button_group.buttons()[0].set_checked(True)
         self._form_items[name] = button_group
         into_layout.add_row(obj)
-        
+
+    def create_sub_form(self):
+        layout = qtw.QFormLayout()
+        sub_form = qtw.QWidget()
+        sub_form.set_layout(layout)
+        return sub_form, layout
 
     def set_widget_value(self, obj, value):
         if isinstance(obj, qtw.QComboBox):
@@ -227,21 +241,270 @@ class UserForm(qtc.QObject):
             return
 
     def create_form_items(self):
-        self._form_items = OrderedDict()
-        self.add_line()
-        self.add_title("Test 1")
-        self.add_line()
-        self.add_title("Test 2")
-        self.add_pushbuttons({"save": "Save", "load": "Load", "new": "New"})
-        self.add_spin_box("fs", "resonance", "double_float", (0, 99))
-        self.add_spin_box("n", "amount", "integer", (0, 9))
-        self.add_combo_box("coil_options", "Coil options", [("SV", "data1"),
-                                                            ("CCAW", "data2"),
-                                                            ("MEGA", "data3"),
-                                                            ])
-        self.add_text_edit_box("comments", "Comments..")
-        self.add_choice_buttons("box_type", {0: "small", 1:"large", 2:"off"}, vertical=False)
-        self.add_pushbuttons({"error": "Raise exception"})
+        self.add_pushbuttons({"load": "Load", "save": "Save", "new": "New"},
+                             {"load": "Load parameters from a file",
+                              "save": "Save parameters to a file",
+                              "new": "Create another instance of the application, carrying all existing parameters",
+                              }
+                              )
+        self.add_title("General speaker specifications")  #--------------------
+        
+        self.add_spin_box("fs", "fs (Hz)",
+                          data_type="double_float",
+                          tooltip="Undamped resonance frequency of the speaker in free-air condition",
+                          decimals=1,
+                          min_max=(0.1, settings.f_max),
+                          )
+
+        self.add_spin_box("Qms", "Qms",
+                          data_type="double_float",
+                          tooltip="Quality factor of speaker, only the mechanical part",
+                          )
+
+        self.add_spin_box("Xmax", "Xmax (mm)",
+                          data_type="double_float",
+                          tooltip="Peak excursion allowed, one way",
+                          ratio_to_SI=1e-3,
+                          )
+
+        self.add_spin_box("dead_mass", "Dead mass (g)",
+                          data_type="double_float",
+                          tooltip="Moving mass excluding the coil itself and the air.|n(Dead mass = Mmd - coil mass)",
+                          ratio_to_SI=1e-3,
+                          )
+        
+        self.add_spin_box("Sd", "Sd (cm²)",
+                          data_type="double_float",
+                          tooltip="Diaphragm effective surface area",
+                          ratio_to_SI=1e-4,
+                          )
+
+        self.add_line()  # ----------------------------------------------------
+
+        self.add_combo_box("motor_spec_type", None,
+                           "Choose which parameters you want to input to make the motor strength calculation",
+                           [("Define Coil Dimensions and Average B", "define_coil"),
+                            ("Define Bl, Rdc, Mmd", "define_Bl_Re_Mmd"),
+                            ("Define Bl, Rdc, Mms", "define_Bl_Re_Mms"),
+                            ]
+                           )
+        self._form_items["motor_spec_type"].set_style_sheet("font-weight: bold")
+
+        ## Make a stacked widget for different motor definition parameters
+        self.motor_definition_stacked = qtw.QStackedWidget()
+        self._form_layout.add_row(self.motor_definition_stacked)
+        self._form_items["motor_spec_type"].currentIndexChanged.connect(
+            self.motor_definition_stacked.set_current_index
+            )
+        
+        ## Make the first page of stacked widget for "Define Coil Dimensions and Average B"    
+        motor_definition_p1, motor_definition_p1_layout = self.create_sub_form()
+        self.motor_definition_stacked.add_widget(motor_definition_p1)
+
+        self.add_spin_box("target_Rdc", "Target Rdc (ohm)",
+                          "Rdc value that needs to be approached while calculating an appropriate coil and winding",
+                          "double_float", into_layout=motor_definition_p1_layout,
+                          )
+
+        self.add_spin_box("former_ID", "Coil Former ID (mm)",
+                          "Internal diameter of the coil former",
+                          "double_float", into_layout=motor_definition_p1_layout,
+                          ratio_to_SI=1e-3,
+                          )
+        
+        self.add_spin_box("t_former", "Former thickness (\u03BCm)",
+                          "Thickness of the coil former",
+                          "integer", into_layout=motor_definition_p1_layout,
+                          ratio_to_SI=1e-6,
+                          )
+        
+        self.add_spin_box("h_winding", "Coil winding height (mm)",
+                          "Desired height of the coil winding",
+                          "double_float", into_layout=motor_definition_p1_layout,
+                          )
+        
+        self.add_spin_box("B_average", "Average B field on coil (mT)",
+                          "Average B field across the coil windings."
+                          "\nNeeds to be calculated separately and input here.",
+                          "double_float", into_layout=motor_definition_p1_layout,
+                          decimals=3,
+                          ratio_to_SI=1e-3,
+                          )
+        
+        self.add_text_edit_box("N_layer_options", "Number of layer options",
+                          "Enter the number of winding layer options that are accepted."
+                          "\nUse integers with a comma in between, e.g.: '2, 4'",
+                          into_layout=motor_definition_p1_layout,
+                          )
+
+        self.add_pushbuttons({"update_coil_choices": "Update coil choices"},
+                             {"update_coil_choices": "Populate the below dropdown with possible coil choices for the given parameters"},
+                             into_layout=motor_definition_p1_layout,
+                             )
+    
+        self.add_combo_box("coil_options", None,
+                           "Select coil winding to be used for calculations",
+                           [("SV", "data1"),
+                            ("CCAW", "data2"),
+                            ("MEGA", "data3"),
+                            ],
+                           into_layout=motor_definition_p1_layout,
+                           )
+
+
+        ## Make the second page of stacked widget for "Define Bl, Rdc, Mmd"
+        motor_definition_p2, motor_definition_p2_layout = self.create_sub_form()
+        self.motor_definition_stacked.add_widget(motor_definition_p2)
+
+        self.add_spin_box("Bl_p2", "Bl (Tm)",
+                          "Force factor",
+                          "double_float", into_layout=motor_definition_p2_layout,
+                          )
+        
+        self.add_spin_box("Rdc_p2", "Rdc (ohm)",
+                          "DC resistance",
+                          "integer", into_layout=motor_definition_p2_layout,
+                          )
+        
+        self.add_spin_box("Mmd_p2", "Mmd (g)",
+                          "Moving mass, excluding coupled air mass",
+                          "double_float", into_layout=motor_definition_p2_layout,
+                          decimals=3,
+                          ratio_to_SI=1e-3,
+                          )
+
+
+        ## Make the third page of stacked widget for "Define Bl, Rdc, Mms"
+        motor_definition_p3, motor_definition_p3_layout = self.create_sub_form()
+        self.motor_definition_stacked.add_widget(motor_definition_p3)
+
+        self.add_spin_box("Bl_p3", "Bl (Tm)",
+                          "Force factor",
+                          "double_float", into_layout=motor_definition_p3_layout,
+                          )
+        
+        self.add_spin_box("Rdc_p3", "Rdc (ohm)",
+                          "DC resistance",
+                          "integer", into_layout=motor_definition_p3_layout,
+                          )
+        
+        self.add_spin_box("Mms_p3", "Mms (g)",
+                          "Moving mass, including coupled air mass ",
+                          "double_float", into_layout=motor_definition_p3_layout,
+                          decimals=3,
+                          ratio_to_SI=1e-3,
+                          )
+
+        self.add_line()  # ----------------------------------------------------
+
+        self.add_title("Motor mechanical specifications")
+        
+        self.add_spin_box("h_top_plate", "Top plate thickness (mm)",
+                          "Thickness of the top plate (also called washer)",
+                          "double_float",
+                          ratio_to_SI=1e-3,
+                          )
+
+        self.add_spin_box("airgap_clearance_inner", "Airgap inner clearance (\u03BCm)",
+                          "Clearance on the inner side of the coil former",
+                          "integer",
+                          ratio_to_SI=1e-6,
+                          )
+        
+        self.add_spin_box("airgap_clearance_outer", "Airgap outer clearance (\u03BCm)",
+                          "Clearance on the outer side of the coil windings",
+                          "integer",
+                          ratio_to_SI=1e-6,
+                          )
+        
+        self.add_spin_box("former_extension_under_coil", "Former bottom ext. (mm)",
+                          "Extension of the coil former below the coil windings",
+                          "double_float",
+                          ratio_to_SI=1e-3,
+                          )
+
+        self.add_line()  # ----------------------------------------------------
+
+        self.add_title("Closed box specifications")
+        
+        self.add_spin_box("Vb", "Box internal volume (l)",
+                          "Internal free volume filled by air",
+                          "double_float",
+                          ratio_to_SI=1e-3,
+                          )
+
+        self.add_spin_box("Qa", "Qa - box absorption",
+                          "Quality factor of the speaker, mechanical part due to losses in box",
+                          "double_float",
+                          decimals=1
+                          )
+
+        self.add_line()  # ----------------------------------------------------
+
+        self.add_title("Second degree of freedom")
+
+        self.add_spin_box("k2", "Stiffness (N/mm)",
+                          "Stiffness between the second body and the ground",
+                          "double_float",
+                          ratio_to_SI=1e3,
+                          )
+
+        self.add_spin_box("m2", "Mass (g)",
+                          "Mass of the second body",
+                          "double_float",
+                          ratio_to_SI=1e-3,
+                          )
+        
+        self.add_spin_box("c2", "Damping coefficient (kg/s)",
+                          "Damping coefficient between the second body and the ground",
+                          "double_float",
+                          )
+
+        self.add_line()  # ----------------------------------------------------
+
+        self.add_title("Electrical Input")
+
+        self.add_spin_box("Rs", "Series resistance",
+                          "The resistance between the speaker coil and the voltage source."
+                          "\nMay be due to cables, speaker leadwires, connectors etc."
+                          "\nCauses resistive loss at the input.",
+                          "double_float",
+                          )
+
+        self.add_combo_box("excitation_unit", "Unit",
+                           "Choose which type of input excitation you want to define.",
+                           [("Volts", "V"),
+                            ("Watts @Rdc", "W"),
+                            ("Watss @Rnom", "Wn")
+                            ],
+                           )
+        
+        self.add_spin_box("excitation_value", "Excitation value",
+                          "The value for input excitation, in units chosen above",
+                          "double_float",
+                          )
+
+        self.add_spin_box("nominal_impedance", "Nominal impedance",
+                          "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
+                          "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
+                          "double_float",
+                          )
+
+        self.add_line()  # ----------------------------------------------------
+
+        self.add_title("System type")
+
+        self.add_choice_buttons("box_type",
+                                {0: "Free-air", 1:"Closed box"},
+                                {0: "Free-air", 1:"Closed box"},
+                                vertical=False,
+                                )
+
+        self.add_choice_buttons("dof",
+                                {0: "1 dof", 1:"2 dof"},
+                                {0: "1 dof", 1:"2 dof"},
+                                vertical=False,
+                                )
 
     def update_user_form_values(self, values_new: dict):
         no_dict_key_for_widget = set([key for key in self._form_items.keys() if "_button" not in key])
@@ -317,8 +580,6 @@ class UserForm(qtc.QObject):
         self._form_items["load_button"].clicked.connect(self.signal_load_clicked)
         self._form_items["save_button"].clicked.connect(self.signal_save_clicked)
         self._form_items["new_button"].clicked.connect(self.signal_new_clicked)
-        self._form_items["error_button"].clicked.connect(raise_error)
-
 
 class MainWindow(qtw.QMainWindow):
     signal_new_window = qtc.Signal(dict)
@@ -338,14 +599,8 @@ class MainWindow(qtw.QMainWindow):
         pass
 
     def create_widgets(self):
-        self._top_label = qtw.QLabel("Hello World!")
-        self._beep_freq_dial = qtw.QDial(minimum=100,
-                                         maximum=10000,
-                                         wrapping=False,
-                                         )
-        self._beep_freq_display = qtw.QLCDNumber()
-        self._beep_advanced_pusbutton = qtw.QPushButton("Beep advanced")
         self._user_form = UserForm()
+        self._beep_pusbutton = qtw.QPushButton("Beep test")
 
     def place_widgets(self):
         self._center_layout = qtw.QVBoxLayout()
@@ -353,20 +608,14 @@ class MainWindow(qtw.QMainWindow):
         self._center_widget.set_layout(self._center_layout)
         self.set_central_widget(self._center_widget)
 
-        self._center_layout.add_widget(self._top_label)
-        self._center_layout.add_widget(self._beep_freq_dial)
-        self._center_layout.add_widget(self._beep_freq_display)
-        self._center_layout.add_widget(self._beep_advanced_pusbutton)
         self._center_layout.add_widget(self._user_form.widget)
+        self._center_layout.add_widget(self._beep_pusbutton)
 
     def make_connections(self):
-        self._beep_advanced_pusbutton.clicked.connect(
-            lambda: self.signal_beep.emit(1, self._beep_freq_dial.value)
+        self._beep_pusbutton.clicked.connect(
+            lambda: self.signal_beep.emit(1, 440)
             )
-        self.signal_beep.connect(sound_engine.beep, qtc.Qt.QueuedConnection)
-
-        self._beep_freq_display.display(self._beep_freq_dial.value)
-        self._beep_freq_dial.valueChanged.connect(self._beep_freq_display.display)
+        self.signal_beep.connect(sound_engine.beep)
 
         self._user_form.signal_save_clicked.connect(self.save_preset_to_pick_file)
         self._user_form.signal_load_clicked.connect(self.load_preset_with_pick_file)
@@ -378,7 +627,6 @@ class MainWindow(qtw.QMainWindow):
                                                              dir=self.global_settings.last_used_folder,
                                                              filter='Speaker stuff files (*.ssf)',
                                                              )
-        
         try:
             file = path_unverified[0]
             if file:
@@ -427,7 +675,6 @@ def error_handler(etype, value, tb):
                                   error_msg +
                                   "\nThis event will be logged unless ignored."
                                   "\nYour application may now be in an unstable state.",
-                                  # buttons = qtw.QMessageBox.NoButton,
                                   )
     message_box.add_button(qtw.QMessageBox.Ignore)
     message_box.add_button(qtw.QMessageBox.Close)
