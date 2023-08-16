@@ -2,7 +2,6 @@ import os
 import sys
 import traceback
 import numpy as np
-import matplotlib.pyplot as plt
 from dataclasses import dataclass, fields
 import json
 import fileinput
@@ -32,7 +31,6 @@ logging.basicConfig(level=logging.INFO)
 @dataclass
 class Settings:
     version: str = '0.2.0'
-    FS: int = 44100
     GAMMA: float = 1.401  # adiabatic index of air
     P0: int = 101325
     RHO: float = 1.1839  # 25 degrees celcius
@@ -72,18 +70,17 @@ settings = Settings()
 class SoundEngine(qtc.QThread):
     def __init__(self, settings):
         super().__init__()
-        self.FS = settings.FS
+        self.FS = sd.query_devices(device=sd.default.device, kind='output',
+            )["default_samplerate"]
         self.start_stream()
 
     def run(self):
         self.start_stream()
         # do a start beep
-        # self.beep(1, 100)
+        self.beep(1, 200)
 
     def start_stream(self):
-        self.stream = sd.Stream(samplerate=self.FS, channels=2)
-        self.dtype = self.stream.dtype
-        self.channel_count = self.stream.channels[0]
+        self.stream = sd.OutputStream(samplerate=self.FS, channels=2)
         self.stream.start()
 
 
@@ -95,8 +92,10 @@ class SoundEngine(qtc.QThread):
     @qtc.Slot(float, str)
     def beep(self, T, freq):
         t = np.arange(T * self.FS) / self.FS
-        y = np.tile(settings.A_beep * np.sin(t * 2 * np.pi * freq), self.channel_count)
-        y = y.reshape((len(y) // self.channel_count, self.channel_count)).astype(self.dtype)
+        y = settings.A_beep * np.sin(t * 2 * np.pi * freq)
+        y = np.tile(y, self.stream.channels)
+        y = y.reshape((len(y) // self.stream.channels, self.stream.channels), order='F').astype(self.stream.dtype)
+        y = np.ascontiguousarray(y, self.stream.dtype)
         self.stream.write(y)
 
     @qtc.Slot()
@@ -107,8 +106,11 @@ class SoundEngine(qtc.QThread):
     def bad_beep(self):
         self.beep(settings.T_beep, settings.freq_bad_beep)
 
+    @qtc.Slot()
+    def release_all(self):
+        self.stream.stop(ignore_errors=True)
 
-class UserForm(qtc.QObject):
+class LeftHandForm(qtc.QObject):
     signal_save_clicked = qtc.Signal()
     signal_load_clicked = qtc.Signal()
     signal_new_clicked = qtc.Signal()
@@ -582,6 +584,7 @@ class UserForm(qtc.QObject):
         self._form_items["save_button"].clicked.connect(self.signal_save_clicked)
         self._form_items["new_button"].clicked.connect(self.signal_new_clicked)
 
+
 class MainWindow(qtw.QMainWindow):
     signal_new_window = qtc.Signal(dict)
     signal_beep = qtc.Signal(float, float)
@@ -595,7 +598,7 @@ class MainWindow(qtw.QMainWindow):
         self.add_status_bar()
         self.make_connections()
         if user_form_dict:
-            self._user_form.update_user_form_values(user_form_dict)
+            self._lh_form.update_user_form_values(user_form_dict)
         elif open_user_file:
             self.load_preset_file(open_user_file)
 
@@ -603,8 +606,10 @@ class MainWindow(qtw.QMainWindow):
         pass
 
     def create_widgets(self):
-        self._user_form = UserForm()
+        self._lh_form = LeftHandForm()
         self._beep_pusbutton = qtw.QPushButton("Beep test")
+        # self._matplotlib = 
+        # self._
 
     def place_widgets(self):
         self._center_layout = qtw.QVBoxLayout()
@@ -612,18 +617,18 @@ class MainWindow(qtw.QMainWindow):
         self._center_widget.set_layout(self._center_layout)
         self.set_central_widget(self._center_widget)
 
-        self._center_layout.add_widget(self._user_form.widget)
+        self._center_layout.add_widget(self._lh_form.widget)
         self._center_layout.add_widget(self._beep_pusbutton)
 
     def make_connections(self):
         self._beep_pusbutton.clicked.connect(
-            lambda: self.signal_beep.emit(1, 440)
+            lambda: self.signal_beep.emit(0.5, 100)
             )
         self.signal_beep.connect(sound_engine.beep)
 
-        self._user_form.signal_save_clicked.connect(self.save_preset_to_pick_file)
-        self._user_form.signal_load_clicked.connect(self.load_preset_with_pick_file)
-        self._user_form.signal_new_clicked.connect(self.new_window)
+        self._lh_form.signal_save_clicked.connect(self.save_preset_to_pick_file)
+        self._lh_form.signal_load_clicked.connect(self.load_preset_with_pick_file)
+        self._lh_form.signal_new_clicked.connect(self.new_window)
 
     def add_status_bar(self):
         self.set_status_bar(qtw.QStatusBar())
@@ -645,7 +650,7 @@ class MainWindow(qtw.QMainWindow):
         except:
             raise NotADirectoryError
 
-        json_string = json.dumps(self._user_form.get_user_form_values(), indent=4)
+        json_string = json.dumps(self._lh_form.get_user_form_values(), indent=4)
         with open(file, "wt") as f:
             f.write(json_string)
 
@@ -671,10 +676,10 @@ class MainWindow(qtw.QMainWindow):
 
         self.global_settings.update_attr("last_used_folder", os.path.dirname(file))
         with open(file, "rt") as f:
-            self._user_form.update_user_form_values(json.load(f))
+            self._lh_form.update_user_form_values(json.load(f))
 
     def new_window(self):
-        self.signal_new_window.emit(self._user_form.get_user_form_values())
+        self.signal_new_window.emit(self._lh_form.get_user_form_values())
 
 
 def error_handler(etype, value, tb):
@@ -686,7 +691,7 @@ def error_handler(etype, value, tb):
                                   "\nThis event will be logged unless ignored."
                                   "\nYour application may now be in an unstable state.",
                                   )
-    ignore_button = message_box.add_button(qtw.QMessageBox.Ignore)
+    message_box.add_button(qtw.QMessageBox.Ignore)
     close_button = message_box.add_button(qtw.QMessageBox.Close)
 
     message_box.set_escape_button(qtw.QMessageBox.Ignore)
@@ -714,10 +719,17 @@ if __name__ == "__main__":
     settings = Settings()
     args = parse_args(settings)
 
-    app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
+
+    app = qtw.QApplication.instance()
+    if not app:
+        app = qtw.QApplication(sys.argv)
+
+
+    # app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
     sound_engine = SoundEngine(settings)
     sound_engine.start(qtc.QThread.HighPriority)
     sys.excepthook = error_handler
+    app.aboutToQuit.connect(sound_engine.release_all)  # turns out this is not necessary
 
     def new_window(open_user_file=None):
         mw = MainWindow(settings, sound_engine, open_user_file=open_user_file)
