@@ -118,9 +118,8 @@ class LeftHandForm(qtc.QObject):
     def __init__(self):
         super().__init__()
         self._form_items = OrderedDict()
-        self._form_layout = qtw.QFormLayout()
         self.widget = qtw.QWidget()
-        self.widget.set_layout(self._form_layout)
+        self._form_layout = qtw.QFormLayout(self.widget)
         self.create_form_items()
         self.make_connections()
 
@@ -146,9 +145,8 @@ class LeftHandForm(qtc.QObject):
 
     def add_pushbuttons(self, buttons: dict, tooltip: dict, vertical=False, into_layout=None):
         into_layout = self._form_layout if not into_layout else into_layout
-        layout = qtw.QVBoxLayout() if vertical else qtw.QHBoxLayout()
         obj = qtw.QWidget()
-        obj.set_layout(layout)
+        layout = qtw.QVBoxLayout(obj) if vertical else qtw.QHBoxLayout(obj)
         for key, val in buttons.items():
             name = key + "_button"
             button = qtw.QPushButton(val)
@@ -210,9 +208,8 @@ class LeftHandForm(qtc.QObject):
     def add_choice_buttons(self, name: str, tooltip: dict, choices: dict, vertical=False, into_layout=None):
         into_layout = self._form_layout if not into_layout else into_layout
         button_group = qtw.QButtonGroup()
-        layout = qtw.QVBoxLayout() if vertical else qtw.QHBoxLayout()
         obj = qtw.QWidget()
-        obj.set_layout(layout)
+        layout = qtw.QVBoxLayout(obj) if vertical else qtw.QHBoxLayout(obj)
 
         for key, val in choices.items():
             button = qtw.QRadioButton(val)
@@ -225,9 +222,8 @@ class LeftHandForm(qtc.QObject):
         into_layout.add_row(obj)
 
     def create_sub_form(self):
-        layout = qtw.QFormLayout()
         sub_form = qtw.QWidget()
-        sub_form.set_layout(layout)
+        layout = qtw.QFormLayout(sub_form)
         return sub_form, layout
 
     def set_widget_value(self, obj, value):
@@ -586,7 +582,7 @@ class LeftHandForm(qtc.QObject):
 
 
 class MainWindow(qtw.QMainWindow):
-    signal_new_window = qtc.Signal(dict)
+    signal_new_window = qtc.Signal(dict)  # new_window with kwargs as dict
     signal_beep = qtc.Signal(float, float)
 
     def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
@@ -612,9 +608,8 @@ class MainWindow(qtw.QMainWindow):
         # self._
 
     def place_widgets(self):
-        self._center_layout = qtw.QVBoxLayout()
         self._center_widget = qtw.QWidget()
-        self._center_widget.set_layout(self._center_layout)
+        self._center_layout = qtw.QVBoxLayout(self._center_widget)
         self.set_central_widget(self._center_widget)
 
         self._center_layout.add_widget(self._lh_form.widget)
@@ -628,7 +623,7 @@ class MainWindow(qtw.QMainWindow):
 
         self._lh_form.signal_save_clicked.connect(self.save_preset_to_pick_file)
         self._lh_form.signal_load_clicked.connect(self.load_preset_with_pick_file)
-        self._lh_form.signal_new_clicked.connect(self.new_window)
+        self._lh_form.signal_new_clicked.connect(self.duplicate_window)
 
     def add_status_bar(self):
         self.set_status_bar(qtw.QStatusBar())
@@ -678,8 +673,8 @@ class MainWindow(qtw.QMainWindow):
         with open(file, "rt") as f:
             self._lh_form.update_user_form_values(json.load(f))
 
-    def new_window(self):
-        self.signal_new_window.emit(self._lh_form.get_user_form_values())
+    def duplicate_window(self):
+        self.signal_new_window.emit({"user_form_dict": self._lh_form.get_user_form_values()})
 
 
 def error_handler(etype, value, tb):
@@ -719,11 +714,9 @@ if __name__ == "__main__":
     settings = Settings()
     args = parse_args(settings)
 
-
     app = qtw.QApplication.instance()
     if not app:
         app = qtw.QApplication(sys.argv)
-
 
     # app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
     sound_engine = SoundEngine(settings)
@@ -731,16 +724,17 @@ if __name__ == "__main__":
     sys.excepthook = error_handler
     app.aboutToQuit.connect(sound_engine.release_all)  # turns out this is not necessary
 
-    def new_window(open_user_file=None):
-        mw = MainWindow(settings, sound_engine, open_user_file=open_user_file)
-        mw.signal_new_window.connect(new_window)
+    def new_window(**kwargs):
+        mw = MainWindow(settings, sound_engine, **kwargs)
+        mw.signal_new_window.connect(lambda kwargs: new_window(**kwargs))
         mw.show()
         return mw
 
+    windows = []
     if args.infile:
         mw = new_window(open_user_file=args.infile.name)
         mw.status_bar().show_message(f"Opened file '{args.infile.name}'")
     else:
-        _ = new_window()
+        windows.append(new_window())
     
     app.exec()
