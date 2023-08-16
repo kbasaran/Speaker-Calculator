@@ -606,6 +606,8 @@ class MainWindow(qtw.QMainWindow):
         self._lh_form = LeftHandForm()
         self._beep_pusbutton = qtw.QPushButton("Beep test")
         self.graph = qtw.QTableWidget()  # MatplotlibWidget()
+        # Issue with snake_case https://github.com/matplotlib/matplotlib/issues/23816
+
         self._rh_widget = qtw.QWidget()
 
     def place_widgets(self):
