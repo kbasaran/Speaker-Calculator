@@ -5,6 +5,7 @@ import numpy as np
 from dataclasses import dataclass, fields
 import json
 import fileinput
+from graphing import MatplotlibWidget
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
@@ -604,16 +605,20 @@ class MainWindow(qtw.QMainWindow):
     def create_widgets(self):
         self._lh_form = LeftHandForm()
         self._beep_pusbutton = qtw.QPushButton("Beep test")
-        # self._matplotlib = 
-        # self._
+        self.graph = qtw.QTableWidget()  # MatplotlibWidget()
+        self._rh_widget = qtw.QWidget()
 
     def place_widgets(self):
         self._center_widget = qtw.QWidget()
-        self._center_layout = qtw.QVBoxLayout(self._center_widget)
+        self._center_layout = qtw.QHBoxLayout(self._center_widget)
         self.set_central_widget(self._center_widget)
 
         self._center_layout.add_widget(self._lh_form.widget)
-        self._center_layout.add_widget(self._beep_pusbutton)
+        self._center_layout.add_widget(self._rh_widget)
+
+        self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
+        self._rh_layout.add_widget(self._beep_pusbutton)
+        self._rh_layout.add_widget(self.graph)
 
     def make_connections(self):
         self._beep_pusbutton.clicked.connect(
