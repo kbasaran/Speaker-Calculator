@@ -3,6 +3,7 @@ import numpy as np
 from matplotlib.backends.qt_compat import QtWidgets as qtw
 from matplotlib.backends.backend_qtagg import (
     FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
@@ -11,6 +12,11 @@ class MatplotlibWidget(qtw.QWidget):
     def __init__(self):
         super().__init__()
         layout = qtw.QVBoxLayout(self)
+        desired_style = 'bmh'
+        if desired_style in plt.style.available:
+            plt.style.use(desired_style)
+        else:
+            print(f"Desired style '{desired_style}' not available.")
 
         fig = Figure()
         self.canvas = FigureCanvas(fig)
@@ -21,11 +27,10 @@ class MatplotlibWidget(qtw.QWidget):
         layout.addWidget(self.canvas)
         
         self.ax = self.canvas.figure.subplots()
-        self.ax.grid()
+        self.ax.grid(which='minor')
         
         self.lines = {}  # dictionary of lines
         # https://matplotlib.org/stable/api/_as_gen/matplotlib.lines.Line2D.html
-
 
     def update_canvas(self):
 

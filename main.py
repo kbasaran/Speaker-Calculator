@@ -11,6 +11,7 @@ from PySide6 import QtGui as qtg
 
 import sounddevice as sd
 import electroacoustical as eac
+from graphing import MatplotlibWidget
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +19,6 @@ logging.basicConfig(level=logging.INFO)
 # https://realpython.com/python-super/#an-overview-of-pythons-super-function
 # super(super_of_which_class?=this class, in_which_object?=self)
 # The parameterless call to super() is recommended and sufficient for most use cases
-
 
 @dataclass
 class Settings:
@@ -450,64 +450,74 @@ class LeftHandForm(qtw.QWidget):
         # ----------------------------------------------------
         self._add_row(SunkenLine())
 
-        # self._add_row(Title("Closed box specifications")
+        self._add_row(Title("Closed box specifications"))
 
-        # self._add_row(FloatSpinBox("Vb", "Box internal volume (l)",
-        #                   "Internal free volume filled by air",
-        #                   ratio_to_SI=1e-3,
-        #                   )
+        self._add_row(FloatSpinBox("Vb", "Internal free volume filled by air",
+                          ratio_to_SI=1e-3,
+                          ),
+                      description="Box internal volume (l)",
+                      )
 
-        # self._add_row(FloatSpinBox("Qa", "Qa - box absorption",
-        #                   "Quality factor of the speaker, mechanical part due to losses in box",
-        #                   decimals=1
-        #                   )
+        self._add_row(FloatSpinBox("Qa", "Quality factor of the speaker, mechanical part due to losses in box",
+                          decimals=1
+                          ),
+                      description="Qa - box absorption",
+                      )
 
-        # self._add_row(SunkenLine()  # ----------------------------------------------------
+        self._add_row(SunkenLine())  # ----------------------------------------------------
 
-        # self._add_row(Title("Second degree of freedom")
+        self._add_row(Title("Second degree of freedom"))
 
-        # self._add_row(FloatSpinBox("k2", "Stiffness (N/mm)",
-        #                   "Stiffness between the second body and the ground",
-        #                   ratio_to_SI=1e3,
-        #                   )
+        self._add_row(FloatSpinBox("k2", "Stiffness between the second body and the ground",
+                          ratio_to_SI=1e3,
+                          ),
+                      description="Stiffness (N/mm)",
+                      )
 
-        # self._add_row(FloatSpinBox("m2", "Mass (g)",
-        #                   "Mass of the second body",
-        #                   ratio_to_SI=1e-3,
-        #                   )
+        self._add_row(FloatSpinBox("m2", "Mass of the second body",
+                          ratio_to_SI=1e-3,
+                          ),
+                      description="Mass (g)",
+                      )
 
-        # self._add_row(FloatSpinBox("c2", "Damping coefficient (kg/s)",
-        #                   "Damping coefficient between the second body and the ground",
-        #                   )
+        self._add_row(FloatSpinBox("c2", "Damping coefficient between the second body and the ground",
+                          ),
+                      description="Damping coefficient (kg/s)",
+                      )
 
-        # self._add_row(SunkenLine()  # ----------------------------------------------------
+        self._add_row(SunkenLine())  # ----------------------------------------------------
 
-        # self._add_row(Title("Electrical Input")
+        self._add_row(Title("Electrical Input"))
 
-        # self._add_row(FloatSpinBox("Rs", "Series resistance",
-        #                   "The resistance between the speaker coil and the voltage source."
-        #                   "\nMay be due to cables, speaker leadwires, connectors etc."
-        #                   "\nCauses resistive loss at the input.",
-        #                   )
+        self._add_row(FloatSpinBox("Rs",
+                          "The resistance between the speaker coil and the voltage source."
+                          "\nMay be due to cables, speaker leadwires, connectors etc."
+                          "\nCauses resistive loss at the input.",
+                          ),
+                      description="Series resistance",
+                      )
 
-        # self._add_row(ComboBox("excitation_unit", "Unit",
-        #                    "Choose which type of input excitation you want to define.",
-        #                    [("Volts", "V"),
-        #                     ("Watts @Rdc", "W"),
-        #                     ("Watss @Rnom", "Wn")
-        #                     ],
-        #                    )
+        self._add_row(ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
+                            [("Volts", "V"),
+                            ("Watts @Rdc", "W"),
+                            ("Watss @Rnom", "Wn")
+                            ],
+                            ),
+                      description="Unit",
+                      )
 
-        # self._add_row(FloatSpinBox("excitation_value", "Excitation value",
-        #                   "The value for input excitation, in units chosen above",
-        #                   )
+        self._add_row(FloatSpinBox("excitation_value", "The value for input excitation, in units chosen above",
+                          ),
+                      description="Excitation value",
+                      )
 
-        # self._add_row(FloatSpinBox("nominal_impedance", "Nominal impedance",
-        #                   "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
-        #                   "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
-        #                   )
+        self._add_row(FloatSpinBox("nominal_impedance", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
+                          "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
+                          ),
+                      description="Nominal impedance",
+                      )
 
-        # self._add_row(SunkenLine()  # ----------------------------------------------------
+        self._add_row(SunkenLine())  # ----------------------------------------------------
 
         # self._add_row(Title("System type")
 
@@ -631,8 +641,7 @@ class MainWindow(qtw.QMainWindow):
     def create_widgets(self):
         self._lh_form = LeftHandForm()
         self._beep_pusbutton = qtw.QPushButton("Beep test")
-        self.graph = qtw.QTableWidget()  # MatplotlibWidget()
-        # Issue with snake_case https://github.com/matplotlib/matplotlib/issues/23816
+        self.graph = MatplotlibWidget()
 
         self._rh_widget = qtw.QWidget()
 
@@ -642,11 +651,14 @@ class MainWindow(qtw.QMainWindow):
         self.setCentralWidget(self._center_widget)
 
         self._center_layout.addWidget(self._lh_form)
+        self._lh_form.setSizePolicy(qtw.QSizePolicy.Fixed, qtw.QSizePolicy.Fixed)
+
         self._center_layout.addWidget(self._rh_widget)
 
         self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
         self._rh_layout.addWidget(self._beep_pusbutton)
         self._rh_layout.addWidget(self.graph)
+        self.graph.setSizePolicy(qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
 
     def make_connections(self):
         self._beep_pusbutton.clicked.connect(
@@ -753,15 +765,13 @@ if __name__ == "__main__":
     args = parse_args(settings)
 
     app = qtw.QApplication.instance()
-    if not app:
+    if not app:  # there is a new recommendation with qApp but how to dod the sys.argv with that?
         app = qtw.QApplication(sys.argv)
 
-    # app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
     sound_engine = SoundEngine(settings)
     sound_engine.start(qtc.QThread.HighPriority)
     sys.excepthook = error_handler
-    # turns out this is not necessary
-    app.aboutToQuit.connect(sound_engine.release_all)
+    # app.aboutToQuit.connect(sound_engine.release_all)  # is this necessary??
 
     def new_window(**kwargs):
         mw = MainWindow(settings, sound_engine, **kwargs)
