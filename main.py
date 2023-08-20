@@ -12,7 +12,7 @@ from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
 from __feature__ import snake_case
-from __feature__ import true_property
+# from __feature__ import true_property  # turned off due to bug https://bugreports.qt.io/browse/PYSIDE-2416
 # doesn't always work.
 # e.g. can't do "main_window.central_widget = my_widget". you need to use set.
 # but can do "line_edit_widget.text = text"
@@ -48,6 +48,11 @@ class Settings:
     freq_bad_beep: float = freq_good_beep / 2
     last_used_folder: str = os.path.expanduser('~')
 
+    def __post_init__(self):
+        self.settings_sys = qtc.QSettings(
+            'kbasaran', f'Speaker Stuff {self.version}')
+        self.read_all_from_system()
+
     def update_attr(self, attr_name, new_val):
         assert type(getattr(self, attr_name)) == type(new_val)
         setattr(self, attr_name, new_val)
@@ -62,10 +67,6 @@ class Settings:
             setattr(self, field.name, self.settings_sys.value(
                 field.name, field.default, type=type(field.default)))
 
-    def __post_init__(self):
-        self.settings_sys = qtc.QSettings(
-            'kbasaran', f'Speaker Stuff {self.version}')
-        self.read_all_from_system()
 
 
 settings = Settings()
@@ -122,6 +123,7 @@ class FloatSpinBox(qtw.QDoubleSpinBox):
                  ):
         self._name = name
         super().__init__()
+        self.tooltip = tooltip  # not working
         self.step_type = qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
         self.decimals = decimals
         if min_max:
@@ -138,6 +140,7 @@ class IntSpinBox(qtw.QSpinBox):
                  ):
         self._name = name
         super().__init__()
+        self.tooltip = tooltip  # not working
         if min_max:
             self.set_range(*min_max)
 
@@ -149,6 +152,7 @@ class LineTextBox(qtw.QLineEdit):
     def __init__(self, name, tooltip):
         self._name = name
         super().__init__()
+        self.tooltip = tooltip  # not working
 
     def add_widget_to(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
@@ -180,7 +184,7 @@ class PushButtonGroup(qtw.QWidget):
         for key, val in names.items():
             name = key + "_button"
             button = qtw.QPushButton(val)
-            button.tool_tip = tooltips[key]
+            button.set_tool_tip(tooltips[key])
             layout.add_widget(button)
             self._buttons[name] = button
 
@@ -199,7 +203,7 @@ class ChoiceButtonGroup(qtw.QWidget):
         layout = qtw.QVBoxLayout(self) if vertical else qtw.QHBoxLayout(self)
         for key, val in names.items():
             button = qtw.QRadioButton(val)
-            button.tool_tip = tooltips[key]
+            button.set_tool_tip(tooltips[key])
             self.button_group.add_button(button, key)
             layout.add_widget(button)
         self.button_group.buttons()[0].set_checked(True)
@@ -213,6 +217,7 @@ class ComboBox(qtw.QComboBox):
                  items: list):
         self._name = name
         super().__init__()
+        self.tooltip = tooltip  # not working
         for item in items:
             self.add_item(*item)  # tuple with userData, therefore *
 
@@ -415,7 +420,7 @@ class LeftHandForm(qtw.QWidget):
                       )
 
         self._add_row(FloatSpinBox("Mms_p3",
-                                   "Moving mass, including coupled air mass ",
+                                   "Moving mass, including coupled air mass",
                                    decimals=3,
                                    ratio_to_SI=1e-3,
                                    ),
@@ -426,29 +431,33 @@ class LeftHandForm(qtw.QWidget):
         # ----------------------------------------------------
         self._add_row(SunkenLine())
 
-        # self._add_row(Title("Motor mechanical specifications")
+        self._add_row(Title("Motor mechanical specifications"))
 
-        # self._add_row(FloatSpinBox("h_top_plate", "Top plate thickness (mm)",
-        #                   "Thickness of the top plate (also called washer)",
-        #                   ratio_to_SI=1e-3,
-        #                   )
+        self._add_row(FloatSpinBox("h_top_plate", "Thickness of the top plate (also called washer)",
+                          ratio_to_SI=1e-3,
+                          ),
+                      description="Top plate thickness (mm)",
+                      )
 
-        # self._add_row(IntSpinBox("airgap_clearance_inner", "Airgap inner clearance (\u03BCm)",
-        #                   "Clearance on the inner side of the coil former",
-        #                   ratio_to_SI=1e-6,
-        #                   )
+        self._add_row(IntSpinBox("airgap_clearance_inner", "Clearance on the inner side of the coil former",
+                          ratio_to_SI=1e-6,
+                          ),
+                      description="Airgap inner clearance (\u03BCm)",
+                      )
 
-        # self._add_row(IntSpinBox("airgap_clearance_outer", "Airgap outer clearance (\u03BCm)",
-        #                   "Clearance on the outer side of the coil windings",
-        #                   ratio_to_SI=1e-6,
-        #                   )
+        self._add_row(IntSpinBox("airgap_clearance_outer", "Clearance on the outer side of the coil windings",
+                          ratio_to_SI=1e-6,
+                          ),
+                      description="Airgap outer clearance (\u03BCm)",
+                      )
 
-        # self._add_row(FloatSpinBox("former_extension_under_coil", "Former bottom ext. (mm)",
-        #                   "Extension of the coil former below the coil windings",
-        #                   ratio_to_SI=1e-3,
-        #                   )
+        self._add_row(FloatSpinBox("former_extension_under_coil", "Extension of the coil former below the coil windings",
+                          ratio_to_SI=1e-3,
+                          ),
+                      description="Former bottom ext. (mm)",
+                      )
 
-        # self._add_row(SunkenLine()  # ----------------------------------------------------
+        self._add_row(SunkenLine())  # ----------------------------------------------------
 
         # self._add_row(Title("Closed box specifications")
 
