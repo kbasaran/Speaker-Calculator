@@ -4,22 +4,13 @@ import traceback
 import numpy as np
 from dataclasses import dataclass, fields
 import json
-import fileinput
-from graphing import MatplotlibWidget
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
-from __feature__ import snake_case
-# from __feature__ import true_property  # turned off due to bug https://bugreports.qt.io/browse/PYSIDE-2416
-# doesn't always work.
-# e.g. can't do "main_window.central_widget = my_widget". you need to use set.
-# but can do "line_edit_widget.text = text"
-
 import sounddevice as sd
 import electroacoustical as eac
-from collections import OrderedDict
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -56,17 +47,16 @@ class Settings:
     def update_attr(self, attr_name, new_val):
         assert type(getattr(self, attr_name)) == type(new_val)
         setattr(self, attr_name, new_val)
-        self.settings_sys.set_value(attr_name, getattr(self, attr_name))
+        self.settings_sys.setValue(attr_name, getattr(self, attr_name))
 
     def write_all_to_system(self):
         for field in fields(self):
-            self.settings_sys.set_value(field.name, getattr(self, field.name))
+            self.settings_sys.setValue(field.name, getattr(self, field.name))
 
     def read_all_from_system(self):
         for field in fields(self):
             setattr(self, field.name, self.settings_sys.value(
                 field.name, field.default, type=type(field.default)))
-
 
 
 settings = Settings()
@@ -123,13 +113,13 @@ class FloatSpinBox(qtw.QDoubleSpinBox):
                  ):
         self._name = name
         super().__init__()
-        self.tooltip = tooltip  # not working
+        self.setToolTip(tooltip)
         self.step_type = qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
         self.decimals = decimals
         if min_max:
-            self.set_range(*min_max)
+            self.setRange(*min_max)
 
-    def add_widget_to(self, user_data_widgets: dict):
+    def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
 
 
@@ -140,11 +130,11 @@ class IntSpinBox(qtw.QSpinBox):
                  ):
         self._name = name
         super().__init__()
-        self.tooltip = tooltip  # not working
+        self.setToolTip(tooltip)
         if min_max:
-            self.set_range(*min_max)
+            self.setRange(*min_max)
 
-    def add_widget_to(self, user_data_widgets: dict):
+    def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
 
 
@@ -152,26 +142,26 @@ class LineTextBox(qtw.QLineEdit):
     def __init__(self, name, tooltip):
         self._name = name
         super().__init__()
-        self.tooltip = tooltip  # not working
+        self.setToolTip(tooltip)
 
-    def add_widget_to(self, user_data_widgets: dict):
+    def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
 
 
 class SunkenLine(qtw.QFrame):
     def __init__(self):
         super().__init__()
-        self.frame_shape = qtw.QFrame.HLine
-        self.frame_shadow = qtw.QFrame.Sunken
-        self.content_margins = (0, 10, 0, 10)
+        self.setFrameShape(qtw.QFrame.HLine)
+        self.setFrameShadow(qtw.QFrame.Sunken)
+        self.setContentsMargins(0, 10, 0, 10)
 
 
 class Title(qtw.QLabel):
     def __init__(self, text):
         super().__init__()
-        self.text = text
-        self.style_sheet = "font-weight: bold"
-        self.alignment = qtg.Qt.AlignmentFlag.AlignCenter
+        self.setText(text)
+        self.setStyleSheet("font-weight: bold")
+        self.setAlignment(qtg.Qt.AlignmentFlag.AlignCenter)
 
 
 class PushButtonGroup(qtw.QWidget):
@@ -184,11 +174,11 @@ class PushButtonGroup(qtw.QWidget):
         for key, val in names.items():
             name = key + "_button"
             button = qtw.QPushButton(val)
-            button.set_tool_tip(tooltips[key])
-            layout.add_widget(button)
+            button.setToolTip(tooltips[key])
+            layout.addWidget(button)
             self._buttons[name] = button
 
-    def add_widget_to(self, user_data_widgets: dict):
+    def user_values_storage(self, user_data_widgets: dict):
         for name, button in self._buttons.items():
             user_data_widgets[name] = button
 
@@ -203,13 +193,13 @@ class ChoiceButtonGroup(qtw.QWidget):
         layout = qtw.QVBoxLayout(self) if vertical else qtw.QHBoxLayout(self)
         for key, val in names.items():
             button = qtw.QRadioButton(val)
-            button.set_tool_tip(tooltips[key])
-            self.button_group.add_button(button, key)
-            layout.add_widget(button)
-        self.button_group.buttons()[0].set_checked(True)
+            button.setToolTip(tooltips[key])
+            self.button_group.addButton(button, key)
+            layout.addWidget(button)
+        self.button_group.buttons()[0].setChecked(True)
 
-    def add_widget_to(self, user_data_widgets: dict):
-        user_data_widgets[self._name] = self
+    def user_values_storage(self, user_data_widgets: dict):
+        user_data_widgets[self._name] = self.button_group
 
 
 class ComboBox(qtw.QComboBox):
@@ -217,11 +207,11 @@ class ComboBox(qtw.QComboBox):
                  items: list):
         self._name = name
         super().__init__()
-        self.tooltip = tooltip  # not working
+        self.setToolTip(tooltip)
         for item in items:
-            self.add_item(*item)  # tuple with userData, therefore *
+            self.addItem(*item)  # tuple with userData, therefore *
 
-    def add_widget_to(self, user_data_widgets: dict):
+    def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
 
 
@@ -250,12 +240,12 @@ class LeftHandForm(qtw.QWidget):
             layout = self.layout()
 
         if description:
-            layout.add_row(description, obj)
+            layout.addRow(description, obj)
         else:
-            layout.add_row(obj)
+            layout.addRow(obj)
 
-        if hasattr(obj, "add_widget_to"):
-            obj.add_widget_to(self._user_input_widgets)
+        if hasattr(obj, "user_values_storage"):
+            obj.user_values_storage(self._user_input_widgets)
 
     def _populate_form(self):
 
@@ -306,19 +296,19 @@ class LeftHandForm(qtw.QWidget):
                                    ("Define Bl, Rdc, Mms", "define_Bl_Re_Mms"),
                                 ],
                                ))
-        self._user_input_widgets["motor_spec_type"].set_style_sheet(
+        self._user_input_widgets["motor_spec_type"].setStyleSheet(
             "font-weight: bold")
 
         # Make a stacked widget for different motor definition parameters
         self.motor_definition_stacked = qtw.QStackedWidget()
         self._user_input_widgets["motor_spec_type"].currentIndexChanged.connect(
-            self.motor_definition_stacked.set_current_index)
+            self.motor_definition_stacked.setCurrentIndex)
 
         self._add_row(self.motor_definition_stacked)
 
         # Make the first page of stacked widget for "Define Coil Dimensions and Average B"
         motor_definition_p1 = SubForm()
-        self.motor_definition_stacked.add_widget(motor_definition_p1)
+        self.motor_definition_stacked.addWidget(motor_definition_p1)
 
         self._add_row(FloatSpinBox("target_Rdc", "Rdc value that needs to be approached while calculating an appropriate coil and winding",
                                    ),
@@ -378,7 +368,7 @@ class LeftHandForm(qtw.QWidget):
 
         # Make the second page of stacked widget for "Define Bl, Rdc, Mmd"
         motor_definition_p2 = SubForm()
-        self.motor_definition_stacked.add_widget(motor_definition_p2)
+        self.motor_definition_stacked.addWidget(motor_definition_p2)
 
         self._add_row(FloatSpinBox("Bl_p2", "Force factor",
                                    ),
@@ -403,7 +393,7 @@ class LeftHandForm(qtw.QWidget):
 
         # Make the third page of stacked widget for "Define Bl, Rdc, Mms"
         motor_definition_p3 = SubForm()
-        self.motor_definition_stacked.add_widget(motor_definition_p3)
+        self.motor_definition_stacked.addWidget(motor_definition_p3)
 
         self._add_row(FloatSpinBox("Bl_p3",
                                    "Force factor",
@@ -434,30 +424,31 @@ class LeftHandForm(qtw.QWidget):
         self._add_row(Title("Motor mechanical specifications"))
 
         self._add_row(FloatSpinBox("h_top_plate", "Thickness of the top plate (also called washer)",
-                          ratio_to_SI=1e-3,
-                          ),
+                                   ratio_to_SI=1e-3,
+                                   ),
                       description="Top plate thickness (mm)",
                       )
 
         self._add_row(IntSpinBox("airgap_clearance_inner", "Clearance on the inner side of the coil former",
-                          ratio_to_SI=1e-6,
-                          ),
+                                 ratio_to_SI=1e-6,
+                                 ),
                       description="Airgap inner clearance (\u03BCm)",
                       )
 
         self._add_row(IntSpinBox("airgap_clearance_outer", "Clearance on the outer side of the coil windings",
-                          ratio_to_SI=1e-6,
-                          ),
+                                 ratio_to_SI=1e-6,
+                                 ),
                       description="Airgap outer clearance (\u03BCm)",
                       )
 
         self._add_row(FloatSpinBox("former_extension_under_coil", "Extension of the coil former below the coil windings",
-                          ratio_to_SI=1e-3,
-                          ),
+                                   ratio_to_SI=1e-3,
+                                   ),
                       description="Former bottom ext. (mm)",
                       )
 
-        self._add_row(SunkenLine())  # ----------------------------------------------------
+        # ----------------------------------------------------
+        self._add_row(SunkenLine())
 
         # self._add_row(Title("Closed box specifications")
 
@@ -534,7 +525,7 @@ class LeftHandForm(qtw.QWidget):
 
     def update_user_form_values(self, values_new: dict):
         no_dict_key_for_widget = set(
-            [key for key in self._user_input_widgets.keys() if "_button" not in key])
+            [key for key in self._user_input_widgets.keys() if "_button" not in key])  # works???????????????????????
         no_widget_for_dict_key = set()
         for key, value_new in values_new.items():
             try:
@@ -545,23 +536,23 @@ class LeftHandForm(qtw.QWidget):
                     obj.clear()
                     # assert all([key in value_new.keys() for key in ["items", "current_index"]])
                     for item in value_new["items"]:
-                        obj.add_item(*item)
-                    obj.current_index = value_new["current_index"]
+                        obj.addItem(*item)
+                    obj.setCurrentIndex(value_new["current_index"])
 
                 elif isinstance(obj, qtw.QLineEdit):
                     assert isinstance(value_new, str)
-                    obj.text = value_new
+                    obj.setText(value_new)
 
                 elif isinstance(obj, qtw.QPushButton):
                     raise TypeError(
                         f"Don't know what to do with value_new={value_new} for button {key}.")
 
                 elif isinstance(obj, qtw.QButtonGroup):
-                    obj.button(value_new).set_checked(True)
+                    obj.button(value_new).setChecked(True)
 
                 else:
-                    assert type(value_new) == type(obj.value)
-                    obj.value = value_new
+                    assert type(value_new) == type(obj.value())
+                    obj.setValue(value_new)
 
                 # finally
                 no_dict_key_for_widget.discard(key)
@@ -583,22 +574,26 @@ class LeftHandForm(qtw.QWidget):
 
             if isinstance(obj, qtw.QComboBox):
                 obj_value = {"items": [], "current_index": 0}
-                for i_item in range(obj.count):
-                    item_text = obj.item_text(i_item)
-                    item_data = obj.item_data(i_item)
+                for i_item in range(obj.count()):
+                    item_text = obj.itemText(i_item)
+                    item_data = obj.itemData(i_item)
                     obj_value["items"].append((item_text, item_data))
-                obj_value["current_index"] = obj.current_index
+                obj_value["current_index"] = obj.currentIndex()
 
             elif isinstance(obj, qtw.QLineEdit):
-                obj_value = obj.text
+                obj_value = obj.text()
 
             elif isinstance(obj, qtw.QButtonGroup):
-                obj_value = obj.checked_id()
+                obj_value = obj.checkedId()
 
             else:
-                obj_value = obj.value
+                obj_value = obj.value()
 
             values[key] = obj_value
+
+        logging.debug("Return of 'get_user_form_values")
+        for val, key in values.items():
+            logging.debug(val, type(val), key, type(key))
 
         return values
 
@@ -623,7 +618,7 @@ class MainWindow(qtw.QMainWindow):
         self.create_core_objects()
         self.create_widgets()
         self.place_widgets()
-        self.add_status_bar()
+        self._add_status_bar()
         self.make_connections()
         if user_form_dict:
             self._lh_form.update_user_form_values(user_form_dict)
@@ -644,14 +639,14 @@ class MainWindow(qtw.QMainWindow):
     def place_widgets(self):
         self._center_widget = qtw.QWidget()
         self._center_layout = qtw.QHBoxLayout(self._center_widget)
-        self.set_central_widget(self._center_widget)
+        self.setCentralWidget(self._center_widget)
 
-        self._center_layout.add_widget(self._lh_form)
-        self._center_layout.add_widget(self._rh_widget)
+        self._center_layout.addWidget(self._lh_form)
+        self._center_layout.addWidget(self._rh_widget)
 
         self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
-        self._rh_layout.add_widget(self._beep_pusbutton)
-        self._rh_layout.add_widget(self.graph)
+        self._rh_layout.addWidget(self._beep_pusbutton)
+        self._rh_layout.addWidget(self.graph)
 
     def make_connections(self):
         self._beep_pusbutton.clicked.connect(
@@ -665,16 +660,16 @@ class MainWindow(qtw.QMainWindow):
             self.load_preset_with_pick_file)
         self._lh_form.signal_new_clicked.connect(self.duplicate_window)
 
-    def add_status_bar(self):
-        self.set_status_bar(qtw.QStatusBar())
-        self.status_bar().show_message("Test", 2000)
+    def _add_status_bar(self):
+        self.setStatusBar(qtw.QStatusBar())
+        self.statusBar().showMessage("Test", 2000)
 
     def save_preset_to_pick_file(self):
 
-        path_unverified = qtw.QFileDialog.get_save_file_name(self, caption='Save to file..',
-                                                             dir=self.global_settings.last_used_folder,
-                                                             filter='Speaker stuff files (*.ssf)',
-                                                             )
+        path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save to file..',
+                                                          dir=self.global_settings.last_used_folder,
+                                                          filter='Speaker stuff files (*.ssf)',
+                                                          )
         # filter not working as expected, saves files without file extension ssf
         try:
             file = path_unverified[0]
@@ -693,10 +688,10 @@ class MainWindow(qtw.QMainWindow):
             f.write(json_string)
 
     def load_preset_with_pick_file(self):
-        file = qtw.QFileDialog.get_open_file_name(self, caption='Open file..',
-                                                  dir=self.global_settings.last_used_folder,
-                                                  filter='Speaker stuff files (*.ssf)',
-                                                  )[0]
+        file = qtw.QFileDialog.getOpenFileName(self, caption='Open file..',
+                                               dir=self.global_settings.last_used_folder,
+                                               filter='Speaker stuff files (*.ssf)',
+                                               )[0]
         if file:
             self.load_preset_file(file)
         else:
@@ -729,11 +724,11 @@ def error_handler(etype, value, tb):
                                   "\nYour application may now be in an unstable state."
                                   "\n\nThis event will be logged unless ignored.",
                                   )
-    message_box.add_button(qtw.QMessageBox.Ignore)
-    close_button = message_box.add_button(qtw.QMessageBox.Close)
+    message_box.addButton(qtw.QMessageBox.Ignore)
+    close_button = message_box.addButton(qtw.QMessageBox.Close)
 
-    message_box.set_escape_button(qtw.QMessageBox.Ignore)
-    message_box.set_default_button(qtw.QMessageBox.Close)
+    message_box.setEscapeButton(qtw.QMessageBox.Ignore)
+    message_box.setDefaultButton(qtw.QMessageBox.Close)
 
     close_button.clicked.connect(logging.warning(error_msg))
 
