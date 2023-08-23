@@ -10,8 +10,8 @@ from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
 import sounddevice as sd
-import electroacoustical as eac
 from graphing import MatplotlibWidget
+import personalized_widgets as pwi
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -105,123 +105,6 @@ class SoundEngine(qtc.QThread):
     def release_all(self):
         self.stream.stop(ignore_errors=True)
 
-
-class FloatSpinBox(qtw.QDoubleSpinBox):
-    def __init__(self, name, tooltip,
-                 decimals=2,
-                 min_max=(0.01, 999.99),
-                 ratio_to_SI=1,
-                 ):
-        self._name = name
-        super().__init__()
-        self.setToolTip(tooltip)
-        self.step_type = qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
-        self.decimals = decimals
-        if min_max:
-            self.setRange(*min_max)
-
-    def user_values_storage(self, user_data_widgets: dict):
-        user_data_widgets[self._name] = self
-
-
-class IntSpinBox(qtw.QSpinBox):
-    def __init__(self, name, tooltip,
-                 min_max=(0.01, 999.99),
-                 ratio_to_SI=1,
-                 ):
-        self._name = name
-        super().__init__()
-        self.setToolTip(tooltip)
-        if min_max:
-            self.setRange(*min_max)
-
-    def user_values_storage(self, user_data_widgets: dict):
-        user_data_widgets[self._name] = self
-
-
-class LineTextBox(qtw.QLineEdit):
-    def __init__(self, name, tooltip):
-        self._name = name
-        super().__init__()
-        self.setToolTip(tooltip)
-
-    def user_values_storage(self, user_data_widgets: dict):
-        user_data_widgets[self._name] = self
-
-
-class SunkenLine(qtw.QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(qtw.QFrame.HLine)
-        self.setFrameShadow(qtw.QFrame.Sunken)
-        self.setContentsMargins(0, 10, 0, 10)
-
-
-class Title(qtw.QLabel):
-    def __init__(self, text):
-        super().__init__()
-        self.setText(text)
-        self.setStyleSheet("font-weight: bold")
-        self.setAlignment(qtg.Qt.AlignmentFlag.AlignCenter)
-
-
-class PushButtonGroup(qtw.QWidget):
-    def __init__(self, names: dict, tooltips: dict, vertical=False):
-        # both names and tooltips have the same keys: short_name's
-        # values for names: text
-        self._buttons = dict()
-        super().__init__()
-        layout = qtw.QVBoxLayout(self) if vertical else qtw.QHBoxLayout(self)
-        for key, val in names.items():
-            name = key + "_pushbutton"
-            button = qtw.QPushButton(val)
-            button.setToolTip(tooltips[key])
-            layout.addWidget(button)
-            self._buttons[name] = button
-
-    def user_values_storage(self, user_data_widgets: dict):
-        for name, button in self._buttons.items():
-            user_data_widgets[name] = button
-
-
-class ChoiceButtonGroup(qtw.QWidget):
-    def __init__(self, group_name, names: dict, tooltips: dict, vertical=False):
-        # keys for names: integers
-        # values for names: text
-        self._name = group_name
-        super().__init__()
-        self.button_group = qtw.QButtonGroup()
-        layout = qtw.QVBoxLayout(self) if vertical else qtw.QHBoxLayout(self)
-        for key, button_name in names.items():
-            button = qtw.QRadioButton(button_name)
-            button.setToolTip(tooltips[key])
-            self.button_group.addButton(button, key)
-            layout.addWidget(button)
-        self.button_group.buttons()[0].setChecked(True)
-
-    def user_values_storage(self, user_data_widgets: dict):
-        user_data_widgets[self._name] = self.button_group
-
-
-class ComboBox(qtw.QComboBox):
-    def __init__(self, name, tooltip,
-                 items: list):
-        self._name = name
-        super().__init__()
-        self.setToolTip(tooltip)
-        for item in items:
-            self.addItem(*item)  # tuple with userData, therefore *
-
-    def user_values_storage(self, user_data_widgets: dict):
-        user_data_widgets[self._name] = self
-
-
-class SubForm(qtw.QWidget):
-    def __init__(self):
-        super().__init__()
-        self._layout = qtw.QFormLayout(self)
-
-
 class LeftHandForm(qtw.QWidget):
     signal_save_clicked = qtc.Signal()
     signal_load_clicked = qtc.Signal()
@@ -251,49 +134,49 @@ class LeftHandForm(qtw.QWidget):
 
     def _populate_form(self):
 
-        self._add_row(PushButtonGroup({"load": "Load", "save": "Save", "new": "New", "beep": "Beeep"},
+        self._add_row(pwi.PushButtonGroup({"load": "Load", "save": "Save", "new": "New", "beep": "Beeep"},
                                       {"load": "Load parameters from a file",
                                        "save": "Save parameters to a file",
                                        "new": "Create another instance of the application, carrying all existing parameters",
                                        "beep": "just beep",
                                        }))
 
-        self._add_row(Title("General speaker specifications"))
+        self._add_row(pwi.Title("General speaker specifications"))
 
-        self._add_row(FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
+        self._add_row(pwi.FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
                                    decimals=1,
                                    min_max=(0.1, settings.f_max),
                                    ),
                       description="fs (Hz)",
                       )
 
-        self._add_row(FloatSpinBox("Qms", "Quality factor of speaker, only the mechanical part",
+        self._add_row(pwi.FloatSpinBox("Qms", "Quality factor of speaker, only the mechanical part",
                                    ),
                       description="Qms",
                       )
 
-        self._add_row(FloatSpinBox("Xmax", "Peak excursion allowed, one way",
+        self._add_row(pwi.FloatSpinBox("Xmax", "Peak excursion allowed, one way",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Xmax (mm)",
                       )
 
-        self._add_row(FloatSpinBox("dead_mass", "Moving mass excluding the coil itself and the air.|n(Dead mass = Mmd - coil mass)",
+        self._add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itself and the air.|n(Dead mass = Mmd - coil mass)",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Dead mass (g)",
                       )
 
-        self._add_row(FloatSpinBox("Sd", "Diaphragm effective surface area",
+        self._add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area",
                                    ratio_to_SI=1e-4,
                                    ),
                       description="Sd (cm²)"
                       )
 
         # ----------------------------------------------------
-        self._add_row(SunkenLine())
+        self._add_row(pwi.SunkenLine())
 
-        self._add_row(ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
+        self._add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
                                [("Define Coil Dimensions and Average B", "define_coil"),
                                 ("Define Bl, Rdc, Mmd", "define_Bl_Re_Mmd"),
                                    ("Define Bl, Rdc, Mms", "define_Bl_Re_Mms"),
@@ -310,36 +193,36 @@ class LeftHandForm(qtw.QWidget):
         self._add_row(self.motor_definition_stacked)
 
         # Make the first page of stacked widget for "Define Coil Dimensions and Average B"
-        motor_definition_p1 = SubForm()
+        motor_definition_p1 = pwi.SubForm()
         self.motor_definition_stacked.addWidget(motor_definition_p1)
 
-        self._add_row(FloatSpinBox("target_Rdc", "Rdc value that needs to be approached while calculating an appropriate coil and winding",
+        self._add_row(pwi.FloatSpinBox("target_Rdc", "Rdc value that needs to be approached while calculating an appropriate coil and winding",
                                    ),
                       description="Target Rdc (ohm)",
                       into_form=motor_definition_p1,
                       )
 
-        self._add_row(FloatSpinBox("former_ID", "Internal diameter of the coil former",
+        self._add_row(pwi.FloatSpinBox("former_ID", "Internal diameter of the coil former",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Coil Former ID (mm)",
                       into_form=motor_definition_p1,
                       )
 
-        self._add_row(IntSpinBox("t_former", "Thickness of the coil former",
+        self._add_row(pwi.IntSpinBox("t_former", "Thickness of the coil former",
                                  ratio_to_SI=1e-6,
                                  ),
                       description="Former thickness (\u03BCm)",
                       into_form=motor_definition_p1,
                       )
 
-        self._add_row(FloatSpinBox("h_winding", "Desired height of the coil winding",
+        self._add_row(pwi.FloatSpinBox("h_winding", "Desired height of the coil winding",
                                    ),
                       description="Coil winding height (mm)",
                       into_form=motor_definition_p1,
                       )
 
-        self._add_row(FloatSpinBox("B_average", "Average B field across the coil windings."
+        self._add_row(pwi.FloatSpinBox("B_average", "Average B field across the coil windings."
                                    "\nNeeds to be calculated separately and input here.",
                                    decimals=3,
                                    ratio_to_SI=1e-3,
@@ -348,20 +231,20 @@ class LeftHandForm(qtw.QWidget):
                       into_form=motor_definition_p1,
                       )
 
-        self._add_row(LineTextBox("N_layer_options", "Enter the number of winding layer options that are accepted."
+        self._add_row(pwi.LineTextBox("N_layer_options", "Enter the number of winding layer options that are accepted."
                                   "\nUse integers with a comma in between, e.g.: '2, 4'",
                                   ),
                       description="Number of layer options",
                       into_form=motor_definition_p1,
                       )
 
-        self._add_row(PushButtonGroup({"update_coil_choices": "Update coil choices"},
+        self._add_row(pwi.PushButtonGroup({"update_coil_choices": "Update coil choices"},
                                       {"update_coil_choices": "Populate the below dropdown with possible coil choices for the given parameters"},
                                       ),
                       into_form=motor_definition_p1,
                       )
 
-        self._add_row(ComboBox("coil_options", "Select coil winding to be used for calculations",
+        self._add_row(pwi.ComboBox("coil_options", "Select coil winding to be used for calculations",
                                [("SV", "data1"),
                                 ("CCAW", "data2"),
                                 ("MEGA", "data3"), ],
@@ -370,22 +253,22 @@ class LeftHandForm(qtw.QWidget):
                       )
 
         # Make the second page of stacked widget for "Define Bl, Rdc, Mmd"
-        motor_definition_p2 = SubForm()
+        motor_definition_p2 = pwi.SubForm()
         self.motor_definition_stacked.addWidget(motor_definition_p2)
 
-        self._add_row(FloatSpinBox("Bl_p2", "Force factor",
+        self._add_row(pwi.FloatSpinBox("Bl_p2", "Force factor",
                                    ),
                       description="Bl (Tm)",
                       into_form=motor_definition_p2,
                       )
 
-        self._add_row(IntSpinBox("Rdc_p2", "DC resistance",
+        self._add_row(pwi.IntSpinBox("Rdc_p2", "DC resistance",
                                  ),
                       description="Rdc (ohm)",
                       into_form=motor_definition_p2,
                       )
 
-        self._add_row(FloatSpinBox("Mmd_p2",
+        self._add_row(pwi.FloatSpinBox("Mmd_p2",
                                    "Moving mass, excluding coupled air mass",
                                    decimals=3,
                                    ratio_to_SI=1e-3,
@@ -395,24 +278,24 @@ class LeftHandForm(qtw.QWidget):
                       )
 
         # Make the third page of stacked widget for "Define Bl, Rdc, Mms"
-        motor_definition_p3 = SubForm()
+        motor_definition_p3 = pwi.SubForm()
         self.motor_definition_stacked.addWidget(motor_definition_p3)
 
-        self._add_row(FloatSpinBox("Bl_p3",
+        self._add_row(pwi.FloatSpinBox("Bl_p3",
                                    "Force factor",
                                    ),
                       description="Bl (Tm)",
                       into_form=motor_definition_p3,
                       )
 
-        self._add_row(IntSpinBox("Rdc_p3",
+        self._add_row(pwi.IntSpinBox("Rdc_p3",
                                  "DC resistance",
                                  ),
                       description="Rdc (ohm)",
                       into_form=motor_definition_p3,
                       )
 
-        self._add_row(FloatSpinBox("Mms_p3",
+        self._add_row(pwi.FloatSpinBox("Mms_p3",
                                    "Moving mass, including coupled air mass",
                                    decimals=3,
                                    ratio_to_SI=1e-3,
@@ -422,79 +305,79 @@ class LeftHandForm(qtw.QWidget):
                       )
 
         # ----------------------------------------------------
-        self._add_row(SunkenLine())
+        self._add_row(pwi.SunkenLine())
 
-        self._add_row(Title("Motor mechanical specifications"))
+        self._add_row(pwi.Title("Motor mechanical specifications"))
 
-        self._add_row(FloatSpinBox("h_top_plate", "Thickness of the top plate (also called washer)",
+        self._add_row(pwi.FloatSpinBox("h_top_plate", "Thickness of the top plate (also called washer)",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Top plate thickness (mm)",
                       )
 
-        self._add_row(IntSpinBox("airgap_clearance_inner", "Clearance on the inner side of the coil former",
+        self._add_row(pwi.IntSpinBox("airgap_clearance_inner", "Clearance on the inner side of the coil former",
                                  ratio_to_SI=1e-6,
                                  ),
                       description="Airgap inner clearance (\u03BCm)",
                       )
 
-        self._add_row(IntSpinBox("airgap_clearance_outer", "Clearance on the outer side of the coil windings",
+        self._add_row(pwi.IntSpinBox("airgap_clearance_outer", "Clearance on the outer side of the coil windings",
                                  ratio_to_SI=1e-6,
                                  ),
                       description="Airgap outer clearance (\u03BCm)",
                       )
 
-        self._add_row(FloatSpinBox("former_extension_under_coil", "Extension of the coil former below the coil windings",
+        self._add_row(pwi.FloatSpinBox("former_extension_under_coil", "Extension of the coil former below the coil windings",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Former bottom ext. (mm)",
                       )
 
         # ----------------------------------------------------
-        self._add_row(SunkenLine())
+        self._add_row(pwi.SunkenLine())
 
-        self._add_row(Title("Closed box specifications"))
+        self._add_row(pwi.Title("Closed box specifications"))
 
-        self._add_row(FloatSpinBox("Vb", "Internal free volume filled by air",
+        self._add_row(pwi.FloatSpinBox("Vb", "Internal free volume filled by air",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Box internal volume (l)",
                       )
 
-        self._add_row(FloatSpinBox("Qa", "Quality factor of the speaker, mechanical part due to losses in box",
+        self._add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker, mechanical part due to losses in box",
                                    decimals=1
                                    ),
                       description="Qa - box absorption",
                       )
 
         # ----------------------------------------------------
-        self._add_row(SunkenLine())
+        self._add_row(pwi.SunkenLine())
 
-        self._add_row(Title("Second degree of freedom"))
+        self._add_row(pwi.Title("Second degree of freedom"))
 
-        self._add_row(FloatSpinBox("k2", "Stiffness between the second body and the ground",
+        self._add_row(pwi.FloatSpinBox("k2", "Stiffness between the second body and the ground",
                                    ratio_to_SI=1e3,
                                    ),
                       description="Stiffness (N/mm)",
                       )
 
-        self._add_row(FloatSpinBox("m2", "Mass of the second body",
+        self._add_row(pwi.FloatSpinBox("m2", "Mass of the second body",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Mass (g)",
                       )
 
-        self._add_row(FloatSpinBox("c2", "Damping coefficient between the second body and the ground",
+        self._add_row(pwi.FloatSpinBox("c2", "Damping coefficient between the second body and the ground",
                                    ),
                       description="Damping coefficient (kg/s)",
                       )
 
         # ----------------------------------------------------
-        self._add_row(SunkenLine())
+        self._add_row(pwi.SunkenLine())
 
-        self._add_row(Title("Electrical Input"))
+        self._add_row(pwi.Title("Electrical Input"))
 
-        self._add_row(FloatSpinBox("Rs",
+        self._add_row(pwi.FloatSpinBox("Rs",
                                    "The resistance between the speaker coil and the voltage source."
                                    "\nMay be due to cables, speaker leadwires, connectors etc."
                                    "\nCauses resistive loss at the input.",
@@ -502,7 +385,7 @@ class LeftHandForm(qtw.QWidget):
                       description="Series resistance",
                       )
 
-        self._add_row(ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
+        self._add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
                                [("Volts", "V"),
                                 ("Watts @Rdc", "W"),
                                    ("Watss @Rnom", "Wn")
@@ -511,23 +394,23 @@ class LeftHandForm(qtw.QWidget):
                       description="Unit",
                       )
 
-        self._add_row(FloatSpinBox("excitation_value", "The value for input excitation, in units chosen above",
+        self._add_row(pwi.FloatSpinBox("excitation_value", "The value for input excitation, in units chosen above",
                                    ),
                       description="Excitation value",
                       )
 
-        self._add_row(FloatSpinBox("nominal_impedance", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
+        self._add_row(pwi.FloatSpinBox("nominal_impedance", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
                                    "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
                                    ),
                       description="Nominal impedance",
                       )
 
         # ----------------------------------------------------
-        self._add_row(SunkenLine())
+        self._add_row(pwi.SunkenLine())
 
-        self._add_row(Title("System type"))
+        self._add_row(pwi.Title("System type"))
 
-        self._add_row(ChoiceButtonGroup("box_type",
+        self._add_row(pwi.ChoiceButtonGroup("box_type",
                                         {0: "Free-air", 1: "Closed box"},
                                         {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
                                             1: "Speaker rear side coupled to a lossy sealed box.",
@@ -536,7 +419,7 @@ class LeftHandForm(qtw.QWidget):
                                         ),
                       )
 
-        self._add_row(ChoiceButtonGroup("dof",
+        self._add_row(pwi.ChoiceButtonGroup("dof",
                                         {0: "1 dof", 1: "2 dof"},
                                         {0: "1 degree of freedom - only the loudspeaker moving mass has mobility.",
                                             1: "2 degrees of freedom - loudspeaker moving mass is attached to a second lump mass that has mobility."},
@@ -552,7 +435,7 @@ class LeftHandForm(qtw.QWidget):
             try:
                 obj = self._user_input_widgets[key]
 
-                if isinstance(obj, qtw.QComboBox):
+                if isinstance(obj, qtw.Qpwi.ComboBox):
                     assert isinstance(value_new, dict)
                     obj.clear()
                     # assert all([key in value_new.keys() for key in ["items", "current_index"]])
@@ -593,7 +476,7 @@ class LeftHandForm(qtw.QWidget):
             if "_button" in key:
                 continue
 
-            if isinstance(obj, qtw.QComboBox):
+            if isinstance(obj, qtw.Qpwi.ComboBox):
                 obj_value = {"items": [], "current_index": 0}
                 for i_item in range(obj.count()):
                     item_text = obj.itemText(i_item)
@@ -654,7 +537,7 @@ class MainWindow(qtw.QMainWindow):
     def _create_widgets(self):
         self._lh_form = LeftHandForm()
         self.graph = MatplotlibWidget()
-        self.graph_data_choice = ChoiceButtonGroup("graph_buttons",
+        self.graph_data_choice = pwi.ChoiceButtonGroup("graph_buttons",
 
                                                    {0: "SPL",
                                                     1: "Impedance",
@@ -675,7 +558,7 @@ class MainWindow(qtw.QMainWindow):
                                                     },
 
                                                    )
-        self.graph_buttons = PushButtonGroup({"update_results": "Update results",
+        self.graph_buttons = pwi.PushButtonGroup({"update_results": "Update results",
                                               "export_curve": "Export curve",
                                               "export_quick": "Quick export",
                                               "import_curve": "Import curve",
