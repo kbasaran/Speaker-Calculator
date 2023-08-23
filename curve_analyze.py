@@ -7,11 +7,13 @@ from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 
 from graphing import MatplotlibWidget
+from signal_tools import Curve
 
 import logging
 logging.basicConfig(level=logging.INFO)
 
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
+
 
 class CurveAnalyze(qtw.QWidget):
 
@@ -39,6 +41,18 @@ class CurveAnalyze(qtw.QWidget):
         pass
 
 
+class CurveList(qtw.QListWidget):
+    def __init__(self):
+        super().__init__()
+
+    @qtc.Slot()
+    def get_chosen_curves(self) -> dict:
+        pass
+
+    def remove_curves(self, ids: list):
+        pass
+
+
 if __name__ == "__main__":
 
     if not (app := qtw.QApplication.instance()):
@@ -46,12 +60,6 @@ if __name__ == "__main__":
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
     mw = CurveAnalyze(settings=None)
-
-    # # do a test plot
-    # x = 100 * 2**np.arange(stop=7, step=7 / 16)
-    # for i in range(1, 5):
-    #     y = 45 + 10 * np.random.random(size=len(x))
-    #     mw.add_line(i, f"Random line {i}", (x, y))
 
     mw.show()
     app.exec()
