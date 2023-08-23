@@ -8,6 +8,8 @@ from PySide6 import QtCore as qtc
 
 from graphing import MatplotlibWidget
 from signal_tools import Curve
+import personalized_widgets as pwi
+import pyperclip  # requires also xclip on Linux
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -28,17 +30,37 @@ class CurveAnalyze(qtw.QWidget):
         self._make_connections()
 
     def _create_core_objects(self):
-        pass
+        self._user_input_widgets = dict()
 
     def _create_widgets(self):
         self._graph = MatplotlibWidget()
+        self._curve_list = CurveList()
+        self._graph_buttons = pwi.PushButtonGroup(
+            {"test_import": "Test import",
+             "test_2": "Test button 2"},
+            {"test_import": "/",
+             "test_2": "/",
+             },
+        )
 
     def _place_widgets(self):
         self.setLayout(qtw.QVBoxLayout())
-        self.layout().addWidget(self._graph)
+        self.layout().addWidget(self._graph, 2)
+        self.layout().addWidget(self._graph_buttons)
+        self.layout().addWidget(self._curve_list)
 
     def _make_connections(self):
-        pass
+        self._graph_buttons.user_values_storage(self._user_input_widgets)
+        self._user_input_widgets["test_import_pushbutton"].clicked.connect(self._test_import_clipboard)
+
+    def _test_import_clipboard(self):
+        data = pyperclip.paste()
+        new_curve = Curve(data)
+        if new_curve.is_Klippel_curve():
+            i = self._graph.add_line2D("test clipboard import", (new_curve.x, new_curve.y))
+            logging.info(f"added line2D: {i}")
+        else:
+            logging.debug("Unrecognized curve object")
 
 
 class CurveList(qtw.QListWidget):

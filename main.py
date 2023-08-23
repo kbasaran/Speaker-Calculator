@@ -113,10 +113,13 @@ class LeftHandForm(qtw.QWidget):
 
     def __init__(self):
         super().__init__()
-        self._user_input_widgets = dict()
-        self._layout = qtw.QFormLayout(self)
+        self._layout = qtw.QFormLayout(self)  # the argument makes already here the "setLayout" for the widget
+        self._create_core_objects()
         self._populate_form()
         self._make_connections()
+
+    def _create_core_objects(self):
+        self._user_input_widgets = dict()
 
     def _add_row(self, obj, description=None, into_form=None):
         if into_form:
@@ -537,7 +540,7 @@ class MainWindow(qtw.QMainWindow):
     def _create_widgets(self):
         self._lh_form = LeftHandForm()
         self.graph = MatplotlibWidget()
-        self.graph_data_choice = pwi.ChoiceButtonGroup("graph_buttons",
+        self.graph_data_choice = pwi.ChoiceButtonGroup("_graph_buttons",
 
                                                    {0: "SPL",
                                                     1: "Impedance",
@@ -558,7 +561,7 @@ class MainWindow(qtw.QMainWindow):
                                                     },
 
                                                    )
-        self.graph_buttons = pwi.PushButtonGroup({"update_results": "Update results",
+        self._graph_buttons = pwi.PushButtonGroup({"update_results": "Update results",
                                               "export_curve": "Export curve",
                                               "export_quick": "Quick export",
                                               "import_curve": "Import curve",
@@ -597,7 +600,7 @@ class MainWindow(qtw.QMainWindow):
             qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
 
         self._rh_layout.addWidget(self.graph_data_choice)
-        self._rh_layout.addWidget(self.graph_buttons)
+        self._rh_layout.addWidget(self._graph_buttons)
         self._rh_layout.addLayout(self.textboxes_layout, 2)
 
 

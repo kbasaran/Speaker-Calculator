@@ -49,17 +49,19 @@ class MatplotlibWidget(qtw.QWidget):
         self.ax.legend()
         self.canvas.draw()
 
-    def update_line(self, name: str, new_data: tuple, description=None):
-        line = self.lines[name]
+    def update_line2D(self, i: int, new_data: tuple, description=None):
+        line = self.lines[i]
         line.set_data(*new_data)
         if description:
             line.set_label(description)
         self.update_canvas()
 
-    def add_line(self, name, description, data, *args, **kwargs):
+    def add_line2D(self, description, data, *args, **kwargs):
         line, = self.ax.semilogx(*data, label=description, *args, **kwargs)
-        self.lines[name] = line
+        i = 0 if len(self.lines) == 0 else max(self.lines) + 1
+        self.lines[i] = line
         self.update_canvas()
+        return i
 
 
 if __name__ == "__main__":
@@ -74,7 +76,7 @@ if __name__ == "__main__":
     x = 100 * 2**np.arange(stop=7, step=7 / 16)
     for i in range(1, 5):
         y = 45 + 10 * np.random.random(size=len(x))
-        mw.add_line(i, f"Random line {i}", (x, y))
+        mw.add_line2D(i, f"Random line {i}", (x, y))
 
     mw.show()
     app.exec()

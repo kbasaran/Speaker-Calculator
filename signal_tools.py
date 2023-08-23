@@ -369,7 +369,7 @@ class Curve:
             self._extract_klippel_parameters()
 
     def is_Klippel_curve(self):
-        # Check if the imported text is indeed a Klippel clipboard export
+        # Check if the imported text is indeed a Klippel export
         if not self.is_Klippel():
             return False
         else:
@@ -388,21 +388,21 @@ class Curve:
 
     def _extract_klippel_parameters(self):
         # Process the imported text
-        klippel_attrs = {"unresolved_attrs": []}
+        self.klippel_attrs = {"unresolved_attrs": []}
         attrs = self.raw_text.split(";")
 
         usable_attrs = [attr.strip() for attr in attrs if (isinstance(attr, str) and len(attr) > 1)]
 
         for attr in usable_attrs:
             # Process any comment lines in the text
-            attr_mod = attr.copy()
+            attr_mod = attr
             lines = attr_mod.splitlines()
             for i, line in enumerate(lines):
                 if len(lines) == i or line[0] != "%":
                     attr_mod = "\n".join(lines[i:])
                     break
                 else:
-                    klippel_attrs["unresolved_attrs"].append(line)
+                    self.klippel_attrs["unresolved_attrs"].append(line)
 
             # Process the variables
             try:
@@ -417,10 +417,10 @@ class Curve:
                                           delimiter="\t",
                                           autostrip=True
                                           )
-                    klippel_attrs[key] = array
+                    self.klippel_attrs[key] = array
                     logging.info(f"Array imported with shape: {array.shape}")
-                elif key not in klippel_attrs.keys():
-                    klippel_attrs[key] = value
+                elif key not in self.klippel_attrs.keys():
+                    self.klippel_attrs[key] = value
                 else:
                     logging.error("Key already exists among the parameters somehow...")
 
@@ -432,19 +432,20 @@ class Curve:
         # Process the keys
         for key, val in self.klippel_attrs.items():
             if key == "Curve":
-                self.set_xy(
-                    np.array(self.klippel_attrs.pop(key))
-                             )[:, 0:1]
+                self.set_xy(np.array(val)[:, :2])
+            elif key == "Data_Legend":
+                self.set_name(val)
 
-        def set_xy(self, xy):
-            assert isinstance(xy, (np.ndarray))
-            assert xy.shape[1] == 2
-            setattr(self, "x", xy[:, 0])
-            setattr(self, "y", xy[:, 1])
-            setattr(self, "xy", xy[:, 0:1])
+    def set_xy(self, xy):
+        assert isinstance(xy, (np.ndarray))
+        assert xy.shape[1] == 2
+        setattr(self, "x", xy[:, 0])
+        setattr(self, "y", xy[:, 1])
+        setattr(self, "xy", xy)
 
-        def set_name(self):
-            pass
+    def set_name(self, name):
+        assert isinstance(name, str)
+        setattr(self, "name", name)
 
 
 def discover_fs_from_time_signature(klippel_export):

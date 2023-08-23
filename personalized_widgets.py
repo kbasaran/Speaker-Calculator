@@ -1,6 +1,7 @@
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtGui as qtg
 
+
 class FloatSpinBox(qtw.QDoubleSpinBox):
     def __init__(self, name, tooltip,
                  decimals=2,
@@ -62,8 +63,9 @@ class Title(qtw.QLabel):
 
 class PushButtonGroup(qtw.QWidget):
     def __init__(self, names: dict, tooltips: dict, vertical=False):
-        # both names and tooltips have the same keys: short_name's
-        # values for names: text
+        """Both names and tooltips have the same keys: short_name's
+        Values for names: text
+        """
         self._buttons = dict()
         super().__init__()
         layout = qtw.QVBoxLayout(self) if vertical else qtw.QHBoxLayout(self)
@@ -81,8 +83,9 @@ class PushButtonGroup(qtw.QWidget):
 
 class ChoiceButtonGroup(qtw.QWidget):
     def __init__(self, group_name, names: dict, tooltips: dict, vertical=False):
-        # keys for names: integers
-        # values for names: text
+        """keys for names: integers
+        values for names: text
+        """
         self._name = group_name
         super().__init__()
         self.button_group = qtw.QButtonGroup()
