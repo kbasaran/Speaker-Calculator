@@ -20,6 +20,7 @@ logging.basicConfig(level=logging.INFO)
 # super(super_of_which_class?=this class, in_which_object?=self)
 # The parameterless call to super() is recommended and sufficient for most use cases
 
+
 @dataclass
 class Settings:
     version: str = '0.2.0'
@@ -72,7 +73,7 @@ class SoundEngine(qtc.QThread):
     def run(self):
         self.start_stream()
         # do a start beep
-        self.beep(1, 200)
+        # self.beep(1, 200)
 
     def start_stream(self):
         self.stream = sd.OutputStream(samplerate=self.FS, channels=2)
@@ -172,7 +173,7 @@ class PushButtonGroup(qtw.QWidget):
         super().__init__()
         layout = qtw.QVBoxLayout(self) if vertical else qtw.QHBoxLayout(self)
         for key, val in names.items():
-            name = key + "_button"
+            name = key + "_pushbutton"
             button = qtw.QPushButton(val)
             button.setToolTip(tooltips[key])
             layout.addWidget(button)
@@ -184,15 +185,15 @@ class PushButtonGroup(qtw.QWidget):
 
 
 class ChoiceButtonGroup(qtw.QWidget):
-    def __init__(self, name, names: dict, tooltips: dict, vertical=False):
+    def __init__(self, group_name, names: dict, tooltips: dict, vertical=False):
         # keys for names: integers
         # values for names: text
-        self._name = name
+        self._name = group_name
         super().__init__()
         self.button_group = qtw.QButtonGroup()
         layout = qtw.QVBoxLayout(self) if vertical else qtw.QHBoxLayout(self)
-        for key, val in names.items():
-            button = qtw.QRadioButton(val)
+        for key, button_name in names.items():
+            button = qtw.QRadioButton(button_name)
             button.setToolTip(tooltips[key])
             self.button_group.addButton(button, key)
             layout.addWidget(button)
@@ -225,6 +226,7 @@ class LeftHandForm(qtw.QWidget):
     signal_save_clicked = qtc.Signal()
     signal_load_clicked = qtc.Signal()
     signal_new_clicked = qtc.Signal()
+    signal_beep_clicked = qtc.Signal()  # no need to write args in this like float, float???
 
     def __init__(self):
         super().__init__()
@@ -249,10 +251,11 @@ class LeftHandForm(qtw.QWidget):
 
     def _populate_form(self):
 
-        self._add_row(PushButtonGroup({"load": "Load", "save": "Save", "new": "New"},
+        self._add_row(PushButtonGroup({"load": "Load", "save": "Save", "new": "New", "beep": "Beeep"},
                                       {"load": "Load parameters from a file",
                                        "save": "Save parameters to a file",
                                        "new": "Create another instance of the application, carrying all existing parameters",
+                                       "beep": "just beep",
                                        }))
 
         self._add_row(Title("General speaker specifications"))
@@ -453,85 +456,93 @@ class LeftHandForm(qtw.QWidget):
         self._add_row(Title("Closed box specifications"))
 
         self._add_row(FloatSpinBox("Vb", "Internal free volume filled by air",
-                          ratio_to_SI=1e-3,
-                          ),
+                                   ratio_to_SI=1e-3,
+                                   ),
                       description="Box internal volume (l)",
                       )
 
         self._add_row(FloatSpinBox("Qa", "Quality factor of the speaker, mechanical part due to losses in box",
-                          decimals=1
-                          ),
+                                   decimals=1
+                                   ),
                       description="Qa - box absorption",
                       )
 
-        self._add_row(SunkenLine())  # ----------------------------------------------------
+        # ----------------------------------------------------
+        self._add_row(SunkenLine())
 
         self._add_row(Title("Second degree of freedom"))
 
         self._add_row(FloatSpinBox("k2", "Stiffness between the second body and the ground",
-                          ratio_to_SI=1e3,
-                          ),
+                                   ratio_to_SI=1e3,
+                                   ),
                       description="Stiffness (N/mm)",
                       )
 
         self._add_row(FloatSpinBox("m2", "Mass of the second body",
-                          ratio_to_SI=1e-3,
-                          ),
+                                   ratio_to_SI=1e-3,
+                                   ),
                       description="Mass (g)",
                       )
 
         self._add_row(FloatSpinBox("c2", "Damping coefficient between the second body and the ground",
-                          ),
+                                   ),
                       description="Damping coefficient (kg/s)",
                       )
 
-        self._add_row(SunkenLine())  # ----------------------------------------------------
+        # ----------------------------------------------------
+        self._add_row(SunkenLine())
 
         self._add_row(Title("Electrical Input"))
 
         self._add_row(FloatSpinBox("Rs",
-                          "The resistance between the speaker coil and the voltage source."
-                          "\nMay be due to cables, speaker leadwires, connectors etc."
-                          "\nCauses resistive loss at the input.",
-                          ),
+                                   "The resistance between the speaker coil and the voltage source."
+                                   "\nMay be due to cables, speaker leadwires, connectors etc."
+                                   "\nCauses resistive loss at the input.",
+                                   ),
                       description="Series resistance",
                       )
 
         self._add_row(ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
-                            [("Volts", "V"),
-                            ("Watts @Rdc", "W"),
-                            ("Watss @Rnom", "Wn")
-                            ],
-                            ),
+                               [("Volts", "V"),
+                                ("Watts @Rdc", "W"),
+                                   ("Watss @Rnom", "Wn")
+                                ],
+                               ),
                       description="Unit",
                       )
 
         self._add_row(FloatSpinBox("excitation_value", "The value for input excitation, in units chosen above",
-                          ),
+                                   ),
                       description="Excitation value",
                       )
 
         self._add_row(FloatSpinBox("nominal_impedance", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
-                          "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
-                          ),
+                                   "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
+                                   ),
                       description="Nominal impedance",
                       )
 
-        self._add_row(SunkenLine())  # ----------------------------------------------------
+        # ----------------------------------------------------
+        self._add_row(SunkenLine())
 
-        # self._add_row(Title("System type")
+        self._add_row(Title("System type"))
 
-        # self._add_row(ChoiceButtonGroup("box_type",
-        #                         {0: "Free-air", 1: "Closed box"},
-        #                         {0: "Free-air", 1: "Closed box"},
-        #                         vertical=False,
-        #                         )
+        self._add_row(ChoiceButtonGroup("box_type",
+                                        {0: "Free-air", 1: "Closed box"},
+                                        {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
+                                            1: "Speaker rear side coupled to a lossy sealed box.",
+                                         },
+                                        vertical=False,
+                                        ),
+                      )
 
-        # self._add_row(ChoiceButtonGroup("dof",
-        #                         {0: "1 dof", 1: "2 dof"},
-        #                         {0: "1 dof", 1: "2 dof"},
-        #                         vertical=False,
-        #                         )
+        self._add_row(ChoiceButtonGroup("dof",
+                                        {0: "1 dof", 1: "2 dof"},
+                                        {0: "1 degree of freedom - only the loudspeaker moving mass has mobility.",
+                                            1: "2 degrees of freedom - loudspeaker moving mass is attached to a second lump mass that has mobility."},
+                                        vertical=False,
+                                        )
+                      )
 
     def update_user_form_values(self, values_new: dict):
         no_dict_key_for_widget = set(
@@ -610,12 +621,14 @@ class LeftHandForm(qtw.QWidget):
     def _make_connections(self):
         def raise_error():
             raise FileExistsError
-        self._user_input_widgets["load_button"].clicked.connect(
+        self._user_input_widgets["load_pushbutton"].clicked.connect(
             self.signal_load_clicked)
-        self._user_input_widgets["save_button"].clicked.connect(
+        self._user_input_widgets["save_pushbutton"].clicked.connect(
             self.signal_save_clicked)
-        self._user_input_widgets["new_button"].clicked.connect(
+        self._user_input_widgets["new_pushbutton"].clicked.connect(
             self.signal_new_clicked)
+        self._user_input_widgets["beep_pushbutton"].clicked.connect(
+            self.signal_beep_clicked)
 
 
 class MainWindow(qtw.QMainWindow):
@@ -625,52 +638,100 @@ class MainWindow(qtw.QMainWindow):
     def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
         self.global_settings = settings
-        self.create_core_objects()
-        self.create_widgets()
-        self.place_widgets()
+        self._create_core_objects()
+        self._create_widgets()
+        self._place_widgets()
         self._add_status_bar()
-        self.make_connections()
+        self._make_connections()
         if user_form_dict:
             self._lh_form.update_user_form_values(user_form_dict)
         elif open_user_file:
             self.load_preset_file(open_user_file)
 
-    def create_core_objects(self):
+    def _create_core_objects(self):
         pass
 
-    def create_widgets(self):
+    def _create_widgets(self):
         self._lh_form = LeftHandForm()
-        self._beep_pusbutton = qtw.QPushButton("Beep test")
         self.graph = MatplotlibWidget()
+        self.graph_data_choice = ChoiceButtonGroup("graph_buttons",
+
+                                                   {0: "SPL",
+                                                    1: "Impedance",
+                                                    2: "Displacement",
+                                                    3: "Relative",
+                                                    4: "Forces",
+                                                    5: "Accelerations",
+                                                    6: "Phase",
+                                                    },
+
+                                                   {0: "/",
+                                                    1: "/",
+                                                    2: "/",
+                                                    3: "/",
+                                                    4: "/",
+                                                    5: "/",
+                                                    6: "/",
+                                                    },
+
+                                                   )
+        self.graph_buttons = PushButtonGroup({"update_results": "Update results",
+                                              "export_curve": "Export curve",
+                                              "export_quick": "Quick export",
+                                              "import_curve": "Import curve",
+                                              "remove_curve": "Remove curve",
+                                              },
+                                             {"update_results": "Update calculated values. Click this when you modify the user input.",
+                                              "export_curve": "Open export menu",
+                                              "export_quick": "Quick export using latest settings",
+                                              "import_curve": "Open import menu",
+                                              "remove_curve": "Open remove curves menu",
+                                              },
+                                             )
+
+        self.results_textbox = qtw.QPlainTextEdit()
+        self.notes_textbox = qtw.QPlainTextEdit()        
+        self.textboxes_layout = qtw.QHBoxLayout()
+        self.textboxes_layout.addWidget(self.results_textbox)
+        self.textboxes_layout.addWidget(self.notes_textbox)
 
         self._rh_widget = qtw.QWidget()
 
-    def place_widgets(self):
+    def _place_widgets(self):
         self._center_widget = qtw.QWidget()
         self._center_layout = qtw.QHBoxLayout(self._center_widget)
         self.setCentralWidget(self._center_widget)
 
         self._center_layout.addWidget(self._lh_form)
-        self._lh_form.setSizePolicy(qtw.QSizePolicy.Fixed, qtw.QSizePolicy.Fixed)
+        self._lh_form.setSizePolicy(
+            qtw.QSizePolicy.Fixed, qtw.QSizePolicy.Fixed)
 
         self._center_layout.addWidget(self._rh_widget)
 
         self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
-        self._rh_layout.addWidget(self._beep_pusbutton)
-        self._rh_layout.addWidget(self.graph)
-        self.graph.setSizePolicy(qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
+        self._rh_layout.addWidget(self.graph, 3)
+        self.graph.setSizePolicy(
+            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
 
-    def make_connections(self):
-        self._beep_pusbutton.clicked.connect(
+        self._rh_layout.addWidget(self.graph_data_choice)
+        self._rh_layout.addWidget(self.graph_buttons)
+        self._rh_layout.addLayout(self.textboxes_layout, 2)
+
+
+    def _make_connections(self):
+
+        self._lh_form.signal_beep_clicked.connect(
             lambda: self.signal_beep.emit(0.5, 100)
-        )
-        self.signal_beep.connect(sound_engine.beep)
-
+            )
         self._lh_form.signal_save_clicked.connect(
             self.save_preset_to_pick_file)
         self._lh_form.signal_load_clicked.connect(
             self.load_preset_with_pick_file)
         self._lh_form.signal_new_clicked.connect(self.duplicate_window)
+
+        self.signal_beep.connect(
+            lambda: sound_engine.beep(1, 220)
+            )  # this is not OK. it is blocking the application
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
@@ -764,9 +825,9 @@ if __name__ == "__main__":
     settings = Settings()
     args = parse_args(settings)
 
-    app = qtw.QApplication.instance()
-    if not app:  # there is a new recommendation with qApp but how to dod the sys.argv with that?
+    if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
+        # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
     sound_engine = SoundEngine(settings)
     sound_engine.start(qtc.QThread.HighPriority)
