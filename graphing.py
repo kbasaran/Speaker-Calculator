@@ -56,8 +56,8 @@ class MatplotlibWidget(qtw.QWidget):
             line.set_label(description)
         self.update_canvas()
 
-    def add_line2D(self, description, data, *args, **kwargs):
-        line, = self.ax.semilogx(*data, label=description, *args, **kwargs)
+    def add_line2D(self, label, data, *args, **kwargs):
+        line, = self.ax.semilogx(*data, label=label, *args, **kwargs)
         i = 0 if len(self.lines) == 0 else max(self.lines) + 1
         self.lines[i] = line
         self.update_canvas()

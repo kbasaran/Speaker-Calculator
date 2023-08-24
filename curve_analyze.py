@@ -10,6 +10,7 @@ from graphing import MatplotlibWidget
 from signal_tools import Curve
 import personalized_widgets as pwi
 import pyperclip  # requires also xclip on Linux
+from functools import partial
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -31,16 +32,19 @@ class CurveAnalyze(qtw.QWidget):
 
     def _create_core_objects(self):
         self._user_input_widgets = dict()
+        self._curves = {}
 
     def _create_widgets(self):
         self._graph = MatplotlibWidget()
         self._curve_list = CurveList()
         self._graph_buttons = pwi.PushButtonGroup(
-            {"test_import": "Test import",
-             "test_2": "Test button 2"},
-            {"test_import": "/",
-             "test_2": "/",
+            {"import": "Import",
+             "import_quick": "Import quick",
+             "process": "Process",
+             "export": "Export",
+             "settings": "Settings",
              },
+            {},
         )
 
     def _place_widgets(self):
@@ -51,14 +55,22 @@ class CurveAnalyze(qtw.QWidget):
 
     def _make_connections(self):
         self._graph_buttons.user_values_storage(self._user_input_widgets)
-        self._user_input_widgets["test_import_pushbutton"].clicked.connect(self._test_import_clipboard)
+        self._user_input_widgets["import_pushbutton"].clicked.connect(partial(self._import_curve, self._read_clipboard))
 
-    def _test_import_clipboard(self):
+    def _import_curve(self, import_fun):
+        new_curve = import_fun()
+        i = max([-1] + list(self._curves.keys())) + 1
+        name = f"{i:02d} - {new_curve.name}"
+        self._graph.add_line2D(name, (new_curve.x, new_curve.y))
+        self._curves[i] = new_curve
+        self._curve_list.addItem(name)
+        logging.info(f"added line2D: {i}")
+
+    def _read_clipboard(self):
         data = pyperclip.paste()
         new_curve = Curve(data)
         if new_curve.is_Klippel_curve():
-            i = self._graph.add_line2D("test clipboard import", (new_curve.x, new_curve.y))
-            logging.info(f"added line2D: {i}")
+            return new_curve
         else:
             logging.debug("Unrecognized curve object")
 
@@ -66,6 +78,7 @@ class CurveAnalyze(qtw.QWidget):
 class CurveList(qtw.QListWidget):
     def __init__(self):
         super().__init__()
+        self.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
 
     @qtc.Slot()
     def get_chosen_curves(self) -> dict:

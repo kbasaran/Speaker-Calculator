@@ -10,7 +10,8 @@ class FloatSpinBox(qtw.QDoubleSpinBox):
                  ):
         self._name = name
         super().__init__()
-        self.setToolTip(tooltip)
+        if tooltip:
+            self.setToolTip(tooltip)
         self.step_type = qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
         self.decimals = decimals
         if min_max:
@@ -27,7 +28,8 @@ class IntSpinBox(qtw.QSpinBox):
                  ):
         self._name = name
         super().__init__()
-        self.setToolTip(tooltip)
+        if tooltip:
+            self.setToolTip(tooltip)
         if min_max:
             self.setRange(*min_max)
 
@@ -39,8 +41,8 @@ class LineTextBox(qtw.QLineEdit):
     def __init__(self, name, tooltip):
         self._name = name
         super().__init__()
-        self.setToolTip(tooltip)
-
+        if tooltip:
+            self.setToolTip(tooltip)
     def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
 
@@ -72,7 +74,8 @@ class PushButtonGroup(qtw.QWidget):
         for key, val in names.items():
             name = key + "_pushbutton"
             button = qtw.QPushButton(val)
-            button.setToolTip(tooltips[key])
+            if key in tooltips:
+                button.setToolTip(tooltips[key])
             layout.addWidget(button)
             self._buttons[name] = button
 
@@ -92,7 +95,8 @@ class ChoiceButtonGroup(qtw.QWidget):
         layout = qtw.QVBoxLayout(self) if vertical else qtw.QHBoxLayout(self)
         for key, button_name in names.items():
             button = qtw.QRadioButton(button_name)
-            button.setToolTip(tooltips[key])
+            if key in tooltips:
+                button.setToolTip(tooltips[key])
             self.button_group.addButton(button, key)
             layout.addWidget(button)
         self.button_group.buttons()[0].setChecked(True)
@@ -106,7 +110,8 @@ class ComboBox(qtw.QComboBox):
                  items: list):
         self._name = name
         super().__init__()
-        self.setToolTip(tooltip)
+        if tooltip:
+            self.setToolTip(tooltip)
         for item in items:
             self.addItem(*item)  # tuple with userData, therefore *
 
