@@ -32,20 +32,23 @@ class CurveAnalyze(qtw.QWidget):
 
     def _create_core_objects(self):
         self._user_input_widgets = dict()
-        self._curves = {}
+        self._curve_data = {}
 
     def _create_widgets(self):
         self._graph = MatplotlibWidget()
-        self._curve_list = CurveList()
+        self._curve_list = qtw.QListWidget()
         self._graph_buttons = pwi.PushButtonGroup(
             {"import": "Import",
-             "import_quick": "Import quick",
+             "import_quick": "Import Quick",
              "process": "Process",
              "export": "Export",
              "settings": "Settings",
              },
             {},
         )
+
+        self._curves_list = qtw.QListWidget()
+        self._curves_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
 
     def _place_widgets(self):
         self.setLayout(qtw.QVBoxLayout())
@@ -55,16 +58,17 @@ class CurveAnalyze(qtw.QWidget):
 
     def _make_connections(self):
         self._graph_buttons.user_values_storage(self._user_input_widgets)
-        self._user_input_widgets["import_pushbutton"].clicked.connect(partial(self._import_curve, self._read_clipboard))
+        self._user_input_widgets["import_pushbutton"].clicked.connect(
+            partial(self._import_curve, self._read_clipboard)
+        )
 
     def _import_curve(self, import_fun):
         new_curve = import_fun()
-        i = max([-1] + list(self._curves.keys())) + 1
-        name = f"{i:02d} - {new_curve.name}"
-        self._graph.add_line2D(name, (new_curve.x, new_curve.y))
-        self._curves[i] = new_curve
-        self._curve_list.addItem(name)
-        logging.info(f"added line2D: {i}")
+        if new_curve:
+            self.add_curve(new_curve)
+        else:
+            # beep bad
+            pass
 
     def _read_clipboard(self):
         data = pyperclip.paste()
@@ -74,18 +78,12 @@ class CurveAnalyze(qtw.QWidget):
         else:
             logging.debug("Unrecognized curve object")
 
-
-class CurveList(qtw.QListWidget):
-    def __init__(self):
-        super().__init__()
-        self.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
-
-    @qtc.Slot()
-    def get_chosen_curves(self) -> dict:
-        pass
-
-    def remove_curves(self, ids: list):
-        pass
+    def add_curve(self, curve):
+        curve_name = f"{self._curve_list.count():02d} - {curve.name}"
+        list_item = qtw.QListWidgetItem(curve_name)
+        self._graph.add_line2D(curve_name, (curve.x, curve.y))
+        self._curve_list.addItem(list_item)
+        self._curve_data[curve_name] = curve
 
 
 if __name__ == "__main__":
