@@ -363,33 +363,25 @@ def test_make_fade_window_t():
 
 
 class Curve:
-    def __init__(self, raw_text):
-        self.raw_text = raw_text.strip()
-        if self.is_Klippel():
-            self._extract_klippel_parameters()
+    def __init__(self, raw_import):
+        self._import_text = raw_import.strip()
+        if self.is_Klippel(self._import_text):
+            self._extract_klippel_parameters(self._import_text)
 
-    def is_Klippel_curve(self):
-        # Check if the imported text is indeed a Klippel export
-        if not self.is_Klippel():
-            return False
+    def is_curve(self):
+        xy_shape = self.get_xy(ndarray=True).shape
+        if xy_shape[0] == 2 and xy_shape[1] > 1:
+            return True
         else:
-            if isinstance(self.raw_text, str):
-                if "Curve = [" not in self.raw_text:
-                    logging.debug("No curve data found.")
-                    return False
-                elif ";" not in self.raw_text or len(self.raw_text) < 10:
-                    logging.debug("Not enough data to read.")
-                    return False
-                else:  # input looks good...
-                    return True
+            return False
 
-    def is_Klippel(self):
-        return (True if (self.raw_text[:18] == "SourceDesc='dB-Lab") else False)
+    def is_Klippel(self, import_text):
+        return (True if (import_text[:18] == "SourceDesc='dB-Lab") else False)
 
-    def _extract_klippel_parameters(self):
+    def _extract_klippel_parameters(self, import_text):
         # Process the imported text
         self.klippel_attrs = {"unresolved_attrs": []}
-        attrs = self.raw_text.split(";")
+        attrs = import_text.split(";")
 
         usable_attrs = [attr.strip() for attr in attrs if (isinstance(attr, str) and len(attr) > 1)]
 
@@ -452,14 +444,17 @@ class Curve:
 
     def get_xy(self, ndarray=False):
         if ndarray:
-            # (2, N) shape
+            # (2, N) shaped
             return getattr(self, "_xy")
         else:
             return getattr(self, "_x"), getattr(self, "_y")
 
     def set_name(self, name):
         assert isinstance(name, str)
-        setattr(self, "name", name)
+        setattr(self, "_name", name)
+
+    def get_name(self):
+        return getattr(self, "_name", None)
 
 
 def discover_fs_from_time_signature(klippel_export):

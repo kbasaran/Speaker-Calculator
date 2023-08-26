@@ -1,6 +1,7 @@
 import os
 import sys
 import numpy as np
+import copy
 
 # from matplotlib.backends.qt_compat import QtWidgets as qtw
 from PySide6 import QtWidgets as qtw
@@ -44,10 +45,11 @@ class CurveAnalyze(qtw.QWidget):
              "export": "Export",
              "settings": "Settings",
              },
-            {},
+            {"import": "Import 2D graph data from clipboard"},
         )
         self._graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
+        self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
         self._curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
@@ -61,7 +63,7 @@ class CurveAnalyze(qtw.QWidget):
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
         self._user_input_widgets["reset_indices_pushbutton"].clicked.connect(self._reset_indices)
-        self._user_input_widgets["process_pushbutton"].clicked.connect(partial(self._process_curve, 2, None))
+        self._user_input_widgets["process_pushbutton"].clicked.connect(self._process_curve)
         self._user_input_widgets["import_pushbutton"].clicked.connect(
             partial(self._import_curve, self._read_clipboard)
         )
@@ -69,7 +71,7 @@ class CurveAnalyze(qtw.QWidget):
     def _read_clipboard(self):
         data = pyperclip.paste()
         new_curve = Curve(data)
-        if new_curve.is_Klippel_curve():
+        if new_curve.is_curve():
             return new_curve
         else:
             logging.debug("Unrecognized curve object")
@@ -78,8 +80,6 @@ class CurveAnalyze(qtw.QWidget):
         labels = []
         for i in range(self._curve_list.count()):
             list_item = self._curve_list.item(i)
-        # for i, list_item in enumerate(self._curve_list.selectedItems()):
-        #     # i = self._curve_list.row(list_item)
             name = list_item.data(qtc.Qt.ItemDataRole.UserRole)["name"]
             name_with_number = f"#{i:02d} - {name}"
             labels.append(name_with_number)
@@ -88,29 +88,28 @@ class CurveAnalyze(qtw.QWidget):
 
     def _add_curve(self, curve):
         i = self._curve_list.count()
-        name_with_number = f"#{i:02d} - {curve.name}"
+        name_with_number = f"#{i:02d} - {curve.get_name()}"
         list_item = qtw.QListWidgetItem(name_with_number)
-        list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"name": curve.name,
-                                                         "curve_raw": curve,
-                                                         "curve_processed": None,
+        list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"name": curve.get_name(),
+                                                         "curve": curve,
+                                                         "processed": False,
                                                          }
                           )
         self._curve_list.addItem(list_item)
-        self._graph.add_line2D(i, name_with_number, *curve.get_xy())
+        self._graph.add_line2D(i, name_with_number, curve.get_xy())
 
 
-    def _process_curve(self, i, process_fun):
-        list_item = self._curve_list.item(i)
-        name_with_number = list_item.text()
-        
-        if list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve_processed"]:
-            curve_current = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve_processed"]
-        else:
-            curve_current = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve_raw"]
-
-        curve_current.set_xy(curve_current.get_xy(ndarray=True) + 5)
-        list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve_processed": curve_current})
-        self._graph.update_line2D(i, name_with_number, curve_current.get_xy(ndarray=True))
+    def _process_curve(self, process_fun):
+        for list_item in self._curve_list.selectedItems():
+            i = self._curve_list.row(list_item)
+            name_with_number_processed = list_item.text() + " - processed"
+            user_data = list_item.data(qtc.Qt.ItemDataRole.UserRole)
+            
+            user_data["curve_processed"] = True
+            curve = user_data["curve"]
+            
+            curve.set_xy(curve.get_xy(ndarray=True) + 5)
+            self._graph.update_line2D(i, name_with_number_processed, curve.get_xy(ndarray=True))
 
 
     def _import_curve(self, import_fun):
@@ -127,6 +126,15 @@ class CurveAnalyze(qtw.QWidget):
             self._curve_list.takeItem(i)
             self._graph.remove_line2D(i)
 
+
+class AutoImporter(qtc.QThread):
+    def __init__(self):
+        super().__init__()
+    
+    def run(self):
+        while True:
+            self.sleep(1)
+            print("hop")
 
 if __name__ == "__main__":
 

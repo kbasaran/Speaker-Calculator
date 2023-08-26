@@ -61,7 +61,7 @@ class MatplotlibWidget(qtw.QWidget):
         self.update_canvas()
 
     def add_line2D(self, i, label, data:tuple, *args, **kwargs):
-        self.ax.semilogx(data, label=label, *args, **kwargs)
+        self.ax.semilogx(*data, label=label, *args, **kwargs)
         self.update_canvas()
 
     def remove_line2D(self, i):
