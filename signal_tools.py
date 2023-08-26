@@ -3,6 +3,7 @@ import numpy as np
 import acoustics as ac  # https://github.com/timmahrt/pyAcoustics
 import soundfile as sf
 import logging
+from scipy import interpolate as intp
 
 
 class TestSignal():
@@ -429,17 +430,23 @@ class Curve:
                 self.set_name(val)
 
     def set_xy(self, xy):
-        assert isinstance(xy, (np.ndarray))
-        if xy.shape[0] == 2:
-            setattr(self, "_x", xy[0, :])
-            setattr(self, "_y", xy[1, :])
-            setattr(self, "_xy", xy)
-        elif xy.shape[1] == 2:
-            setattr(self, "_x", xy[:, 0])
-            setattr(self, "_y", xy[:, 1])
-            setattr(self, "_xy", np.transpose(xy))
+        if isinstance(xy, np.ndarray):
+            if xy.shape[0] == 2:
+                setattr(self, "_x", xy[0, :])
+                setattr(self, "_y", xy[1, :])
+                setattr(self, "_xy", xy)
+            elif xy.shape[1] == 2:
+                setattr(self, "_x", xy[:, 0])
+                setattr(self, "_y", xy[:, 1])
+                setattr(self, "_xy", np.transpose(xy))
+            else:
+                raise ValueError("xy is not an array with two columns or 2 rows")
+        elif isinstance(xy, tuple) and len(xy[0]) == len(xy[1]):
+            setattr(self, "_x", np.array(xy[0]))
+            setattr(self, "_y", np.array(xy[1]))
+            setattr(self, "_xy", np.row_stack([self._x, self._y]))
         else:
-            raise ValueError("xy is not an array with two columns or 2 rows")
+            raise ValueError("xy input unrecognized")
 
 
     def get_xy(self, ndarray=False):
@@ -457,18 +464,17 @@ class Curve:
         return getattr(self, "_name", None)
 
 
-def discover_fs_from_time_signature(klippel_export):
-    if not any(["[ms]" in string for string in klippel_export.unresolved_parts]):
+def discover_fs_from_time_signature(curve):
+    if not any(["[ms]" in string for string in curve.klippel_attrs["unresolved_parts"]]):
         raise TypeError("x array unit is not ms. Cannot process.")
-    pos_0ms = np.where(klippel_export.x == 0)
-    pos_100ms = np.where(klippel_export.x == 100)
+    pos_0ms = np.where(curve.get_xy[0] == 0)
+    pos_100ms = np.where(curve.get_xy[0] == 100)
     if any([len(array) != 1 for array in (pos_0ms, pos_100ms)]):
         raise ValueError("x array does not seem to be linear.")
     return int((pos_100ms[0] - pos_0ms[0]) * 10)
 
 
 def convolve_with_signal(ir, my_sig, ir_FS=None, my_sig_FS=None, trim_zeros=True):
-
     # Input IR is an array
     if isinstance(ir, (list, np.ndarray)):
         if ir_FS is None:
@@ -478,14 +484,14 @@ def convolve_with_signal(ir, my_sig, ir_FS=None, my_sig_FS=None, trim_zeros=True
         y1_FS = ir_FS
 
     # Input IR is a KlippelExportObject object
-    elif isinstance(ir, KlippelExportObject):
+    elif isinstance(ir, Curve):
         if "Impulse Response".lower() not in ir.SourceDesc.lower():
             raise TypeError("Invalid impulse response data. Please use export tab in settings to export.")
-        if not ir.SourceDesc == "Windowed Impulse Response":
+        if not ir.klippel_attrs["SourceDesc"] == "Windowed Impulse Response":
             logging.warning("Suggested to use 'Windowed Impulse Response'"
                             f" instead of current '{ir.SourceDesc}'!"
                             )
-        y1 = ir.y
+        y1 = ir.get_xy[1]
         y1_FS = discover_fs_from_time_signature(ir)
 
     # Input my_sig is an array
@@ -541,6 +547,28 @@ def calculate_third_oct_power_from_pressure(p, FS):
     third_oct_freqs = ac.standards.iec_61672_1_2013.NOMINAL_THIRD_OCTAVE_CENTER_FREQUENCIES
 
     return third_oct_freqs, ac.signal.third_octaves(p, FS, frequencies=third_oct_freqs)[1]
+
+
+def generate_freq_list(freq_start, freq_end, ppo):
+    """
+    Create a numpy array for frequencies to use in calculation.
+    ppo means points per octave
+    makes sure all points fall within defined frequency range
+    """
+    numStart = np.ceil(np.log2(freq_start/1000)*ppo)
+    numEnd = np.floor(np.log2(freq_end/1000)*ppo)
+    freq_array = 1000*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
+    return freq_array
+
+
+def interpolate_to_ppo(x, y, ppo):
+    """
+    Reduce a curve to lesser points
+    """
+    freq_start, freq_end = x[0], x[-1]
+    freqs = generate_freq_list(freq_start, freq_end, ppo)
+    f = intp.interp1d(np.log(x), y, assume_sorted=True, bounds_error=False)
+    return freqs, f(np.log(freqs))
 
 
 if __name__ == "__main__":

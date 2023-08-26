@@ -54,24 +54,28 @@ class MatplotlibWidget(qtw.QWidget):
         self.ax.legend()
         self.canvas.draw()
 
-    def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray):
+    def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray, update_canvas=True):
         line = self.ax.get_lines()[i]
         line.set_data(new_data)
         line.set_label(name_with_number)
-        self.update_canvas()
+        if update_canvas:
+            self.update_canvas()
 
-    def add_line2D(self, i, label, data:tuple, *args, **kwargs):
-        self.ax.semilogx(*data, label=label, *args, **kwargs)
-        self.update_canvas()
+    def add_line2D(self, i, label, data:tuple, update_canvas=True, **kwargs):
+        self.ax.semilogx(*data, label=label, **kwargs)
+        if update_canvas:
+            self.update_canvas()
 
-    def remove_line2D(self, i):
+    def remove_line2D(self, i, update_canvas=True):
         self.ax.get_lines()[i].remove()
-        self.update_canvas()
+        if update_canvas:
+            self.update_canvas()
 
-    def update_labels(self, labels: str):
+    def update_labels(self, labels: str, update_canvas=True):
         for i, line in enumerate(self.ax.get_lines()):
             line.set_label(labels[i])
-        self.update_canvas()
+        if update_canvas:
+            self.update_canvas()
 
 
 if __name__ == "__main__":

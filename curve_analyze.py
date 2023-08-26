@@ -1,14 +1,13 @@
-import os
 import sys
 import numpy as np
-import copy
+import pandas as pd
 
 # from matplotlib.backends.qt_compat import QtWidgets as qtw
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 
 from graphing import MatplotlibWidget
-from signal_tools import Curve
+from signal_tools import Curve, interpolate_to_ppo
 import personalized_widgets as pwi
 import pyperclip  # requires also xclip on Linux
 from functools import partial
@@ -23,7 +22,7 @@ class CurveAnalyze(qtw.QWidget):
 
     signal_good_beep = qtc.Signal()
 
-    def __init__(self, settings):
+    def __init__(self, settings=None):
         super().__init__()
         self._global_settings = settings
         self._create_core_objects()
@@ -41,15 +40,18 @@ class CurveAnalyze(qtw.QWidget):
              "auto_import": "Auto Import",
              "reset_indices": "Reset Indexes",
              "remove": "Remove",
+             "duplicate": "Duplicate",
              "process": "Process",
              "export": "Export",
-             "settings": "Settings",
+              "settings": "Settings",
              },
             {"import": "Import 2D graph data from clipboard"},
         )
         self._graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
+        self._user_input_widgets["duplicate_pushbutton"].setEnabled(False)
+        self._user_input_widgets["settings_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
         self._curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
@@ -63,10 +65,20 @@ class CurveAnalyze(qtw.QWidget):
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
         self._user_input_widgets["reset_indices_pushbutton"].clicked.connect(self._reset_indices)
-        self._user_input_widgets["process_pushbutton"].clicked.connect(self._process_curve)
+        self._user_input_widgets["process_pushbutton"].clicked.connect(partial(self._process_curve, interpolate_to_ppo, ppo=48))
+        self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
         self._user_input_widgets["import_pushbutton"].clicked.connect(
             partial(self._import_curve, self._read_clipboard)
         )
+
+    def _export_to_clipboard(self):
+        if len(self._curve_list.selectedItems()) > 1:
+            raise NotImplementedError("Can export only one curve at a time")
+        else:
+            list_item = self._curve_list.selectedItems()[0]
+            curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
+            xy = np.transpose(curve.get_xy())
+            pd.DataFrame(xy, columns=["frequency", "value"]).to_clipboard(excel=True, index=False)
 
     def _read_clipboard(self):
         data = pyperclip.paste()
@@ -99,7 +111,7 @@ class CurveAnalyze(qtw.QWidget):
         self._graph.add_line2D(i, name_with_number, curve.get_xy())
 
 
-    def _process_curve(self, process_fun):
+    def _process_curve(self, process_fun, **kwargs):
         for list_item in self._curve_list.selectedItems():
             i = self._curve_list.row(list_item)
             name_with_number_processed = list_item.text() + " - processed"
@@ -108,8 +120,9 @@ class CurveAnalyze(qtw.QWidget):
             user_data["curve_processed"] = True
             curve = user_data["curve"]
             
-            curve.set_xy(curve.get_xy(ndarray=True) + 5)
-            self._graph.update_line2D(i, name_with_number_processed, curve.get_xy(ndarray=True))
+            curve.set_xy(process_fun(*curve.get_xy(), **kwargs))
+            self._graph.update_line2D(i, name_with_number_processed, curve.get_xy(ndarray=True), update_canvas=False)
+        self._graph.update_canvas()
 
 
     def _import_curve(self, import_fun):
@@ -124,7 +137,8 @@ class CurveAnalyze(qtw.QWidget):
         for list_item in self._curve_list.selectedItems():
             i = self._curve_list.row(list_item)
             self._curve_list.takeItem(i)
-            self._graph.remove_line2D(i)
+            self._graph.remove_line2D(i, update_canvas=False)
+        self._graph.update_canvas()
 
 
 class AutoImporter(qtc.QThread):
@@ -142,7 +156,7 @@ if __name__ == "__main__":
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
-    mw = CurveAnalyze(settings=None)
+    mw = CurveAnalyze()
 
     mw.show()
     app.exec()
