@@ -438,10 +438,24 @@ class Curve:
 
     def set_xy(self, xy):
         assert isinstance(xy, (np.ndarray))
-        assert xy.shape[1] == 2
-        setattr(self, "x", xy[:, 0])
-        setattr(self, "y", xy[:, 1])
-        setattr(self, "xy", xy)
+        if xy.shape[0] == 2:
+            setattr(self, "_x", xy[0, :])
+            setattr(self, "_y", xy[1, :])
+            setattr(self, "_xy", xy)
+        elif xy.shape[1] == 2:
+            setattr(self, "_x", xy[:, 0])
+            setattr(self, "_y", xy[:, 1])
+            setattr(self, "_xy", np.transpose(xy))
+        else:
+            raise ValueError("xy is not an array with two columns or 2 rows")
+
+
+    def get_xy(self, ndarray=False):
+        if ndarray:
+            # (2, N) shape
+            return getattr(self, "_xy")
+        else:
+            return getattr(self, "_x"), getattr(self, "_y")
 
     def set_name(self, name):
         assert isinstance(name, str)

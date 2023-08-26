@@ -9,6 +9,9 @@ from matplotlib.figure import Figure
 
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 class MatplotlibWidget(qtw.QWidget):
     def __init__(self):
         super().__init__()
@@ -24,14 +27,16 @@ class MatplotlibWidget(qtw.QWidget):
         # Ideally one would use self.addToolBar here, but it is slightly
         # incompatible between PyQt6 and other bindings, so we just add the
         # toolbar as a plain widget instead.
-        layout.addWidget(NavigationToolbar(self.canvas, self))
+        self.navigation_toolbar = NavigationToolbar(self.canvas, self)
+        layout.addWidget(self.navigation_toolbar)
+        # print(self.navigation_toolbar.layout().itemAt(3).tooltip())
         layout.addWidget(self.canvas)
         
         self.ax = self.canvas.figure.subplots()
         self.ax.grid(which='minor')
         
-        self.lines = {}  # dictionary of lines
-        # https://matplotlib.org/stable/api/_as_gen/matplotlib.lines.Line2D.html
+        # self._lines = {}  # dictionary of _lines
+        # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.Line2D.html
 
     def update_canvas(self):
 
@@ -41,27 +46,32 @@ class MatplotlibWidget(qtw.QWidget):
         def floor_to_multiple(number, multiple=5):
             return multiple * np.floor((number - 2) / multiple)
 
-        if len(self.lines):
-            y_min = floor_to_multiple(np.min(np.concatenate([line.get_ydata() for line in self.lines.values()])))
-            y_max = ceil_to_multiple(np.max(np.concatenate([line.get_ydata() for line in self.lines.values()])))
+        if len(self.ax.get_lines()):
+            y_min = floor_to_multiple(np.min(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
+            y_max = ceil_to_multiple(np.max(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
             self.ax.set_ylim((y_min, y_max))
 
         self.ax.legend()
         self.canvas.draw()
 
-    def update_line2D(self, i: int, new_data: tuple, description=None):
-        line = self.lines[i]
-        line.set_data(*new_data)
-        if description:
-            line.set_label(description)
+    def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray):
+        line = self.ax.get_lines()[i]
+        line.set_data(new_data)
+        line.set_label(name_with_number)
         self.update_canvas()
 
-    def add_line2D(self, label, data, *args, **kwargs):
-        line, = self.ax.semilogx(*data, label=label, *args, **kwargs)
-        i = 0 if len(self.lines) == 0 else max(self.lines) + 1
-        self.lines[i] = line
+    def add_line2D(self, i, label, data:tuple, *args, **kwargs):
+        self.ax.semilogx(data, label=label, *args, **kwargs)
         self.update_canvas()
-        return i
+
+    def remove_line2D(self, i):
+        self.ax.get_lines()[i].remove()
+        self.update_canvas()
+
+    def update_labels(self, labels: str):
+        for i, line in enumerate(self.ax.get_lines()):
+            line.set_label(labels[i])
+        self.update_canvas()
 
 
 if __name__ == "__main__":
