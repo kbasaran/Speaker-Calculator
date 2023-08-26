@@ -6,6 +6,8 @@ from matplotlib.backends.backend_qtagg import (
     FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+plt.rcParams["figure.constrained_layout.h_pad"] = 0.3
+plt.rcParams["figure.constrained_layout.w_pad"] = 0.4
 
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
@@ -23,6 +25,7 @@ class MatplotlibWidget(qtw.QWidget):
             print(f"Desired style '{desired_style}' not available.")
 
         fig = Figure()
+        fig.set_layout_engine("constrained")
         self.canvas = FigureCanvas(fig)
         # Ideally one would use self.addToolBar here, but it is slightly
         # incompatible between PyQt6 and other bindings, so we just add the
