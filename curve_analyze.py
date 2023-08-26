@@ -110,20 +110,19 @@ class CurveAnalyze(qtw.QWidget):
         self._curve_list.addItem(list_item)
         self._graph.add_line2D(i, name_with_number, curve.get_xy())
 
-
     def _process_curve(self, process_fun, **kwargs):
         for list_item in self._curve_list.selectedItems():
             i = self._curve_list.row(list_item)
-            name_with_number_processed = list_item.text() + " - processed"
-            user_data = list_item.data(qtc.Qt.ItemDataRole.UserRole)
+            name_with_number_after_processing = list_item.text() + " - processed"
+            list_item_user_data = list_item.data(qtc.Qt.ItemDataRole.UserRole)
             
-            user_data["curve_processed"] = True
-            curve = user_data["curve"]
+            list_item_user_data["curve_processed"] = True
+            curve = list_item_user_data["curve"]
             
             curve.set_xy(process_fun(*curve.get_xy(), **kwargs))
-            self._graph.update_line2D(i, name_with_number_processed, curve.get_xy(ndarray=True), update_canvas=False)
+            self._graph.update_line2D(i, name_with_number_after_processing, curve.get_xy(ndarray=True), update_canvas=False)
+            list_item.setText(name_with_number_after_processing)
         self._graph.update_canvas()
-
 
     def _import_curve(self, import_fun):
         new_curve = import_fun()
