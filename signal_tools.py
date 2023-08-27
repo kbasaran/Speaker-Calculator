@@ -104,7 +104,7 @@ class TestSignal():
 
         self.make_time_array(**kwargs)
 
-        self.raw_import_analysis = (f"File name: {self.import_file_name}"
+        self.initial_data_analysis = (f"File name: {self.import_file_name}"
                                     + f"\nOriginal channel count: {self.imported_channel_count}"
                                     + f"\nImported channel: {str(self.imported_channel + 1) if isinstance(self.imported_channel, int) else self.imported_channel}"
                                     # integer count for user, starting from 1
@@ -150,7 +150,7 @@ class TestSignal():
         self.analysis = (f"Signal type: {self.sig_type}")
 
         if self.sig_type == "Imported":
-            self.analysis += ("\n" + self.raw_import_analysis)
+            self.analysis += ("\n" + self.initial_data_analysis)
 
         self.analysis += (f"\nCrest Factor: {self.CF:.4g}x, {self.CFdB:.2f}dB"
                           + f"\nRMS: {self.RMS:.5g}"
@@ -364,10 +364,16 @@ def test_make_fade_window_t():
 
 
 class Curve:
-    def __init__(self, raw_import):
-        self._import_text = raw_import.strip()
-        if self.is_Klippel(self._import_text):
-            self._extract_klippel_parameters(self._import_text)
+    def __init__(self, initial_data):
+        if isinstance(initial_data, str):
+            self._initial_data = initial_data.strip()
+            if self.is_Klippel(self._initial_data):
+                self._extract_klippel_parameters(self._initial_data)
+            else:
+                self.set_xy(initial_data)
+        else:
+            self._initial_data = initial_data
+            self.set_xy(initial_data)
 
     def is_curve(self):
         xy_shape = self.get_xy(ndarray=True).shape
@@ -426,6 +432,9 @@ class Curve:
         for key, val in self.klippel_attrs.items():
             if key == "Curve":
                 self.set_xy(np.array(val)[:, :2])
+                # randomize
+                x, y = self.get_xy()
+                self.set_xy((x, y + np.random.randint(0, high=21)))
             elif key == "Data_Legend":
                 self.set_name(val)
 
@@ -549,26 +558,54 @@ def calculate_third_oct_power_from_pressure(p, FS):
     return third_oct_freqs, ac.signal.third_octaves(p, FS, frequencies=third_oct_freqs)[1]
 
 
-def generate_freq_list(freq_start, freq_end, ppo):
+def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000):
     """
     Create a numpy array for frequencies to use in calculation.
     ppo means points per octave
     makes sure all points fall within defined frequency range
     """
-    numStart = np.ceil(np.log2(freq_start/1000)*ppo)
-    numEnd = np.floor(np.log2(freq_end/1000)*ppo)
-    freq_array = 1000*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
+    numStart = np.ceil(np.log2(freq_start/must_include_freq)*ppo)
+    numEnd = np.floor(np.log2(freq_end/must_include_freq)*ppo)
+    freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
 
-def interpolate_to_ppo(x, y, ppo):
+def interpolate_to_ppo(x, y, ppo, must_include_freq=1000):
     """
     Reduce a curve to lesser points
     """
     freq_start, freq_end = x[0], x[-1]
     freqs = generate_freq_list(freq_start, freq_end, ppo)
-    f = intp.interp1d(np.log(x), y, assume_sorted=True, bounds_error=False)
+    f = intp.interp1d(np.log(x), y, assume_sorted=True, bounds_error=False, must_include_freq=must_include_freq)
     return freqs, f(np.log(freqs))
+
+
+def arrays_are_equal(arrays):
+    for i in range(1, len(arrays)):
+        if not np.array_equal(arrays[0], arrays[i]):
+            return False
+    return True
+
+def median_of_curves(curves_xy: list, ppo=96):
+    """
+    Calculate median of curves
+
+    Parameters
+    ----------
+    curves_xy : list
+        Receives list of tuples where each tuple is an x,y array.
+
+    Returns
+    -------
+    tuple for x and y
+
+    """
+    if arrays_are_equal([x for x, y in curves_xy]):
+        y_arrays = np.column_stack([y for x, y in curves_xy])
+        y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))
+
+    print(y_median.shape)
+    return Curve((curves_xy[0][0], y_median))
 
 
 if __name__ == "__main__":

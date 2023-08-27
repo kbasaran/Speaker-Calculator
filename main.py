@@ -105,7 +105,7 @@ class SoundEngine(qtc.QThread):
     def release_all(self):
         self.stream.stop(ignore_errors=True)
 
-class LeftHandForm(qtw.QWidget):
+class UserForm(qtw.QWidget):
     signal_save_clicked = qtc.Signal()
     signal_load_clicked = qtc.Signal()
     signal_new_clicked = qtc.Signal()
@@ -538,7 +538,7 @@ class MainWindow(qtw.QMainWindow):
         pass
 
     def _create_widgets(self):
-        self._lh_form = LeftHandForm()
+        self._lh_form = UserForm()
         self.graph = MatplotlibWidget()
         self.graph_data_choice = pwi.ChoiceButtonGroup("_graph_buttons",
 

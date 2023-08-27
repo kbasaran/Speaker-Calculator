@@ -7,6 +7,7 @@ class FloatSpinBox(qtw.QDoubleSpinBox):
                  decimals=2,
                  min_max=(0.01, 999.99),
                  ratio_to_SI=1,
+                 user_data_widgets=None,
                  ):
         self._name = name
         super().__init__()
@@ -16,6 +17,8 @@ class FloatSpinBox(qtw.QDoubleSpinBox):
         self.decimals = decimals
         if min_max:
             self.setRange(*min_max)
+        if user_data_widgets is not None:
+            self.user_values_storage(user_data_widgets)
 
     def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
@@ -23,8 +26,9 @@ class FloatSpinBox(qtw.QDoubleSpinBox):
 
 class IntSpinBox(qtw.QSpinBox):
     def __init__(self, name, tooltip,
-                 min_max=(0.01, 999.99),
+                 min_max=(0, 999999),
                  ratio_to_SI=1,
+                 user_data_widgets=None
                  ):
         self._name = name
         super().__init__()
@@ -32,17 +36,22 @@ class IntSpinBox(qtw.QSpinBox):
             self.setToolTip(tooltip)
         if min_max:
             self.setRange(*min_max)
+        if user_data_widgets is not None:
+            self.user_values_storage(user_data_widgets)
 
     def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
 
 
 class LineTextBox(qtw.QLineEdit):
-    def __init__(self, name, tooltip):
+    def __init__(self, name, tooltip, user_data_widgets=None):
         self._name = name
         super().__init__()
         if tooltip:
             self.setToolTip(tooltip)
+        if user_data_widgets is not None:
+            self.user_values_storage(user_data_widgets)
+
     def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
 
@@ -64,7 +73,7 @@ class Title(qtw.QLabel):
 
 
 class PushButtonGroup(qtw.QWidget):
-    def __init__(self, names: dict, tooltips: dict, vertical=False):
+    def __init__(self, names: dict, tooltips: dict, vertical=False, user_data_widgets=None):
         """Both names and tooltips have the same keys: short_name's
         Values for names: text
         """
@@ -78,14 +87,18 @@ class PushButtonGroup(qtw.QWidget):
                 button.setToolTip(tooltips[key])
             layout.addWidget(button)
             self._buttons[name] = button
+        if user_data_widgets is not None:
+            self.user_values_storage(user_data_widgets)
 
     def user_values_storage(self, user_data_widgets: dict):
         for name, button in self._buttons.items():
             user_data_widgets[name] = button
 
+    def buttons(self) -> dict:
+        return self._buttons
 
 class ChoiceButtonGroup(qtw.QWidget):
-    def __init__(self, group_name, names: dict, tooltips: dict, vertical=False):
+    def __init__(self, group_name, names: dict, tooltips: dict, vertical=False, user_data_widgets=None):
         """keys for names: integers
         values for names: text
         """
@@ -100,20 +113,28 @@ class ChoiceButtonGroup(qtw.QWidget):
             self.button_group.addButton(button, key)
             layout.addWidget(button)
         self.button_group.buttons()[0].setChecked(True)
+        if user_data_widgets is not None:
+            self.user_values_storage(user_data_widgets)
 
     def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self.button_group
 
+    def buttons(self) -> list:
+        return self.self.button_group.buttons()
 
 class ComboBox(qtw.QComboBox):
-    def __init__(self, name, tooltip,
-                 items: list):
+    def __init__(self, name,
+                 tooltip,
+                 items: list,
+                 user_data_widgets=None):
         self._name = name
         super().__init__()
         if tooltip:
             self.setToolTip(tooltip)
         for item in items:
             self.addItem(*item)  # tuple with userData, therefore *
+        if user_data_widgets is not None:
+            self.user_values_storage(user_data_widgets)
 
     def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
