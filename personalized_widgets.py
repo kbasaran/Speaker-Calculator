@@ -1,5 +1,63 @@
+import os
+
 from PySide6 import QtWidgets as qtw
+from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
+
+from dataclasses import dataclass, fields
+
+import logging
+logging.basicConfig(level=logging.INFO)
+
+
+@dataclass
+class Settings:
+    version: str = '0.2.0'
+    GAMMA: float = 1.401  # adiabatic index of air
+    P0: int = 101325
+    RHO: float = 1.1839  # 25 degrees celcius
+    Kair: float = 101325 * RHO
+    c_air: float = (P0 * GAMMA / RHO)**0.5
+    vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
+    f_min: int = 10
+    f_max: int = 3000
+    ppo: int = 48 * 8
+    FS: int = 48000
+    A_beep: int = 0.1
+    T_beep = 0.1
+    freq_good_beep: float = 1175
+    freq_bad_beep: float = freq_good_beep / 2
+    last_used_folder: str = os.path.expanduser('~')
+    import_ppo: int = 0
+    export_ppo: int = 96
+
+    def __post_init__(self):
+        self.settings_sys = qtc.QSettings(
+            'kbasaran', f'Speaker Stuff {self.version}')
+        self.read_all_from_system()
+
+    def update_attr(self, attr_name, new_val):
+        assert type(getattr(self, attr_name)) == type(new_val)
+        setattr(self, attr_name, new_val)
+        self.settings_sys.setValue(attr_name, getattr(self, attr_name))
+
+    def write_all_to_system(self):
+        for field in fields(self):
+            self.settings_sys.setValue(field.name, getattr(self, field.name))
+
+    def read_all_from_system(self):
+        for field in fields(self):
+            setattr(self, field.name, self.settings_sys.value(
+                field.name, field.default, type=type(field.default)))
+
+    def as_dict(self):
+        settings = {}
+        for field in fields(self):
+            settings[field] = getattr(self, field.name)
+        return settings
+
+    def __repr__(self):
+        return str(self.as_dict())
 
 
 class FloatSpinBox(qtw.QDoubleSpinBox):
@@ -144,3 +202,101 @@ class SubForm(qtw.QWidget):
     def __init__(self):
         super().__init__()
         self._layout = qtw.QFormLayout(self)
+        
+
+class UserForm(qtw.QWidget):
+    def __init__(self):
+        super().__init__()
+        self._layout = qtw.QFormLayout(self)  # the argument makes already here the "setLayout" for the widget
+        self._create_core_objects()
+
+    def _create_core_objects(self):
+        self._user_input_widgets = dict()
+
+    def add_row(self, obj, description=None, into_form=None):
+        if into_form:
+            layout = into_form.layout()
+        else:
+            layout = self.layout()
+
+        if description:
+            layout.addRow(description, obj)
+        else:
+            layout.addRow(obj)
+
+        if hasattr(obj, "user_values_storage"):
+            obj.user_values_storage(self._user_input_widgets)
+
+    def update_form_values(self, values_new: dict):
+        no_dict_key_for_widget = set(
+            [key for key in self._user_input_widgets.keys() if "_button" not in key])  # works???????????????????????
+        no_widget_for_dict_key = set()
+        for key, value_new in values_new.items():
+            try:
+                obj = self._user_input_widgets[key]
+
+                if isinstance(obj, qtw.Qpwi.ComboBox):
+                    assert isinstance(value_new, dict)
+                    obj.clear()
+                    # assert all([key in value_new.keys() for key in ["items", "current_index"]])
+                    for item in value_new["items"]:
+                        obj.addItem(*item)
+                    obj.setCurrentIndex(value_new["current_index"])
+
+                elif isinstance(obj, qtw.QLineEdit):
+                    assert isinstance(value_new, str)
+                    obj.setText(value_new)
+
+                elif isinstance(obj, qtw.QPushButton):
+                    raise TypeError(
+                        f"Don't know what to do with value_new={value_new} for button {key}.")
+
+                elif isinstance(obj, qtw.QButtonGroup):
+                    obj.button(value_new).setChecked(True)
+
+                else:
+                    assert type(value_new) == type(obj.value())
+                    obj.setValue(value_new)
+
+                # finally
+                no_dict_key_for_widget.discard(key)
+
+            except KeyError:
+                no_widget_for_dict_key.update((key,))
+
+        if no_widget_for_dict_key | no_dict_key_for_widget:
+            raise ValueError(f"No widget(s) found for the keys: '{no_widget_for_dict_key}'\n"
+                             f"No data found to update the widget(s): '{no_dict_key_for_widget}'"
+                             )
+
+    def get_form_values(self) -> dict:
+        values = {}
+        for key, obj in self._user_input_widgets.items():
+
+            if "_button" in key:
+                continue
+
+            if isinstance(obj, qtw.Qpwi.ComboBox):
+                obj_value = {"items": [], "current_index": 0}
+                for i_item in range(obj.count()):
+                    item_text = obj.itemText(i_item)
+                    item_data = obj.itemData(i_item)
+                    obj_value["items"].append((item_text, item_data))
+                obj_value["current_index"] = obj.currentIndex()
+
+            elif isinstance(obj, qtw.QLineEdit):
+                obj_value = obj.text()
+
+            elif isinstance(obj, qtw.QButtonGroup):
+                obj_value = obj.checkedId()
+
+            else:
+                obj_value = obj.value()
+
+            values[key] = obj_value
+
+        logging.debug("Return of 'get_form_values")
+        for val, key in values.items():
+            logging.debug(val, type(val), key, type(key))
+
+        return values

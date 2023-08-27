@@ -376,11 +376,12 @@ class Curve:
             self.set_xy(initial_data)
 
     def is_curve(self):
-        xy_shape = self.get_xy(ndarray=True).shape
-        if xy_shape[0] == 2 and xy_shape[1] > 1:
+        xy = self.get_xy(ndarray=True)
+        if (xy is not None) and (xy.shape[0] == 2) and (xy.shape[1] > 1):
             return True
         else:
             return False
+
 
     def is_Klippel(self, import_text):
         return (True if (import_text[:18] == "SourceDesc='dB-Lab") else False)
@@ -450,10 +451,48 @@ class Curve:
                 setattr(self, "_xy", np.transpose(xy))
             else:
                 raise ValueError("xy is not an array with two columns or 2 rows")
+
         elif isinstance(xy, tuple) and len(xy[0]) == len(xy[1]):
             setattr(self, "_x", np.array(xy[0]))
             setattr(self, "_y", np.array(xy[1]))
             setattr(self, "_xy", np.row_stack([self._x, self._y]))
+
+        elif isinstance(xy, str):
+            i_start, i_stop = 0, 0
+            lines = xy.splitlines()
+
+            for i, line in enumerate(lines):
+                parts = line.split("\t")
+                try:
+                    parts = [float(part) for part in parts]
+                    # print(parts)
+                    assert len(parts) == 2
+                    i_start = i
+                    break
+                except Exception:
+                    # print("failed start " + str(i), str(e))
+                    continue
+
+            for i, line in enumerate(reversed(lines)):
+                parts = line.split("\t")
+                try:
+                    parts = [float(part) for part in parts]
+                    assert len(parts) == 2
+                    i_stop = len(lines) - i
+                    break
+                except Exception:
+                    # print("failed end " + str(i), str(e))
+                    continue
+            # print(i_start, i_stop)
+            if i_stop - i_start > 1:
+                parts = [line.split("\t") for line in lines[i_start:i_stop]]
+                x = [float(part[0]) for part in parts]
+                y = [float(part[1]) for part in parts]
+                setattr(self, "_x", np.array(x))
+                setattr(self, "_y", np.array(y))
+                setattr(self, "_xy", np.row_stack([self._x, self._y]))
+                
+            else: ValueError("xy input unrecognized")
         else:
             raise ValueError("xy input unrecognized")
 
@@ -461,9 +500,9 @@ class Curve:
     def get_xy(self, ndarray=False):
         if ndarray:
             # (2, N) shaped
-            return getattr(self, "_xy")
+            return getattr(self, "_xy", None)
         else:
-            return getattr(self, "_x"), getattr(self, "_y")
+            return getattr(self, "_x", None), getattr(self, "_y", None)
 
     def set_name(self, name):
         assert isinstance(name, str)
@@ -575,8 +614,8 @@ def interpolate_to_ppo(x, y, ppo, must_include_freq=1000):
     Reduce a curve to lesser points
     """
     freq_start, freq_end = x[0], x[-1]
-    freqs = generate_freq_list(freq_start, freq_end, ppo)
-    f = intp.interp1d(np.log(x), y, assume_sorted=True, bounds_error=False, must_include_freq=must_include_freq)
+    freqs = generate_freq_list(freq_start, freq_end, ppo, must_include_freq=must_include_freq)
+    f = intp.interp1d(np.log(x), y, assume_sorted=True, bounds_error=False)
     return freqs, f(np.log(freqs))
 
 

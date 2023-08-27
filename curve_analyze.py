@@ -136,16 +136,19 @@ class CurveAnalyze(qtw.QWidget):
         self._graph.update_labels(labels)
 
     def _add_curve(self, curve):
-        i = self._curve_list.count()
-        name_with_number = f"#{i:02d} - {curve.get_name()}"
-        list_item = qtw.QListWidgetItem(name_with_number)
-        list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"name": curve.get_name(),
-                                                         "curve": curve,
-                                                         "processed": False,
-                                                         }
-                          )
-        self._curve_list.addItem(list_item)
-        self._graph.add_line2D(i, name_with_number, curve.get_xy())
+        if curve.is_curve():
+            i = self._curve_list.count()
+            name_with_number = f"#{i:02d} - {curve.get_name()}"
+            list_item = qtw.QListWidgetItem(name_with_number)
+            list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"name": curve.get_name(),
+                                                             "curve": curve,
+                                                             "processed": False,
+                                                             }
+                              )
+            self._curve_list.addItem(list_item)
+            self._graph.add_line2D(i, name_with_number, curve.get_xy())
+        else:
+            raise ValueError("Invalid curve")
 
     def _calculate_curve(self, generate_fun, **kwargs):
         curves_xy = []
@@ -165,10 +168,12 @@ class CurveAnalyze(qtw.QWidget):
 
 
     def _open_settings(self):
-        settings_dialog = SettingsDialog()
+        settings_dialog = SettingsDialog(self._global_settings)
         return_value = settings_dialog.exec()
-        print(return_value)
-
+        if return_value:
+            # beep_good
+            pass
+            
     def _process_curve(self, process_fun, **kwargs):
         for list_item in self._curve_list.selectedItems():
             i = self._curve_list.row(list_item)
@@ -189,8 +194,15 @@ class CurveAnalyze(qtw.QWidget):
 
     def _import_curve(self, import_fun):
         new_curve = import_fun()
+
+        if settings.import_ppo > 0:
+            x, y = new_curve.get_xy()
+            x_intp, y_intp = interpolate_to_ppo(x, y, settings.import_ppo)
+            new_curve.set_xy((x_intp, y_intp))
+
         if new_curve:
             self._add_curve(new_curve)
+
         else:
             # beep bad
             pass
@@ -204,46 +216,56 @@ class CurveAnalyze(qtw.QWidget):
 
 
 class SettingsDialog(qtw.QDialog):
-    def __init__(self):
+    def __init__(self, settings):
         super().__init__()
-        self.setWindowModality(qtc.Qt.WindowModality.WindowModal)
-        
-        user_data_widgets = {}
+        self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
         
         # Form
-        user_form = qtw.QFormLayout(self)
-        layout.addLayout(user_form)
+        user_form = pwi.UserForm()
+        layout.addWidget(user_form)
 
-        user_form.addRow("Interpolate during import (ppo)",
-                         pwi.IntSpinBox("ppo_import",
+        user_form.add_row(pwi.IntSpinBox("import_ppo",
                                         "Interpolate the curve to here defined points per octave in import"
                                         "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
-                                        "\nSet to '0' to do no modification to curve.",
-                                        user_data_widgets=user_data_widgets,
+                                        "\nSet to '0' to do no modification to curve."
+                                        "\nDefault value: 384",
                                         ),
-                         )
+                          "Interpolate during import (ppo)",
+                          )
 
-        user_form.addRow("Interpolate before export (ppo)",
-                         pwi.IntSpinBox("ppo_export",
+        user_form.add_row(pwi.IntSpinBox("export_ppo",
                                         "Interpolate the curve to here defined points per octave while exporting"
                                         "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
-                                        "\nSet to '0' to do no modifications to curve.",
-                                        user_data_widgets=user_data_widgets,
+                                        "\nSet to '0' to do no modifications to curve."
+                                        "\nDefault value: 96",
                                         ),
-                         )
-        user_data_widgets["ppo_export"].setValue(96)
+                          "Interpolate before export (ppo)",
+                          )
+        user_form._user_input_widgets["export_ppo"].setValue(96)
 
         # Buttons
         button_group = pwi.PushButtonGroup({"save": "Save",
                                             "cancel": "Cancel",
                                             },
-                                           {},
-                                           )
+                                            {},
+                                            )
         button_group.buttons()["save_pushbutton"].setDefault(True)
-        
         layout.addWidget(button_group)
-        
+
+        # read values from settings
+        for key, widget in user_form._user_input_widgets.items():
+            widget.setValue(getattr(settings, key))
+
+        # Connections
+        button_group.buttons()["cancel_pushbutton"].clicked.connect(self.reject)
+        button_group.buttons()["save_pushbutton"].clicked.connect(partial(self._save_and_close,  user_form._user_input_widgets, settings))
+
+    def _save_and_close(self, user_data_widgets, settings):
+        for key, widget in user_data_widgets.items():
+            settings.update_attr(key, widget.value())
+        self.accept()
+
 
 class AutoImporter(qtc.QThread):
     def __init__(self):
@@ -256,11 +278,15 @@ class AutoImporter(qtc.QThread):
 
 if __name__ == "__main__":
 
+    
+    
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
-    mw = CurveAnalyze()
+    settings = pwi.Settings()
+
+    mw = CurveAnalyze(settings)
 
     mw.show()
     app.exec()
