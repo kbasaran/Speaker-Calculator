@@ -74,7 +74,6 @@ class CurveAnalyze(qtw.QWidget):
              "auto_import": "Auto Import",
              "reset_indices": "Reset Indexes",
              "remove": "Remove",
-             "duplicate": "Duplicate",
              "process": "Process",
              "rename": "Rename",
              "calculate": "Calculate",
@@ -86,7 +85,6 @@ class CurveAnalyze(qtw.QWidget):
         self._graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
-        self._user_input_widgets["duplicate_pushbutton"].setEnabled(False)
         self._user_input_widgets["process_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
@@ -102,7 +100,6 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
         self._user_input_widgets["reset_indices_pushbutton"].clicked.connect(self._reset_indices)
         self._user_input_widgets["rename_pushbutton"].clicked.connect(self._rename_curve)
-        # self._user_input_widgets["process_pushbutton"].clicked.connect()
         self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
         self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings)
         self._user_input_widgets["calculate_pushbutton"].clicked.connect(partial(self._calculate_curve, median_of_curves))
@@ -116,8 +113,14 @@ class CurveAnalyze(qtw.QWidget):
         else:
             list_item = self._curve_list.selectedItems()[0]
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
-            xy = np.transpose(curve.get_xy())
+            
+        if self._global_settings.export_ppo == 0:
+            xy = np.transpose(curve.get_xy(ndarray=True))
             pd.DataFrame(xy, columns=["frequency", "value"]).to_clipboard(excel=True, index=False)
+        else:
+            x_intp, y_intp = interpolate_to_ppo(*curve.get_xy(), self._global_settings.export_ppo)
+            xy_intp = np.column_stack((x_intp, y_intp))
+            pd.DataFrame(xy_intp, columns=["frequency", "value"]).to_clipboard(excel=True, index=False)
 
     def _read_clipboard(self):
         data = pyperclip.paste()
