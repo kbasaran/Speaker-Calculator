@@ -76,6 +76,7 @@ class CurveAnalyze(qtw.QWidget):
              "remove": "Remove",
              "duplicate": "Duplicate",
              "process": "Process",
+             "rename": "Rename",
              "calculate": "Calculate",
              "export": "Export",
              "settings": "Settings",
@@ -86,7 +87,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
         self._user_input_widgets["duplicate_pushbutton"].setEnabled(False)
-        # self._user_input_widgets["settings_pushbutton"].setEnabled(False)
+        self._user_input_widgets["process_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
         self._curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
@@ -100,7 +101,8 @@ class CurveAnalyze(qtw.QWidget):
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
         self._user_input_widgets["reset_indices_pushbutton"].clicked.connect(self._reset_indices)
-        self._user_input_widgets["process_pushbutton"].clicked.connect(partial(self._process_curve, interpolate_to_ppo, ppo=48))
+        self._user_input_widgets["rename_pushbutton"].clicked.connect(self._rename_curve)
+        # self._user_input_widgets["process_pushbutton"].clicked.connect()
         self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
         self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings)
         self._user_input_widgets["calculate_pushbutton"].clicked.connect(partial(self._calculate_curve, median_of_curves))
@@ -126,22 +128,41 @@ class CurveAnalyze(qtw.QWidget):
             logging.debug("Unrecognized curve object")
 
     def _reset_indices(self):
-        labels = []
+        labels = {}
         for i in range(self._curve_list.count()):
             list_item = self._curve_list.item(i)
-            name = list_item.data(qtc.Qt.ItemDataRole.UserRole)["name"]
+            name = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"].get_name()
             name_with_number = f"#{i:02d} - {name}"
-            labels.append(name_with_number)
+            labels[i] = name_with_number
             list_item.setText(name_with_number)
         self._graph.update_labels(labels)
+
+
+    def _rename_curve(self):
+        if len(self._curve_list.selectedItems()) > 1:
+            raise NotImplementedError("Can rename only one curve at a time")
+        else:
+            list_item = self._curve_list.selectedItems()[0]
+            i = self._curve_list.row(list_item)
+            curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
+        
+        text, ok = qtw.QInputDialog.getText(self,
+                                            "Change curve name",
+                                            "New name:", qtw.QLineEdit.Normal,
+                                            curve.get_name(),
+                                            )
+        if ok and text != '':
+            curve.set_name(text)
+            list_item.setText(text)
+            self._graph.update_labels({i: text})
+                      
 
     def _add_curve(self, curve):
         if curve.is_curve():
             i = self._curve_list.count()
             name_with_number = f"#{i:02d} - {curve.get_name()}"
             list_item = qtw.QListWidgetItem(name_with_number)
-            list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"name": curve.get_name(),
-                                                             "curve": curve,
+            list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve": curve,
                                                              "processed": False,
                                                              }
                               )
@@ -155,7 +176,7 @@ class CurveAnalyze(qtw.QWidget):
         curves_name = []
         for list_item in self._curve_list.selectedItems():
             list_item_user_data = list_item.data(qtc.Qt.ItemDataRole.UserRole)
-            curves_name.append(list_item_user_data["name"])
+            curves_name.append(list_item_user_data["curve"].get_name())
             curves_xy.append(list_item_user_data["curve"].get_xy())
 
         calculated_curve_name = find_longest_match_in_name(curves_name) + " - " + generate_fun.__name__

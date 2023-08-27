@@ -74,9 +74,9 @@ class MatplotlibWidget(qtw.QWidget):
         if update_canvas:
             self.update_canvas()
 
-    def update_labels(self, labels: str, update_canvas=True):
-        for i, line in enumerate(self.ax.get_lines()):
-            line.set_label(labels[i])
+    def update_labels(self, labels: dict, update_canvas=True):
+        for i, label in labels.items():
+            self.ax.get_lines()[i].set_label(label)
         if update_canvas:
             self.update_canvas()
 

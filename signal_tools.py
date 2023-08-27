@@ -643,7 +643,6 @@ def median_of_curves(curves_xy: list, ppo=96):
         y_arrays = np.column_stack([y for x, y in curves_xy])
         y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))
 
-    print(y_median.shape)
     return Curve((curves_xy[0][0], y_median))
 
 
