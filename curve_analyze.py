@@ -10,7 +10,7 @@ from PySide6 import QtCore as qtc
 from graphing import MatplotlibWidget
 from signal_tools import Curve, interpolate_to_ppo, median_of_curves
 import personalized_widgets as pwi
-import pyperclip  # requires also xclip on Linux
+import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
 
 import logging
@@ -226,6 +226,7 @@ class CurveAnalyze(qtw.QWidget):
             list_item.setText(name_with_number_after_processing)
         self._graph.update_canvas()
 
+    @qtc.Slot(Curve)
     def _import_curve(self, curve):
 
         if settings.import_ppo > 0:
@@ -304,23 +305,21 @@ class AutoImporter(qtc.QThread):
     new_import = qtc.Signal(Curve)
     def __init__(self):
         super().__init__()
-        # self.latest_clipboard_data = pyperclip.paste()
     
     def run(self):
         while not self.isInterruptionRequested():
             cb_data = pyperclip.waitForNewPaste()
+            print(type(cb_data), cb_data)
             try:
                 new_curve = Curve(cb_data)
                 if new_curve.is_curve():
                     self.new_import.emit(new_curve)
-            except:
-                pass
+            except Exception as e:
+                logging.warning(e)
 
-            print("loop complete")
+            # print("loop complete")
 
 if __name__ == "__main__":
-
-    
     
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
