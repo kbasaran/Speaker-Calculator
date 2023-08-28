@@ -182,7 +182,11 @@ class CurveAnalyze(qtw.QWidget):
             curves_name.append(list_item_user_data["curve"].get_name())
             curves_xy.append(list_item_user_data["curve"].get_xy())
 
-        calculated_curve_name = find_longest_match_in_name(curves_name) + " - " + generate_fun.__name__
+        calculated_curve_name = (find_longest_match_in_name(curves_name).strip().strip("-").strip()
+                                 + " - "
+                                 + generate_fun.__name__
+                                 )
+        print(calculated_curve_name, type(calculated_curve_name))
 
         calculated_curve = generate_fun(curves_xy)
         calculated_curve.set_name(calculated_curve_name)
