@@ -434,8 +434,8 @@ class Curve:
             if key == "Curve":
                 self.set_xy(np.array(val)[:, :2])
                 # randomize for testing
-                # x, y = self.get_xy()
-                # self.set_xy((x, y + np.random.randint(0, high=21)))
+                x, y = self.get_xy()
+                self.set_xy((x, y + np.random.randint(0, high=21)))
             elif key == "Data_Legend":
                 self.set_name(val)
 

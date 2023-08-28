@@ -84,7 +84,7 @@ class CurveAnalyze(qtw.QWidget):
         )
         self._graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
-        self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
+        # self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
         self._user_input_widgets["process_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
@@ -101,10 +101,11 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["reset_indices_pushbutton"].clicked.connect(self._reset_indices)
         self._user_input_widgets["rename_pushbutton"].clicked.connect(self._rename_curve)
         self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
+        self._user_input_widgets["auto_import_pushbutton"].toggled.connect(self._auto_importer_status_toggle)
         self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings)
         self._user_input_widgets["calculate_pushbutton"].clicked.connect(partial(self._calculate_curve, median_of_curves))
         self._user_input_widgets["import_pushbutton"].clicked.connect(
-            partial(self._import_curve, self._read_clipboard)
+            lambda: self._import_curve(self._read_clipboard())
         )
 
     def _export_to_clipboard(self):
@@ -140,7 +141,6 @@ class CurveAnalyze(qtw.QWidget):
             list_item.setText(name_with_number)
         self._graph.update_labels(labels)
 
-
     def _rename_curve(self):
         if len(self._curve_list.selectedItems()) > 1:
             raise NotImplementedError("Can rename only one curve at a time")
@@ -159,7 +159,6 @@ class CurveAnalyze(qtw.QWidget):
             list_item.setText(text)
             self._graph.update_labels({i: text})
                       
-
     def _add_curve(self, curve):
         if curve.is_curve():
             i = self._curve_list.count()
@@ -194,6 +193,13 @@ class CurveAnalyze(qtw.QWidget):
         self._add_curve(calculated_curve)
         self._graph.update_canvas()
 
+    def _auto_importer_status_toggle(self, checked):
+        if checked == 1:
+            self.auto_importer = AutoImporter()
+            self.auto_importer.new_import.connect(self._import_curve)
+            self.auto_importer.start()
+        else:
+            self.auto_importer.requestInterruption()
 
     def _open_settings(self):
         settings_dialog = SettingsDialog(self._global_settings)
@@ -220,16 +226,15 @@ class CurveAnalyze(qtw.QWidget):
             list_item.setText(name_with_number_after_processing)
         self._graph.update_canvas()
 
-    def _import_curve(self, import_fun):
-        new_curve = import_fun()
+    def _import_curve(self, curve):
 
         if settings.import_ppo > 0:
-            x, y = new_curve.get_xy()
+            x, y = curve.get_xy()
             x_intp, y_intp = interpolate_to_ppo(x, y, settings.import_ppo)
-            new_curve.set_xy((x_intp, y_intp))
+            curve.set_xy((x_intp, y_intp))
 
-        if new_curve:
-            self._add_curve(new_curve)
+        if curve:
+            self._add_curve(curve)
 
         else:
             # beep bad
@@ -296,13 +301,22 @@ class SettingsDialog(qtw.QDialog):
 
 
 class AutoImporter(qtc.QThread):
+    new_import = qtc.Signal(Curve)
     def __init__(self):
         super().__init__()
+        # self.latest_clipboard_data = pyperclip.paste()
     
     def run(self):
-        while True:
-            self.sleep(1)
-            print("hop")
+        while not self.isInterruptionRequested():
+            cb_data = pyperclip.waitForNewPaste()
+            try:
+                new_curve = Curve(cb_data)
+                if new_curve.is_curve():
+                    self.new_import.emit(new_curve)
+            except:
+                pass
+
+            print("loop complete")
 
 if __name__ == "__main__":
 
