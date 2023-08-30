@@ -23,7 +23,7 @@ class Settings:
     f_max: int = 3000
     ppo: int = 48 * 8
     FS: int = 48000
-    A_beep: int = 0.1
+    A_beep: int = 0.05
     T_beep = 0.1
     freq_good_beep: float = 1175
     freq_bad_beep: float = freq_good_beep / 2

@@ -5,16 +5,10 @@ import sounddevice as sd
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 
-from __feature__ import snake_case
-from __feature__ import true_property
-
-class SoundEngine(qtc.QThread):
-    def __init__(self, mw):
+class SoundEngine(qtc.QObject):
+    def __init__(self):
         super().__init__()
         self.FS = 48000
-        mw.signal_beep.connect(self.beep)
-
-    def run(self):
         self.start_stream()
         # do a start beep
         self.beep(2, 200)
@@ -26,7 +20,7 @@ class SoundEngine(qtc.QThread):
         self.stream.start()
 
     @qtc.Slot(float, float)
-    def beep(self, T, freq):
+    def beep(self, T=1, freq=1000):
         t = np.arange(T * self.FS) / self.FS
         y = np.tile(0.1 * np.sin(t * 2 * np.pi * freq), self.channel_count)
         y = y.reshape((len(y) // self.channel_count, self.channel_count), order='F').astype(self.dtype)
@@ -35,9 +29,10 @@ class SoundEngine(qtc.QThread):
 
 
 class MainWindow(qtw.QMainWindow):
+    # https://doc.qt.io/qtforpython-6/tutorials/basictutorial/signals_and_slots.html
     signal_beep = qtc.Signal(float, float)
 
-    def __init__(self):
+    def __init__(self, sound_engine):
         super().__init__()
         self.create_widgets()
         self.place_widgets()
@@ -52,31 +47,33 @@ class MainWindow(qtw.QMainWindow):
         self._beep_pusbutton = qtw.QPushButton("Beep")
 
     def place_widgets(self):
-        self._center_layout = qtw.QVBoxLayout()
         self._center_widget = qtw.QWidget()
-        self._center_widget.set_layout(self._center_layout)
-        self.set_central_widget(self._center_widget)
+        self._center_layout = qtw.QVBoxLayout(self._center_widget)
+        # self._center_widget.set_layout(self._center_layout)
+        self.setCentralWidget(self._center_widget)
 
-        self._center_layout.add_widget(self._beep_freq_dial)
-        self._center_layout.add_widget(self._beep_freq_display)
-        self._center_layout.add_widget(self._beep_pusbutton)
+        self._center_layout.addWidget(self._beep_freq_dial)
+        self._center_layout.addWidget(self._beep_freq_display)
+        self._center_layout.addWidget(self._beep_pusbutton)
 
     def make_connections(self):
         self._beep_pusbutton.clicked.connect(
-            lambda: self.signal_beep.emit(1, self._beep_freq_dial.value)
+            lambda: self.signal_beep.emit(1, float(self._beep_freq_dial.value()))
             )
-        # self.signal_beep.connect(sound_engine.beep)
+        self.signal_beep.connect(sound_engine.beep)
 
-        self._beep_freq_display.display(self._beep_freq_dial.value)
+        self._beep_freq_display.display(self._beep_freq_dial.value())
         self._beep_freq_dial.valueChanged.connect(self._beep_freq_display.display)
 
 if __name__ == "__main__":
     app = qtw.QApplication(sys.argv)  # there is a new recommendation with qApp
 
-    mw = MainWindow()
-    mw.show()
+    sound_engine = SoundEngine()
+    sound_engine_thread = qtc.QThread()
+    sound_engine.moveToThread(sound_engine_thread)
+    sound_engine_thread.start(qtc.QThread.HighPriority)
 
-    sound_engine = SoundEngine(mw)
-    sound_engine.start(qtc.QThread.HighPriority)
+    mw = MainWindow(sound_engine)
+    mw.show()
 
     app.exec()

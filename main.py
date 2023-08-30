@@ -2,12 +2,11 @@ import os
 import sys
 import traceback
 import numpy as np
-from dataclasses import dataclass, fields
 import json
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
-from PySide6 import QtGui as qtg
+# from PySide6 import QtGui as qtg
 
 import sounddevice as sd
 from graphing import MatplotlibWidget
@@ -20,30 +19,25 @@ logging.basicConfig(level=logging.INFO)
 # super(super_of_which_class?=this class, in_which_object?=self)
 # The parameterless call to super() is recommended and sufficient for most use cases
 
-class SoundEngine(qtc.QThread):
+class SoundEngine(qtc.QObject):
     def __init__(self, settings):
         super().__init__()
         self.FS = sd.query_devices(device=sd.default.device, kind='output',
                                    )["default_samplerate"]
-        self.start_stream()
+        self.verify_stream()
 
-    def run(self):
-        self.start_stream()
-        # do a start beep
-        # self.beep(1, 200)
+    def verify_stream(self):
+        # needs to be improved and tested for device changes!
+        if not hasattr(self, "stream"):
+            self.stream = sd.OutputStream(samplerate=self.FS, channels=2)
+        if not self.stream.active:
+            self.stream.start()
 
-    def start_stream(self):
-        self.stream = sd.OutputStream(samplerate=self.FS, channels=2)
-        self.stream.start()
-
-    @qtc.Slot()
-    def wait(self):
-        self.msleep(1000)
-
-    @qtc.Slot(float, str)
+    @qtc.Slot(float, float)
     def beep(self, T, freq):
+        self.verify_stream()
         t = np.arange(T * self.FS) / self.FS
-        y = settings.A_beep * np.sin(t * 2 * np.pi * freq)
+        y = np.sin(t * 2 * np.pi * freq)
         y = np.tile(y, self.stream.channels)
         y = y.reshape((len(y) // self.stream.channels,
                       self.stream.channels), order='F').astype(self.stream.dtype)
@@ -471,18 +465,11 @@ class MainWindow(qtw.QMainWindow):
 
     def _make_connections(self):
 
-        self._lh_form.signal_beep_clicked.connect(
-            lambda: self.signal_beep.emit(0.5, 100)
-            )
-        self._lh_form.signal_save_clicked.connect(
-            self.save_preset_to_pick_file)
-        self._lh_form.signal_load_clicked.connect(
-            self.load_preset_with_pick_file)
+        self._lh_form.signal_beep_clicked.connect(sound_engine.good_beep)
+        self._lh_form.signal_save_clicked.connect(self.save_preset_to_pick_file)
+        self._lh_form.signal_load_clicked.connect(self.load_preset_with_pick_file)
         self._lh_form.signal_new_clicked.connect(self.duplicate_window)
 
-        self.signal_beep.connect(
-            lambda: sound_engine.beep(1, 220)
-            )  # this is not OK. it is blocking the application
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
@@ -581,9 +568,11 @@ if __name__ == "__main__":
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
     sound_engine = SoundEngine(settings)
-    sound_engine.start(qtc.QThread.HighPriority)
-    sys.excepthook = error_handler
+    sound_engine_thread = qtc.QThread()
+    sound_engine.moveToThread(sound_engine_thread)
+    sound_engine_thread.start(qtc.QThread.HighPriority)
     # app.aboutToQuit.connect(sound_engine.release_all)  # is this necessary??
+    sys.excepthook = error_handler
 
     def new_window(**kwargs):
         mw = MainWindow(settings, sound_engine, **kwargs)
