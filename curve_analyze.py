@@ -89,10 +89,11 @@ class CurveAnalyze(qtw.QWidget):
         self._graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         # self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
-        self._user_input_widgets["process_pushbutton"].setEnabled(False)
+        # self._user_input_widgets["process_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
         self._curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
+        self._curve_list.setDragDropMode(qtw.QAbstractItemView.InternalMove)
 
     def _place_widgets(self):
         self.setLayout(qtw.QVBoxLayout())
@@ -128,7 +129,7 @@ class CurveAnalyze(qtw.QWidget):
         else:
             x_intp, y_intp = interpolate_to_ppo(*curve.get_xy(), self._global_settings.export_ppo)
             xy_intp = np.column_stack((x_intp, y_intp))
-            pd.DataFrame(xy_intp, columns=["frequency", "value"]).to_clipboard(excel=True, index=False)
+            pd.DataFrame(xy_intp).to_clipboard(excel=True, index=False, header=False)
 
     def _read_clipboard(self):
         data = pyperclip.paste()
@@ -144,6 +145,12 @@ class CurveAnalyze(qtw.QWidget):
             ix.append(self._curve_list.row(list_item))  # wow this will be slow..
         return self.get_curves(value, rows=ix, **kwargs)
 
+    def _move_up(self):
+        currentRow = self._curve_list.listWidget.currentRow()
+        currentItem = self._curve_list.listWidget.takeItem(currentRow)
+        self._curve_list.listWidget.insertItem(currentRow - 1, currentItem)
+        # And for the Down Button it's the same, except that in the third line the "-" sign is changed by a "+".
+        # https://stackoverflow.com/questions/10957392/moving-items-up-and-down-in-a-qlistwidget
 
     def get_curves(self, value:str, rows:list=None, as_dict=False):
         q_list_items = {}
