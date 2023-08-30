@@ -15,9 +15,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 class MatplotlibWidget(qtw.QWidget):
-    def __init__(self, settings=None):
+    def __init__(self, settings):
+        self.app_settings = settings
         super().__init__()
-        self.global_settings = settings
         layout = qtw.QVBoxLayout(self)
         desired_style = 'bmh'
         if desired_style in plt.style.available:
@@ -38,6 +38,7 @@ class MatplotlibWidget(qtw.QWidget):
         
         self.ax = self.canvas.figure.subplots()
         self.ax.grid(which='minor')
+        self.ax.legend()
         
         # self._lines = {}  # dictionary of _lines
         # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.Line2D.html
@@ -55,12 +56,15 @@ class MatplotlibWidget(qtw.QWidget):
             y_max = ceil_to_multiple(np.max(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
             self.ax.set_ylim((y_min, y_max))
 
-        if self.global_settings.show_legend:
+        self.canvas.draw()
+
+    def set_legend_visible(self, visibility=True):
+        if visibility:            
             self.ax.legend()
         else:
             self.ax.legend().remove()
         self.canvas.draw()
-
+        
     def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray, update_canvas=True):
         line = self.ax.get_lines()[i]
         line.set_data(new_data)

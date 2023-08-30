@@ -4,6 +4,7 @@ import acoustics as ac  # https://github.com/timmahrt/pyAcoustics
 import soundfile as sf
 import logging
 from scipy import interpolate as intp
+from scipy.ndimage import gaussian_filter
 
 
 class TestSignal():
@@ -608,6 +609,16 @@ def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000):
     freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
+def smooth_curve(klippel_import, freq_array, ppo=3, ndarray=False):
+    x = klippel_import.x
+    y = klippel_import.y
+    y_new = np.interp(freq_array, x, y)
+    sigma = ppo  # but probably it is not!!!!
+    y_filt = gaussian_filter(y_new, sigma)
+    if not ndarray:
+        return freq_array, y_filt
+    else:
+        raise NotImplementedError
 
 def interpolate_to_ppo(x, y, ppo, must_include_freq=1000):
     """
@@ -625,7 +636,7 @@ def arrays_are_equal(arrays):
             return False
     return True
 
-def median_of_curves(curves_xy: list, ppo=96):
+def mean_and_median_of_curves(curves_xy: list):
     """
     Calculate median of curves
 
@@ -642,8 +653,9 @@ def median_of_curves(curves_xy: list, ppo=96):
     if arrays_are_equal([x for x, y in curves_xy]):
         y_arrays = np.column_stack([y for x, y in curves_xy])
         y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))
+        y_mean = 10 * np.log10(np.mean(10**(y_arrays / 10), axis=1))
 
-    return Curve((curves_xy[0][0], y_median))
+    return Curve((curves_xy[0][0], y_median)), Curve((curves_xy[0][0], y_mean))
 
 
 if __name__ == "__main__":

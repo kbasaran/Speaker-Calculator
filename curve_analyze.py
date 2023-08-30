@@ -9,7 +9,7 @@ from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
 from graphing import MatplotlibWidget
-from signal_tools import Curve, interpolate_to_ppo, median_of_curves
+import signal_tools
 import personalized_widgets as pwi
 import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
@@ -58,9 +58,9 @@ class CurveAnalyze(qtw.QWidget):
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
 
-    def __init__(self, settings=None):
+    def __init__(self, settings):
         super().__init__()
-        self.global_settings = settings
+        self.app_settings = settings
         self._create_core_objects()
         self._create_widgets()
         self._place_widgets()
@@ -70,17 +70,16 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets = dict()
 
     def _create_widgets(self):
-        self._graph = MatplotlibWidget(settings)
+        self._graph = MatplotlibWidget(self.app_settings)
         self._graph_buttons = pwi.PushButtonGroup(
             {"import": "Import",
              "auto_import": "Auto Import",
              "reset_indices": "Reset Indexes",
              "remove": "Remove",
-             "process": "Process",
              "rename": "Rename",
              "hide": "Hide",
              "show": "Show",
-             "calculate": "Calculate",
+             "analysis": "Analysis",
              "export": "Export",
              "settings": "Settings",
              },
@@ -89,7 +88,6 @@ class CurveAnalyze(qtw.QWidget):
         self._graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         # self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
-        self._user_input_widgets["process_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
         self._curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
@@ -105,13 +103,12 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
         self._user_input_widgets["reset_indices_pushbutton"].clicked.connect(self._reset_indices)
         self._user_input_widgets["rename_pushbutton"].clicked.connect(self._rename_curve)
-        self._user_input_widgets["process_pushbutton"].clicked.connect(self.hide_curves)
         self._user_input_widgets["hide_pushbutton"].clicked.connect(self.hide_curves)
         self._user_input_widgets["show_pushbutton"].clicked.connect(self.show_curves)
         self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
         self._user_input_widgets["auto_import_pushbutton"].toggled.connect(self._auto_importer_status_toggle)
-        self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings)
-        self._user_input_widgets["calculate_pushbutton"].clicked.connect(partial(self._calculate_curve, median_of_curves))
+        self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings_dialog)
+        self._user_input_widgets["analysis_pushbutton"].clicked.connect(self._open_analysis_dialog)
         self._user_input_widgets["import_pushbutton"].clicked.connect(
             lambda: self._import_curve(self._read_clipboard())
         )
@@ -123,17 +120,17 @@ class CurveAnalyze(qtw.QWidget):
             list_item = self._curve_list.selectedItems()[0]
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
             
-        if self.global_settings.export_ppo == 0:
+        if settings.export_ppo == 0:
             xy = np.transpose(curve.get_xy(ndarray=True))
             pd.DataFrame(xy, columns=["frequency", "value"]).to_clipboard(excel=True, index=False)
         else:
-            x_intp, y_intp = interpolate_to_ppo(*curve.get_xy(), self.global_settings.export_ppo)
+            x_intp, y_intp = signal_tools.interpolate_to_ppo(*curve.get_xy(), settings.export_ppo)
             xy_intp = np.column_stack((x_intp, y_intp))
             pd.DataFrame(xy_intp).to_clipboard(excel=True, index=False, header=False)
 
     def _read_clipboard(self):
         data = pyperclip.paste()
-        new_curve = Curve(data)
+        new_curve = signal_tools.Curve(data)
         if new_curve.is_curve():
             return new_curve
         else:
@@ -165,7 +162,7 @@ class CurveAnalyze(qtw.QWidget):
                 result_dict = list(q_list_items.keys())
             case "screen_name":  # name with number as shown on screen
                 result_dict = {i: list_item.text() for (i, list_item) in q_list_items.items()}
-            case "curves":  # Curve instances
+            case "curves":  # signal_tools.Curve instances
                 result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"] for (i, list_item) in q_list_items.items()}
             case "curve_names":  # this is the name stored inside curve object. does not include screen number
                 result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"].get_name() for (i, list_item) in q_list_items.items()}
@@ -263,11 +260,22 @@ class CurveAnalyze(qtw.QWidget):
         visibility_states = self.get_curves("visibility", as_dict=True)
         self._graph.hide_show_line2D(visibility_states)
 
-    def _calculate_curve(self, generate_fun, **kwargs):
-        calculated_curve = generate_fun(self.get_selected_curves("xy_s"))
+    def _open_analysis_dialog(self):
+        analysis_dialog = AnalysisDialog(self.get_selected_curves("q_list_items"))
+        analysis_dialog.signal_analysis_request.connect(self._analysis_dialog_return)
+
+        return_value = analysis_dialog.exec()
+        if return_value:
+            self.signal_bad_beep.emit()
+            pass
+
+    def _analysis_dialog_return(self, analysis_fun: str, **kwargs):
+        # mean and median hesabım iki eğri yolluyor şu an. bu metod ama bir eğriye göre yapılı
+        for calculated_curve in getattr(signal_tools, analysis_fun)(self.get_selected_curves("xy_s")):
+            
         calculated_curve_name = (find_longest_match_in_name(self.get_selected_curves("curve_names")).strip().strip("-").strip()
                                  + " - "
-                                 + generate_fun.__name__
+                                 + analysis_fun
                                  )
         calculated_curve.set_name(calculated_curve_name)
 
@@ -282,14 +290,18 @@ class CurveAnalyze(qtw.QWidget):
         else:
             self.auto_importer.requestInterruption()
 
-    def _open_settings(self):
-        settings_dialog = SettingsDialog(self.global_settings)
-        settings_dialog.signal_settings_changed.connect(self.send_visibility_states_to_graph)
+    def _open_settings_dialog(self):
+        settings_dialog = SettingsDialog()
+        settings_dialog.signal_settings_changed.connect(self._settings_dialog_return)
+
         return_value = settings_dialog.exec()
         if return_value:
-            # beep_good
+            self.signal_bad_beep.emit()
             pass
-            
+
+    def _settings_dialog_return(self):
+        self._graph.set_legend_visible(settings.show_legend) 
+           
     def _process_curve(self, process_fun, **kwargs):
         user_data = self.get_selected_curves("user_data")
         for i, list_item in self.get_selected_curves("q_list_item").items():
@@ -309,13 +321,13 @@ class CurveAnalyze(qtw.QWidget):
             list_item.setText(screen_name_after_processing)
         self._graph.update_canvas()
 
-    @qtc.Slot(Curve)
+    @qtc.Slot(signal_tools.Curve)
     def _import_curve(self, curve):
 
         try:
             if settings.import_ppo > 0:
                 x, y = curve.get_xy()
-                x_intp, y_intp = interpolate_to_ppo(x, y, settings.import_ppo)
+                x_intp, y_intp = signal_tools.interpolate_to_ppo(x, y, settings.import_ppo)
                 curve.set_xy((x_intp, y_intp))
     
             if curve.is_curve():
@@ -333,10 +345,77 @@ class CurveAnalyze(qtw.QWidget):
             self._graph.remove_line2D(i, update_canvas=False)
         self._graph.update_canvas()
 
+class AnalysisDialog(qtw.QDialog):
+    global settings
+    signal_analysis_request = qtc.Signal(str)
+    def __init__(self, curves):
+        super().__init__()
+        self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
+        layout = qtw.QVBoxLayout(self)
+        tab_widget = qtw.QTabWidget()
+        layout.addWidget(tab_widget)
+        
+        user_forms_and_recipient_functions = {}  # dict of tuples. key is index of tab. value is tuple with (UserForm, name of function to use for its calculation)
+
+        # Statistics page
+        user_form_0 = pwi.UserForm()
+        tab_widget.addTab(user_form_0, "Statistics")  # tab page is the UserForm widget
+        i = tab_widget.indexOf(user_form_0)
+        user_forms_and_recipient_functions[i] = (user_form_0, "mean_and_median_of_curves")
+        
+        user_form_0.add_row(pwi.CheckBox("mean_selected",
+                                        "Mean value per frequency point.",
+                                        ),
+                          "Calculate mean",
+                          )
+
+        user_form_0.add_row(pwi.CheckBox("median_selected",
+                                        "Median value per frequency point. Less sensitive to outliers.",
+                                        ),
+                          "Calculate median",
+                          )
+
+
+        # Buttons - common to self. not per tab.
+        button_group = pwi.PushButtonGroup({"run": "Run",
+                                            "cancel": "Cancel",
+                                            },
+                                            {},
+                                            )
+        button_group.buttons()["run_pushbutton"].setDefault(True)
+        layout.addWidget(button_group)
+
+
+        for i in range(tab_widget.count()):
+            user_form = tab_widget.widget(i)
+            # read values from settings
+            for key, widget in user_form._user_input_widgets.items():
+                saved_setting = getattr(settings, key)
+                if isinstance(widget, qtw.QCheckBox):
+                    widget.setChecked(saved_setting)
+                else:
+                    widget.setValue(saved_setting)
+
+        # Connections
+        button_group.buttons()["cancel_pushbutton"].clicked.connect(self.reject)
+        button_group.buttons()["run_pushbutton"].clicked.connect(partial(self._save_and_close,
+                                                                         *user_forms_and_recipient_functions[tab_widget.currentIndex()],
+                                                                         ))
+
+    def _save_and_close(self, active_user_form, analysis_fun: str):
+        for key, widget in active_user_form._user_input_widgets.items():
+            if isinstance(widget, qtw.QCheckBox):
+                settings.update_attr(key, widget.isChecked())
+            else:
+                settings.update_attr(key, widget.value())
+        self.signal_analysis_request.emit(analysis_fun)
+        self.accept()
+
 
 class SettingsDialog(qtw.QDialog):
+    global settings
     signal_settings_changed = qtc.Signal()
-    def __init__(self, settings):
+    def __init__(self):
         super().__init__()
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
@@ -388,8 +467,8 @@ class SettingsDialog(qtw.QDialog):
         button_group.buttons()["cancel_pushbutton"].clicked.connect(self.reject)
         button_group.buttons()["save_pushbutton"].clicked.connect(partial(self._save_and_close,  user_form._user_input_widgets, settings))
 
-    def _save_and_close(self, user_data_widgets, settings):
-        for key, widget in user_data_widgets.items():
+    def _save_and_close(self, user_input_widgets, settings):
+        for key, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update_attr(key, widget.isChecked())
             else:
@@ -399,7 +478,7 @@ class SettingsDialog(qtw.QDialog):
 
 
 class AutoImporter(qtc.QThread):
-    new_import = qtc.Signal(Curve)
+    new_import = qtc.Signal(signal_tools.Curve)
     def __init__(self):
         super().__init__()
     
@@ -408,7 +487,7 @@ class AutoImporter(qtc.QThread):
             cb_data = pyperclip.waitForNewPaste()
             print("\nClipboard read:" + "\n" + str(type(cb_data)) + "\n" + cb_data)
             try:
-                new_curve = Curve(cb_data)
+                new_curve = signal_tools.Curve(cb_data)
                 if new_curve.is_curve():
                     self.new_import.emit(new_curve)
             except Exception as e:
