@@ -74,11 +74,33 @@ class MatplotlibWidget(qtw.QWidget):
         if update_canvas:
             self.update_canvas()
 
-    def update_labels(self, labels: dict, update_canvas=True):
-        for i, label in labels.items():
-            self.ax.get_lines()[i].set_label(label)
+    def hide_show_line2D(self, visibility_states:dict, update_canvas=True):
+        lines = self.lines_as_dict()
+        for i, visible in visibility_states.items():
+            lines[i].set_visible(visible)
+
+            label = lines[i].get_label()
+            if visible and label[0] == "_":
+                lines[i].set_label(label.removeprefix("_"))
+            if not visible and label[0] != "_":
+                lines[i].set_label("_" + label)
+
         if update_canvas:
             self.update_canvas()
+
+    def update_labels(self, labels: dict, update_canvas=True):
+        for i, label in labels.items():
+            line = self.ax.get_lines()[i]
+            new_label = label if line.get_visible() else ("_" + label)
+            line.set_label(new_label)
+        if update_canvas:
+            self.update_canvas()
+
+    def lines_as_dict(self):
+        lines = {}
+        for i, line in enumerate(self.ax.get_lines()):
+            lines[i] = line
+        return lines
 
 
 if __name__ == "__main__":
