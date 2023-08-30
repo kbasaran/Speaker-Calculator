@@ -43,14 +43,14 @@ class MatplotlibWidget(qtw.QWidget):
 
     def update_canvas(self):
 
-        def ceil_to_multiple(number, multiple=5):
-            return multiple * np.ceil((number + 2) / multiple)
+        def ceil_to_multiple(number, multiple=5, clearance = 2):
+            return multiple * np.ceil((number + clearance) / multiple)
 
-        def floor_to_multiple(number, multiple=5):
-            return multiple * np.floor((number - 2) / multiple)
+        def floor_to_multiple(number, multiple=5, clearance=2):
+            return multiple * np.floor((number - clearance) / multiple)
 
         if len(self.ax.get_lines()):
-            y_min = floor_to_multiple(np.min(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
+            y_min = floor_to_multiple(np.min(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])), clearance=1)
             y_max = ceil_to_multiple(np.max(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
             self.ax.set_ylim((y_min, y_max))
 
