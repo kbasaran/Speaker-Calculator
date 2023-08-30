@@ -89,7 +89,7 @@ class CurveAnalyze(qtw.QWidget):
         self._graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         # self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
-        # self._user_input_widgets["process_pushbutton"].setEnabled(False)
+        self._user_input_widgets["process_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
         self._curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
@@ -393,7 +393,7 @@ class AutoImporter(qtc.QThread):
     def run(self):
         while not self.isInterruptionRequested():
             cb_data = pyperclip.waitForNewPaste()
-            print(type(cb_data), cb_data)
+            print("\nClipboard read:" + "\n" + str(type(cb_data)) + "\n" + cb_data)
             try:
                 new_curve = Curve(cb_data)
                 if new_curve.is_curve():
@@ -401,7 +401,6 @@ class AutoImporter(qtc.QThread):
             except Exception as e:
                 logging.warning(e)
 
-            # print("loop complete")
 
 if __name__ == "__main__":
     
