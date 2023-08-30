@@ -60,7 +60,7 @@ class CurveAnalyze(qtw.QWidget):
 
     def __init__(self, settings=None):
         super().__init__()
-        self._global_settings = settings
+        self.global_settings = settings
         self._create_core_objects()
         self._create_widgets()
         self._place_widgets()
@@ -70,7 +70,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets = dict()
 
     def _create_widgets(self):
-        self._graph = MatplotlibWidget()
+        self._graph = MatplotlibWidget(settings)
         self._graph_buttons = pwi.PushButtonGroup(
             {"import": "Import",
              "auto_import": "Auto Import",
@@ -123,11 +123,11 @@ class CurveAnalyze(qtw.QWidget):
             list_item = self._curve_list.selectedItems()[0]
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
             
-        if self._global_settings.export_ppo == 0:
+        if self.global_settings.export_ppo == 0:
             xy = np.transpose(curve.get_xy(ndarray=True))
             pd.DataFrame(xy, columns=["frequency", "value"]).to_clipboard(excel=True, index=False)
         else:
-            x_intp, y_intp = interpolate_to_ppo(*curve.get_xy(), self._global_settings.export_ppo)
+            x_intp, y_intp = interpolate_to_ppo(*curve.get_xy(), self.global_settings.export_ppo)
             xy_intp = np.column_stack((x_intp, y_intp))
             pd.DataFrame(xy_intp).to_clipboard(excel=True, index=False, header=False)
 
@@ -283,7 +283,8 @@ class CurveAnalyze(qtw.QWidget):
             self.auto_importer.requestInterruption()
 
     def _open_settings(self):
-        settings_dialog = SettingsDialog(self._global_settings)
+        settings_dialog = SettingsDialog(self.global_settings)
+        settings_dialog.signal_settings_changed.connect(self.send_visibility_states_to_graph)
         return_value = settings_dialog.exec()
         if return_value:
             # beep_good
@@ -334,6 +335,7 @@ class CurveAnalyze(qtw.QWidget):
 
 
 class SettingsDialog(qtw.QDialog):
+    signal_settings_changed = qtc.Signal()
     def __init__(self, settings):
         super().__init__()
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
@@ -342,6 +344,9 @@ class SettingsDialog(qtw.QDialog):
         # Form
         user_form = pwi.UserForm()
         layout.addWidget(user_form)
+        
+        user_form.add_row(pwi.CheckBox("show_legend", "Show legend on the graph"),
+                          "Show legend")
 
         user_form.add_row(pwi.IntSpinBox("import_ppo",
                                         "Interpolate the curve to here defined points per octave in import"
@@ -373,7 +378,11 @@ class SettingsDialog(qtw.QDialog):
 
         # read values from settings
         for key, widget in user_form._user_input_widgets.items():
-            widget.setValue(getattr(settings, key))
+            saved_setting = getattr(settings, key)
+            if isinstance(widget, qtw.QCheckBox):
+                widget.setChecked(saved_setting)
+            else:
+                widget.setValue(saved_setting)
 
         # Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(self.reject)
@@ -381,7 +390,11 @@ class SettingsDialog(qtw.QDialog):
 
     def _save_and_close(self, user_data_widgets, settings):
         for key, widget in user_data_widgets.items():
-            settings.update_attr(key, widget.value())
+            if isinstance(widget, qtw.QCheckBox):
+                settings.update_attr(key, widget.isChecked())
+            else:
+                settings.update_attr(key, widget.value())
+        self.signal_settings_changed.emit()
         self.accept()
 
 

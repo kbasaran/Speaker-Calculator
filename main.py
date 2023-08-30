@@ -382,7 +382,7 @@ class MainWindow(qtw.QMainWindow):
 
     def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
-        self._global_settings = settings
+        self.global_settings = settings
         self._create_core_objects()
         self._create_widgets()
         self._place_widgets()
@@ -478,7 +478,7 @@ class MainWindow(qtw.QMainWindow):
     def save_preset_to_pick_file(self):
 
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save to file..',
-                                                          dir=self._global_settings.last_used_folder,
+                                                          dir=self.global_settings.last_used_folder,
                                                           filter='Speaker stuff files (*.ssf)',
                                                           )
         # filter not working as expected, saves files without file extension ssf
@@ -486,7 +486,7 @@ class MainWindow(qtw.QMainWindow):
             file = path_unverified[0]
             if file:
                 assert os.path.isdir(os.path.dirname(file))
-                self._global_settings.update_attr(
+                self.global_settings.update_attr(
                     "last_used_folder", os.path.dirname(file))
             else:
                 return  # nothing was selected, pick file canceled
@@ -500,7 +500,7 @@ class MainWindow(qtw.QMainWindow):
 
     def load_preset_with_pick_file(self):
         file = qtw.QFileDialog.getOpenFileName(self, caption='Open file..',
-                                               dir=self._global_settings.last_used_folder,
+                                               dir=self.global_settings.last_used_folder,
                                                filter='Speaker stuff files (*.ssf)',
                                                )[0]
         if file:
@@ -516,7 +516,7 @@ class MainWindow(qtw.QMainWindow):
             raise FileNotFoundError()
             return
 
-        self._global_settings.update_attr(
+        self.global_settings.update_attr(
             "last_used_folder", os.path.dirname(file))
         with open(file, "rt") as f:
             self._lh_form.update_form_values(json.load(f))

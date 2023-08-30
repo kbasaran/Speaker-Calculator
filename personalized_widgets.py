@@ -28,6 +28,7 @@ class Settings:
     freq_good_beep: float = 1175
     freq_bad_beep: float = freq_good_beep / 2
     last_used_folder: str = os.path.expanduser('~')
+    show_legend: bool = True
     import_ppo: int = 0
     export_ppo: int = 96
 
@@ -100,6 +101,19 @@ class IntSpinBox(qtw.QSpinBox):
     def user_values_storage(self, user_data_widgets: dict):
         user_data_widgets[self._name] = self
 
+class CheckBox(qtw.QCheckBox):
+    def __init__(self, name, tooltip,
+                 user_data_widgets=None
+                 ):
+        self._name = name
+        super().__init__()
+        if tooltip:
+            self.setToolTip(tooltip)
+        if user_data_widgets is not None:
+            self.user_values_storage(user_data_widgets)
+
+    def user_values_storage(self, user_data_widgets: dict):
+        user_data_widgets[self._name] = self
 
 class LineTextBox(qtw.QLineEdit):
     def __init__(self, name, tooltip, user_data_widgets=None):
@@ -235,7 +249,7 @@ class UserForm(qtw.QWidget):
             try:
                 obj = self._user_input_widgets[key]
 
-                if isinstance(obj, qtw.Qpwi.ComboBox):
+                if isinstance(obj, qtw.QComboBox):
                     assert isinstance(value_new, dict)
                     obj.clear()
                     # assert all([key in value_new.keys() for key in ["items", "current_index"]])
@@ -253,6 +267,9 @@ class UserForm(qtw.QWidget):
 
                 elif isinstance(obj, qtw.QButtonGroup):
                     obj.button(value_new).setChecked(True)
+
+                elif isinstance(obj, qtw.QCheckBox):
+                    obj.setChecked(value_new)
 
                 else:
                     assert type(value_new) == type(obj.value())
@@ -276,7 +293,7 @@ class UserForm(qtw.QWidget):
             if "_button" in key:
                 continue
 
-            if isinstance(obj, qtw.Qpwi.ComboBox):
+            if isinstance(obj, qtw.QComboBox):
                 obj_value = {"items": [], "current_index": 0}
                 for i_item in range(obj.count()):
                     item_text = obj.itemText(i_item)
@@ -289,6 +306,9 @@ class UserForm(qtw.QWidget):
 
             elif isinstance(obj, qtw.QButtonGroup):
                 obj_value = obj.checkedId()
+
+            elif isinstance(obj, qtw.QCheckBox):
+                obj_value = obj.isChecked()
 
             else:
                 obj_value = obj.value()

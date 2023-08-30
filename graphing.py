@@ -15,8 +15,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 class MatplotlibWidget(qtw.QWidget):
-    def __init__(self):
+    def __init__(self, settings=None):
         super().__init__()
+        self.global_settings = settings
         layout = qtw.QVBoxLayout(self)
         desired_style = 'bmh'
         if desired_style in plt.style.available:
@@ -54,7 +55,10 @@ class MatplotlibWidget(qtw.QWidget):
             y_max = ceil_to_multiple(np.max(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
             self.ax.set_ylim((y_min, y_max))
 
-        self.ax.legend()
+        if self.global_settings.show_legend:
+            self.ax.legend()
+        else:
+            self.ax.legend().remove()
         self.canvas.draw()
 
     def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray, update_canvas=True):
