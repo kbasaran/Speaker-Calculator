@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import pandas as pd
@@ -75,7 +76,8 @@ class CurveAnalyze(qtw.QWidget):
     def _create_widgets(self):
         self.graph = MatplotlibWidget(self.app_settings)
         self.graph_buttons = pwi.PushButtonGroup(
-            {"import": "Import",
+            {"import_curve": "Import curve",
+             "import_table": "Import table",
              "auto_import": "Auto Import",
              "reset_indices": "Reset Indexes",
              "remove": "Remove",
@@ -88,7 +90,7 @@ class CurveAnalyze(qtw.QWidget):
              "export": "Export",
              "settings": "Settings",
              },
-            {"import": "Import 2D graph data from clipboard"},
+            {"import_curve": "Import 2D curve from clipboard"},
         )
         self.graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
@@ -116,11 +118,13 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["auto_import_pushbutton"].toggled.connect(self._auto_importer_status_toggle)
         self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings_dialog)
         self._user_input_widgets["analysis_pushbutton"].clicked.connect(self._open_analysis_dialog)
-        self._user_input_widgets["import_pushbutton"].clicked.connect(
+        self._user_input_widgets["import_curve_pushbutton"].clicked.connect(
             lambda: self._import_curve(self._read_clipboard())
         )
+        self._user_input_widgets["import_table_pushbutton"].clicked.connect(self._import_table)
         self.signal_update_graph_request.connect(self.graph.update_figure)
         self.signal_reposition_curves.connect(self.graph.set_curves_zorder)
+        self.curve_list.currentRowChanged.connect(self.graph.mark_selected_curve)
 
     def _export_to_clipboard(self):
         if len(self.curve_list.selectedItems()) > 1:
@@ -218,7 +222,7 @@ class CurveAnalyze(qtw.QWidget):
             screen_name = f"#{i:02d} - {curve_names[i]}"
             list_item.setText(screen_name)
             labels[i] = screen_name
-        self.graph.update_labels(labels)
+        self.graph.update_labels_and_colors(labels)
 
     def _rename_curve(self):
         if len(self.curve_list.selectedItems()) > 1:
@@ -238,7 +242,60 @@ class CurveAnalyze(qtw.QWidget):
             list_item.setText(text)
             self.graph.update_labels_and_colors({i: text})
 
-    def _add_curve(self, i_insert, curve):
+    def _import_table(self):
+    
+        file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
+                                               dir=self.app_settings.last_used_folder,
+                                               filter='dBExtract XY_data (*.txt)',
+                                               )[0]
+        if file:
+            try:
+                os.path.isfile(file)
+            except:
+                raise FileNotFoundError()
+                return
+        else:
+            raise KeyError("Not a file")
+
+        self.app_settings.update_attr(
+            "last_used_folder", os.path.dirname(file))
+        
+
+        with open(file, mode="rt") as extract_file:
+            lines = extract_file.read().splitlines()
+            """Read a Klippel dB extract export .txt file."""
+            if lines[0] == "XY_data" and lines[1][:4] == "DUTs":
+                extract_file.seek(0, 0)
+                data = pd.read_csv(extract_file,
+                                   delimiter=",",
+                                   header=1,
+                                   index_col="DUTs",
+                                   encoding='unicode_escape',
+                                   skipinitialspace=True,
+                                   )
+                data.columns = [float(i) for i in data.columns]
+    
+            elif "DUT" == lines[0][:3]:
+                extract_file.seek(0, 0)
+                data = pd.read_csv(extract_file,
+                                   header=None,
+                                   index_col=0,
+                                   names=['DBTitle', 'Value'],
+                                   encoding='unicode_escape',
+                                   )
+                data = data.sort_values(by=['DBTitle'])
+    
+            else:
+                raise ValueError("Unable to parse the text file."
+                                 " Format unrecognized. Did you use the correct DBExtract template?")
+            
+            if data.shape[1] > 1:  # means if there are more than 1 frequency points
+                for name, values in data.iterrows():
+                    curve = signal_tools.Curve(np.column_stack((data.columns, values)))
+                    self._add_curve(None, curve, update_figure=False)
+                self.signal_update_graph_request.emit()
+                
+    def _add_curve(self, i_insert, curve, update_figure=True):
         if curve.is_curve():
             i = self.curve_list.count()
             screen_name = f"#{i:02d} - {curve.get_name()}"
@@ -251,7 +308,7 @@ class CurveAnalyze(qtw.QWidget):
                 self.curve_list.insertItem(i_insert, list_item)
             else:
                 self.curve_list.insertItem(self.curve_list.count(), list_item)
-            self.graph.add_line2D(i, screen_name, curve.get_xy())
+            self.graph.add_line2D(i, screen_name, curve.get_xy(), update_figure=update_figure)
         else:
             raise ValueError("Invalid curve")
 

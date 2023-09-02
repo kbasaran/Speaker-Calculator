@@ -8,6 +8,7 @@ from matplotlib.backends.backend_qtagg import (
     FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+import matplotlib.patheffects as mpe
 plt.rcParams["figure.constrained_layout.h_pad"] = 0.3
 plt.rcParams["figure.constrained_layout.w_pad"] = 0.4
 
@@ -115,6 +116,22 @@ class MatplotlibWidget(qtw.QWidget):
             line.set_zorder(zorders.index(zorder_old))
 
         self.update_figure()
+
+    @qtc.Slot()
+    def mark_selected_curve(self, i:int):
+        for line in self.ax.get_lines():
+            if line.get_zorder() == i:
+                line.set_lw(3)
+                line.set_path_effects([mpe.Stroke(),])
+            else:
+                line.set_lw(1)
+                line.set_path_effects(None)
+                print("hop")
+        self.update_figure()
+                # path = line.get_path()
+                # self.ax.add_patch(PathPatch(path, linewidth=55))
+                # self.ax.fill_between(line.get_xdata, -np.ones(line.get_ydata().shape), np.ones(line.get_ydata().shape))
+                
 
 
     @qtc.Slot()

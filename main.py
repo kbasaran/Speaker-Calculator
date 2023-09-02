@@ -477,7 +477,7 @@ class MainWindow(qtw.QMainWindow):
 
     def save_preset_to_pick_file(self):
 
-        path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save to file..',
+        path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
                                                           dir=self.global_settings.last_used_folder,
                                                           filter='Speaker stuff files (*.ssf)',
                                                           )
@@ -499,7 +499,7 @@ class MainWindow(qtw.QMainWindow):
             f.write(json_string)
 
     def load_preset_with_pick_file(self):
-        file = qtw.QFileDialog.getOpenFileName(self, caption='Open file..',
+        file = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
                                                dir=self.global_settings.last_used_folder,
                                                filter='Speaker stuff files (*.ssf)',
                                                )[0]
