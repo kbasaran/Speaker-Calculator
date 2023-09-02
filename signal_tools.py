@@ -652,10 +652,10 @@ def mean_and_median_of_curves(curves_xy: list):
     """
     if arrays_are_equal([x for x, y in curves_xy]):
         y_arrays = np.column_stack([y for x, y in curves_xy])
-        y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))
         y_mean = 10 * np.log10(np.mean(10**(y_arrays / 10), axis=1))
+        y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))
 
-    return Curve((curves_xy[0][0], y_median)), Curve((curves_xy[0][0], y_mean))
+    return Curve((curves_xy[0][0], y_mean)), Curve((curves_xy[0][0], y_median))
 
 
 if __name__ == "__main__":

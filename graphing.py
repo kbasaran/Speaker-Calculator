@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 
+from PySide6 import QtCore as qtc
 from matplotlib.backends.qt_compat import QtWidgets as qtw
 from matplotlib.backends.backend_qtagg import (
     FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
@@ -38,12 +39,12 @@ class MatplotlibWidget(qtw.QWidget):
         
         self.ax = self.canvas.figure.subplots()
         self.ax.grid(which='minor')
-        self.ax.legend()
         
         # self._lines = {}  # dictionary of _lines
         # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.Line2D.html
 
-    def update_canvas(self):
+    @qtc.Slot()
+    def update_figure(self):
 
         def ceil_to_multiple(number, multiple=5, clearance = 2):
             return multiple * np.ceil((number + clearance) / multiple)
@@ -56,33 +57,32 @@ class MatplotlibWidget(qtw.QWidget):
             y_max = ceil_to_multiple(np.max(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
             self.ax.set_ylim((y_min, y_max))
 
-        self.canvas.draw()
-
-    def set_legend_visible(self, visibility=True):
-        if visibility:            
+        if self.app_settings.show_legend:            
             self.ax.legend()
         else:
             self.ax.legend().remove()
         self.canvas.draw()
         
-    def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray, update_canvas=True):
+    def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray, update_figure=True):
         line = self.ax.get_lines()[i]
         line.set_data(new_data)
         line.set_label(name_with_number)
-        if update_canvas:
-            self.update_canvas()
+        line.set_zorder(i)
+        if update_figure:
+            self.update_figure()
 
-    def add_line2D(self, i, label, data:tuple, update_canvas=True, **kwargs):
-        self.ax.semilogx(*data, label=label, **kwargs)
-        if update_canvas:
-            self.update_canvas()
+    def add_line2D(self, i, label, data:tuple, update_figure=True, **kwargs):
+        self.ax.semilogx(*data, label=label, zorder=i, **kwargs)
+        if update_figure:
+            self.update_figure()
 
-    def remove_line2D(self, i, update_canvas=True):
-        self.ax.get_lines()[i].remove()
-        if update_canvas:
-            self.update_canvas()
+    def remove_line2D(self, ix, update_figure=True):
+        for i in reversed(sorted(ix)):
+            self.ax.get_lines()[i].remove()
+        if update_figure:
+            self.update_figure()
 
-    def hide_show_line2D(self, visibility_states:dict, update_canvas=True):
+    def hide_show_line2D(self, visibility_states:dict, update_figure=True):
         lines = self.lines_as_dict()
         for i, visible in visibility_states.items():
             lines[i].set_visible(visible)
@@ -93,16 +93,17 @@ class MatplotlibWidget(qtw.QWidget):
             if not visible and label[0] != "_":
                 lines[i].set_label("_" + label)
 
-        if update_canvas:
-            self.update_canvas()
+        if update_figure:
+            self.update_figure()
 
-    def update_labels(self, labels: dict, update_canvas=True):
+    def update_labels(self, labels: dict, update_figure=True):
         for i, label in labels.items():
             line = self.ax.get_lines()[i]
             new_label = label if line.get_visible() else ("_" + label)
             line.set_label(new_label)
-        if update_canvas:
-            self.update_canvas()
+            line.set_zorder(i)
+        if update_figure:
+            self.update_figure()
 
     def lines_as_dict(self):
         lines = {}

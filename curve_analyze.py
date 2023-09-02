@@ -57,6 +57,7 @@ class CurveAnalyze(qtw.QWidget):
 
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
+    signal_update_graph_request = qtc.Signal()
 
     def __init__(self, settings):
         super().__init__()
@@ -70,8 +71,8 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets = dict()
 
     def _create_widgets(self):
-        self._graph = MatplotlibWidget(self.app_settings)
-        self._graph_buttons = pwi.PushButtonGroup(
+        self.graph = MatplotlibWidget(self.app_settings)
+        self.graph_buttons = pwi.PushButtonGroup(
             {"import": "Import",
              "auto_import": "Auto Import",
              "reset_indices": "Reset Indexes",
@@ -85,18 +86,18 @@ class CurveAnalyze(qtw.QWidget):
              },
             {"import": "Import 2D graph data from clipboard"},
         )
-        self._graph_buttons.user_values_storage(self._user_input_widgets)
+        self.graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         # self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
 
         self._curve_list = qtw.QListWidget()
         self._curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
-        self._curve_list.setDragDropMode(qtw.QAbstractItemView.InternalMove)
+        # self._curve_list.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
 
     def _place_widgets(self):
         self.setLayout(qtw.QVBoxLayout())
-        self.layout().addWidget(self._graph, 2)
-        self.layout().addWidget(self._graph_buttons)
+        self.layout().addWidget(self.graph, 2)
+        self.layout().addWidget(self.graph_buttons)
         self.layout().addWidget(self._curve_list)
 
     def _make_connections(self):
@@ -112,6 +113,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["import_pushbutton"].clicked.connect(
             lambda: self._import_curve(self._read_clipboard())
         )
+        self.signal_update_graph_request.connect(self.graph.update_figure)
 
     def _export_to_clipboard(self):
         if len(self._curve_list.selectedItems()) > 1:
@@ -142,12 +144,6 @@ class CurveAnalyze(qtw.QWidget):
             ix.append(self._curve_list.row(list_item))  # wow this will be slow..
         return self.get_curves(value, rows=ix, **kwargs)
 
-    def _move_up(self):
-        currentRow = self._curve_list.listWidget.currentRow()
-        currentItem = self._curve_list.listWidget.takeItem(currentRow)
-        self._curve_list.listWidget.insertItem(currentRow - 1, currentItem)
-        # And for the Down Button it's the same, except that in the third line the "-" sign is changed by a "+".
-        # https://stackoverflow.com/questions/10957392/moving-items-up-and-down-in-a-qlistwidget
 
     def get_curves(self, value:str, rows:list=None, as_dict=False):
         q_list_items = {}
@@ -159,7 +155,7 @@ class CurveAnalyze(qtw.QWidget):
             case "q_list_items":
                 result_dict = q_list_items
             case "ix":
-                result_dict = list(q_list_items.keys())
+                result_dict = dict(zip(q_list_items.keys(), q_list_items.keys()))
             case "screen_name":  # name with number as shown on screen
                 result_dict = {i: list_item.text() for (i, list_item) in q_list_items.items()}
             case "curves":  # signal_tools.Curve instances
@@ -180,6 +176,13 @@ class CurveAnalyze(qtw.QWidget):
         else:
             return list(result_dict.values())
 
+    def _move_up(self):
+        currentRow = self._curve_list.listWidget.currentRow()
+        currentItem = self._curve_list.listWidget.takeItem(currentRow)
+        self._curve_list.listWidget.insertItem(currentRow - 1, currentItem)
+        # And for the Down Button it's the same, except that in the third line the "-" sign is changed by a "+".
+        # https://stackoverflow.com/questions/10957392/moving-items-up-and-down-in-a-qlistwidget
+
     def _reset_indices(self):
         labels = {}
         curve_names = self.get_curves("curve_names", as_dict=True)
@@ -187,7 +190,7 @@ class CurveAnalyze(qtw.QWidget):
             screen_name = f"#{i:02d} - {curve_names[i]}"
             list_item.setText(screen_name)
             labels[i] = screen_name
-        self._graph.update_labels(labels)
+        self.graph.update_labels(labels)
 
     def _rename_curve(self):
         if len(self._curve_list.selectedItems()) > 1:
@@ -205,9 +208,9 @@ class CurveAnalyze(qtw.QWidget):
         if ok and text != '':
             curve.set_name(text)
             list_item.setText(text)
-            self._graph.update_labels({i: text})
+            self.graph.update_labels({i: text})
                       
-    def _add_curve(self, curve):
+    def _add_curve(self, i_insert, curve):
         if curve.is_curve():
             i = self._curve_list.count()
             screen_name = f"#{i:02d} - {curve.get_name()}"
@@ -217,8 +220,11 @@ class CurveAnalyze(qtw.QWidget):
                                                              "visible": True,
                                                              }
                               )
-            self._curve_list.addItem(list_item)
-            self._graph.add_line2D(i, screen_name, curve.get_xy())
+            if i_insert:
+                self._curve_list.insertItem(i_insert, list_item)
+            else:
+                self._curve_list.addItem(list_item)
+            self.graph.add_line2D(i, screen_name, curve.get_xy())
         else:
             raise ValueError("Invalid curve")
 
@@ -258,7 +264,7 @@ class CurveAnalyze(qtw.QWidget):
 
     def send_visibility_states_to_graph(self):
         visibility_states = self.get_curves("visibility", as_dict=True)
-        self._graph.hide_show_line2D(visibility_states)
+        self.graph.hide_show_line2D(visibility_states)
 
     def _open_analysis_dialog(self):
         analysis_dialog = AnalysisDialog(self.get_selected_curves("q_list_items"))
@@ -268,19 +274,29 @@ class CurveAnalyze(qtw.QWidget):
         if return_value:
             self.signal_bad_beep.emit()
             pass
+        
+    def _analysis_dialog_return(self, analysis_fun):
+        to_insert = getattr(self, analysis_fun)()
 
-    def _analysis_dialog_return(self, analysis_fun: str, **kwargs):
-        # mean and median hesabım iki eğri yolluyor şu an. bu metod ama bir eğriye göre yapılı
-        for calculated_curve in getattr(signal_tools, analysis_fun)(self.get_selected_curves("xy_s")):
-            
-        calculated_curve_name = (find_longest_match_in_name(self.get_selected_curves("curve_names")).strip().strip("-").strip()
-                                 + " - "
-                                 + analysis_fun
-                                 )
-        calculated_curve.set_name(calculated_curve_name)
+        for index_and_curve in to_insert:
+            self._add_curve(*index_and_curve)
 
-        self._add_curve(calculated_curve)
-        self._graph.update_canvas()
+    def _mean_and_median_analysis(self):
+        curves_xy = self.get_selected_curves("xy_s")
+        mean_xy, median_xy = signal_tools.mean_and_median_of_curves(curves_xy)
+
+        calculated_curve_name = find_longest_match_in_name(self.get_selected_curves("curve_names"))  # .strip().strip("-").strip()
+        mean_xy.set_name(calculated_curve_name + " - mean")
+        median_xy.set_name(calculated_curve_name + " - median")
+
+        i_insert = max(self.get_selected_curves("ix")) + 1
+        to_insert = []
+        if settings.mean_selected:
+            to_insert.append((i_insert, mean_xy))
+        if settings.median_selected:
+            to_insert.append((i_insert + 1, median_xy))
+
+        return to_insert
 
     def _auto_importer_status_toggle(self, checked):
         if checked == 1:
@@ -300,7 +316,7 @@ class CurveAnalyze(qtw.QWidget):
             pass
 
     def _settings_dialog_return(self):
-        self._graph.set_legend_visible(settings.show_legend) 
+        self.signal_update_graph_request.emit()
            
     def _process_curve(self, process_fun, **kwargs):
         user_data = self.get_selected_curves("user_data")
@@ -313,13 +329,13 @@ class CurveAnalyze(qtw.QWidget):
             list_item.setData(qtc.Qt.ItemDataRole.UserRole, data)
             
             curve.set_xy(process_fun(*curve.get_xy(), **kwargs))
-            self._graph.update_line2D(i,
+            self.graph.update_line2D(i,
                                       screen_name_after_processing,
                                       curve.get_xy(ndarray=True),
                                       update_canvas=False,
                                       )
             list_item.setText(screen_name_after_processing)
-        self._graph.update_canvas()
+        self.graph.update_canvas()
 
     @qtc.Slot(signal_tools.Curve)
     def _import_curve(self, curve):
@@ -331,7 +347,7 @@ class CurveAnalyze(qtw.QWidget):
                 curve.set_xy((x_intp, y_intp))
     
             if curve.is_curve():
-                self._add_curve(curve)
+                self._add_curve(None, curve)
                 self.signal_good_beep.emit()
 
         except Exception as e:
@@ -339,11 +355,12 @@ class CurveAnalyze(qtw.QWidget):
             raise e
 
     def remove_curves(self):
-        for list_item in self._curve_list.selectedItems():
-            i = self._curve_list.row(list_item)
+        ix = self.get_selected_curves("ix")
+        self.graph.remove_line2D(ix)
+
+        for i in reversed(ix):
             self._curve_list.takeItem(i)
-            self._graph.remove_line2D(i, update_canvas=False)
-        self._graph.update_canvas()
+
 
 class AnalysisDialog(qtw.QDialog):
     global settings
@@ -361,7 +378,7 @@ class AnalysisDialog(qtw.QDialog):
         user_form_0 = pwi.UserForm()
         tab_widget.addTab(user_form_0, "Statistics")  # tab page is the UserForm widget
         i = tab_widget.indexOf(user_form_0)
-        user_forms_and_recipient_functions[i] = (user_form_0, "mean_and_median_of_curves")
+        user_forms_and_recipient_functions[i] = (user_form_0, "_mean_and_median_analysis")
         
         user_form_0.add_row(pwi.CheckBox("mean_selected",
                                         "Mean value per frequency point.",
