@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from operator import methodcaller
 
 from PySide6 import QtCore as qtc
 from matplotlib.backends.qt_compat import QtWidgets as qtw
@@ -58,31 +59,65 @@ class MatplotlibWidget(qtw.QWidget):
             self.ax.set_ylim((y_min, y_max))
 
         if self.ax.get_lines() and self.app_settings.show_legend:
-            self.ax.legend()
+            self.show_legend_based_on_zorder()
         else:
             self.ax.legend().remove()
 
         self.canvas.draw()
-        
+
+    @qtc.Slot()
     def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray, update_figure=True):
-        line = self.ax.get_lines()[i]
+        line = self.lines_as_dict()[i]
         line.set_data(new_data)
         line.set_label(name_with_number)
         line.set_zorder(i)
         if update_figure:
             self.update_figure()
 
+    @qtc.Slot()
     def add_line2D(self, i, label, data:tuple, update_figure=True, **kwargs):
+        for line in self.ax.get_lines():
+            zorder = line.get_zorder()
+            if zorder >= i:
+                line.set_zorder(zorder + 1)
         self.ax.semilogx(*data, label=label, zorder=i, **kwargs)
         if update_figure:
             self.update_figure()
 
-    def remove_line2D(self, ix, update_figure=True):
-        for i in reversed(sorted(ix)):
-            self.ax.get_lines()[i].remove()
+    @qtc.Slot()
+    def remove_line2D(self, ix:list, update_figure=True):
+        lines = self.lines_as_dict()
+        for zorder, line in lines.items():
+            if zorder in ix:
+                line.remove()
+            else:
+                line.set_zorder(zorder - len([i_remove for i_remove in ix if i_remove < zorder]))
+        #     if zorder 
+
+        # for i in reversed(sorted(ix)):
+        #     for zorder, line in lines.items():
+        #         if zorder > i:
+        #             line.set_zorder(zorder - 1)
+            
         if update_figure:
             self.update_figure()
 
+    def show_legend_based_on_zorder(self):
+        handles = sorted(self.ax.get_lines(), key=methodcaller("get_zorder"))
+        labels = [line.get_label() for line in handles]
+
+        self.ax.legend(handles, labels)
+        # print([line.get_zorder() for line in self.ax.get_lines()])
+        
+    def set_curves_zorder(self, zorders:list):
+        for line in self.ax.get_lines():
+            zorder_old = line.get_zorder()
+            line.set_zorder(zorders.index(zorder_old))
+
+        self.update_figure()
+
+
+    @qtc.Slot()
     def hide_show_line2D(self, visibility_states:dict, update_figure=True):
         lines = self.lines_as_dict()
         for i, visible in visibility_states.items():
@@ -97,19 +132,23 @@ class MatplotlibWidget(qtw.QWidget):
         if update_figure:
             self.update_figure()
 
-    def update_labels(self, labels: dict, update_figure=True):
-        for i, label in labels.items():
-            line = self.ax.get_lines()[i]
-            new_label = label if line.get_visible() else ("_" + label)
+    @qtc.Slot()
+    def update_labels_and_colors(self, labels: dict, update_figure=True):
+        colors = plt.rcParams["axes.prop_cycle"]()
+
+        for line in self.ax.get_lines():
+            zorder = line.get_zorder()
+            new_label = labels[zorder] if line.get_visible() else ("_" + labels[zorder])
             line.set_label(new_label)
-            line.set_zorder(i)
+            line.set_color(next(colors)["color"])
+
         if update_figure:
             self.update_figure()
 
     def lines_as_dict(self):
         lines = {}
-        for i, line in enumerate(self.ax.get_lines()):
-            lines[i] = line
+        for line in self.ax.get_lines():
+            lines[line.get_zorder()] = line
         return lines
 
 

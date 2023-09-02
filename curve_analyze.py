@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 from difflib import SequenceMatcher
+import copy
 
 # from matplotlib.backends.qt_compat import QtWidgets as qtw
 from PySide6 import QtWidgets as qtw
@@ -58,6 +59,7 @@ class CurveAnalyze(qtw.QWidget):
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
     signal_update_graph_request = qtc.Signal()
+    signal_reposition_curves = qtc.Signal(list)
 
     def __init__(self, settings):
         super().__init__()
@@ -78,6 +80,8 @@ class CurveAnalyze(qtw.QWidget):
              "reset_indices": "Reset Indexes",
              "remove": "Remove",
              "rename": "Rename",
+             "move_up": "Move up",
+             "move_to_top": "Move to top",
              "hide": "Hide",
              "show": "Show",
              "analysis": "Analysis",
@@ -88,22 +92,24 @@ class CurveAnalyze(qtw.QWidget):
         )
         self.graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
-        # self._user_input_widgets["auto_import_pushbutton"].setEnabled(False)
+        # self._user_input_widgets["move_to_top_pushbutton"].setEnabled(False)
 
-        self._curve_list = qtw.QListWidget()
-        self._curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
-        # self._curve_list.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
+        self.curve_list = qtw.QListWidget()
+        self.curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
+        # self.curve_list.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
 
     def _place_widgets(self):
         self.setLayout(qtw.QVBoxLayout())
         self.layout().addWidget(self.graph, 2)
         self.layout().addWidget(self.graph_buttons)
-        self.layout().addWidget(self._curve_list)
+        self.layout().addWidget(self.curve_list)
 
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
         self._user_input_widgets["reset_indices_pushbutton"].clicked.connect(self._reset_indices)
         self._user_input_widgets["rename_pushbutton"].clicked.connect(self._rename_curve)
+        self._user_input_widgets["move_up_pushbutton"].clicked.connect(self.move_up_1)
+        self._user_input_widgets["move_to_top_pushbutton"].clicked.connect(self.move_to_top)
         self._user_input_widgets["hide_pushbutton"].clicked.connect(self._hide_curves)
         self._user_input_widgets["show_pushbutton"].clicked.connect(self.show_curves)
         self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
@@ -114,12 +120,13 @@ class CurveAnalyze(qtw.QWidget):
             lambda: self._import_curve(self._read_clipboard())
         )
         self.signal_update_graph_request.connect(self.graph.update_figure)
+        self.signal_reposition_curves.connect(self.graph.set_curves_zorder)
 
     def _export_to_clipboard(self):
-        if len(self._curve_list.selectedItems()) > 1:
+        if len(self.curve_list.selectedItems()) > 1:
             raise NotImplementedError("Can export only one curve at a time")
         else:
-            list_item = self._curve_list.selectedItems()[0]
+            list_item = self.curve_list.selectedItems()[0]
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
             
         if settings.export_ppo == 0:
@@ -140,16 +147,16 @@ class CurveAnalyze(qtw.QWidget):
 
     def get_selected_curves(self, value, **kwargs):
         ix = []
-        for list_item in self._curve_list.selectedItems():
-            ix.append(self._curve_list.row(list_item))  # wow this will be slow..
+        for list_item in self.curve_list.selectedItems():
+            ix.append(self.curve_list.row(list_item))  # wow this will be slow..
         return self.get_curves(value, rows=ix, **kwargs)
 
 
     def get_curves(self, value:str, rows:list=None, as_dict=False):
         q_list_items = {}
-        for i in range(self._curve_list.count()):
+        for i in range(self.curve_list.count()):
             if not rows or (i in rows):
-                q_list_items[i] = self._curve_list.item(i)
+                q_list_items[i] = self.curve_list.item(i)
 
         match value:
             case "q_list_items":
@@ -176,12 +183,33 @@ class CurveAnalyze(qtw.QWidget):
         else:
             return list(result_dict.values())
 
-    def _move_up(self):
-        currentRow = self._curve_list.listWidget.currentRow()
-        currentItem = self._curve_list.listWidget.takeItem(currentRow)
-        self._curve_list.listWidget.insertItem(currentRow - 1, currentItem)
-        # And for the Down Button it's the same, except that in the third line the "-" sign is changed by a "+".
-        # https://stackoverflow.com/questions/10957392/moving-items-up-and-down-in-a-qlistwidget
+    def _move_curve_up(self, i_insert):
+        new_positions = list(range(self.curve_list.count()))
+        # each number in the list is the index before location change. index in the list is the new location. 
+        curves = self.get_selected_curves("curves", as_dict=True)
+        screen_names = self.get_selected_curves("screen_name", as_dict=True)
+        for i, i_curve in enumerate(curves.keys()):
+            screen_name = screen_names[i_curve]
+            list_item = qtw.QListWidgetItem(screen_name)
+            list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve": copy.deepcopy(curves[i_curve]),
+                                                             "visible": True,
+                                                             }
+                              )
+            self.curve_list.insertItem(i_insert + i, list_item)
+            self.curve_list.takeItem(i_curve+1)
+            new_positions.insert(i_insert+i, new_positions.pop(i_curve))
+
+        self.signal_reposition_curves.emit(new_positions)
+
+    def move_up_1(self):
+        i_insert = max(0, self.get_selected_curves("ix")[0] - 1)
+        self._move_curve_up(i_insert)
+        if len(self.get_selected_curves("q_list_items")) == 1:
+            self.curve_list.setCurrentRow(i_insert)
+
+    def move_to_top(self):
+        self._move_curve_up(0)
+        self.curve_list.setCurrentRow(-1)
 
     def _reset_indices(self):
         labels = {}
@@ -193,11 +221,11 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.update_labels(labels)
 
     def _rename_curve(self):
-        if len(self._curve_list.selectedItems()) > 1:
+        if len(self.curve_list.selectedItems()) > 1:
             raise NotImplementedError("Can rename only one curve at a time")
         else:
-            list_item = self._curve_list.selectedItems()[0]
-            i = self._curve_list.row(list_item)
+            list_item = self.curve_list.selectedItems()[0]
+            i = self.curve_list.row(list_item)
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
         
         text, ok = qtw.QInputDialog.getText(self,
@@ -208,23 +236,21 @@ class CurveAnalyze(qtw.QWidget):
         if ok and text != '':
             curve.set_name(text)
             list_item.setText(text)
-            self.graph.update_labels({i: text})
-                      
+            self.graph.update_labels_and_colors({i: text})
+
     def _add_curve(self, i_insert, curve):
-        print(self._curve_list.currentRow())
         if curve.is_curve():
-            i = self._curve_list.count()
+            i = self.curve_list.count()
             screen_name = f"#{i:02d} - {curve.get_name()}"
             list_item = qtw.QListWidgetItem(screen_name)
             list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve": curve,
-                                                             "processed": False,
                                                              "visible": True,
                                                              }
                               )
             if i_insert:
-                self._curve_list.insertItem(i_insert, list_item)
+                self.curve_list.insertItem(i_insert, list_item)
             else:
-                self._curve_list.insertItem(self._curve_list.currentRow(), list_item)
+                self.curve_list.insertItem(self.curve_list.count(), list_item)
             self.graph.add_line2D(i, screen_name, curve.get_xy())
         else:
             raise ValueError("Invalid curve")
@@ -275,7 +301,7 @@ class CurveAnalyze(qtw.QWidget):
         if return_value:
             self.signal_bad_beep.emit()
             pass
-        
+
     def _analysis_dialog_return(self, analysis_fun):
         to_insert = getattr(self, analysis_fun)()
 
@@ -284,6 +310,8 @@ class CurveAnalyze(qtw.QWidget):
 
     def _mean_and_median_analysis(self):
         curves_xy = self.get_selected_curves("xy_s")
+        if len(curves_xy) < 2:
+            raise ValueError("A minimum of 2 curves is needed for this analysis.")
         mean_xy, median_xy = signal_tools.mean_and_median_of_curves(curves_xy)
 
         calculated_curve_name = find_longest_match_in_name(self.get_selected_curves("curve_names"))  # .strip().strip("-").strip()
@@ -319,25 +347,6 @@ class CurveAnalyze(qtw.QWidget):
 
     def _settings_dialog_return(self):
         self.signal_update_graph_request.emit()
-           
-    def _process_curve(self, process_fun, **kwargs):
-        user_data = self.get_selected_curves("user_data")
-        for i, list_item in self.get_selected_curves("q_list_item").items():
-            curve = user_data[i]["curve"]
-            screen_name_after_processing = list_item.text() + " - processed"  # change this to applied function name
-
-            data = user_data[i]
-            data["curve_processed"] = True
-            list_item.setData(qtc.Qt.ItemDataRole.UserRole, data)
-            
-            curve.set_xy(process_fun(*curve.get_xy(), **kwargs))
-            self.graph.update_line2D(i,
-                                      screen_name_after_processing,
-                                      curve.get_xy(ndarray=True),
-                                      update_canvas=False,
-                                      )
-            list_item.setText(screen_name_after_processing)
-        self.graph.update_canvas()
 
     @qtc.Slot(signal_tools.Curve)
     def _import_curve(self, curve):
@@ -361,7 +370,7 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.remove_line2D(ix)
 
         for i in reversed(ix):
-            self._curve_list.takeItem(i)
+            self.curve_list.takeItem(i)
 
 
 class AnalysisDialog(qtw.QDialog):
@@ -522,6 +531,13 @@ if __name__ == "__main__":
     settings = pwi.Settings()
 
     mw = CurveAnalyze(settings)
+    
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+
 
     mw.show()
     app.exec()

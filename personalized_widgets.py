@@ -34,6 +34,7 @@ class Settings:
     octave_smooth_ppo: int = 12
     mean_selected: bool = False
     median_selected: bool = True
+   
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(
