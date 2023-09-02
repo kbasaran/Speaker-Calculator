@@ -104,7 +104,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
         self._user_input_widgets["reset_indices_pushbutton"].clicked.connect(self._reset_indices)
         self._user_input_widgets["rename_pushbutton"].clicked.connect(self._rename_curve)
-        self._user_input_widgets["hide_pushbutton"].clicked.connect(self.hide_curves)
+        self._user_input_widgets["hide_pushbutton"].clicked.connect(self._hide_curves)
         self._user_input_widgets["show_pushbutton"].clicked.connect(self.show_curves)
         self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
         self._user_input_widgets["auto_import_pushbutton"].toggled.connect(self._auto_importer_status_toggle)
@@ -211,6 +211,7 @@ class CurveAnalyze(qtw.QWidget):
             self.graph.update_labels({i: text})
                       
     def _add_curve(self, i_insert, curve):
+        print(self._curve_list.currentRow())
         if curve.is_curve():
             i = self._curve_list.count()
             screen_name = f"#{i:02d} - {curve.get_name()}"
@@ -223,12 +224,12 @@ class CurveAnalyze(qtw.QWidget):
             if i_insert:
                 self._curve_list.insertItem(i_insert, list_item)
             else:
-                self._curve_list.addItem(list_item)
+                self._curve_list.insertItem(self._curve_list.currentRow(), list_item)
             self.graph.add_line2D(i, screen_name, curve.get_xy())
         else:
             raise ValueError("Invalid curve")
 
-    def hide_curves(self, rows=None):
+    def _hide_curves(self, rows=None):
         if rows:
             items = self.get_curves("q_list_items", rows=rows)
         else:
@@ -293,8 +294,9 @@ class CurveAnalyze(qtw.QWidget):
         to_insert = []
         if settings.mean_selected:
             to_insert.append((i_insert, mean_xy))
+            i_insert += 1
         if settings.median_selected:
-            to_insert.append((i_insert + 1, median_xy))
+            to_insert.append((i_insert, median_xy))
 
         return to_insert
 

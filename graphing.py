@@ -52,15 +52,16 @@ class MatplotlibWidget(qtw.QWidget):
         def floor_to_multiple(number, multiple=5, clearance=2):
             return multiple * np.floor((number - clearance) / multiple)
 
-        if len(self.ax.get_lines()):
+        if self.ax.get_lines():
             y_min = floor_to_multiple(np.min(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])), clearance=1)
             y_max = ceil_to_multiple(np.max(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
             self.ax.set_ylim((y_min, y_max))
 
-        if self.app_settings.show_legend:            
+        if self.ax.get_lines() and self.app_settings.show_legend:
             self.ax.legend()
         else:
             self.ax.legend().remove()
+
         self.canvas.draw()
         
     def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray, update_figure=True):

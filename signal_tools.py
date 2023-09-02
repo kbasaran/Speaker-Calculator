@@ -654,6 +654,9 @@ def mean_and_median_of_curves(curves_xy: list):
         y_arrays = np.column_stack([y for x, y in curves_xy])
         y_mean = 10 * np.log10(np.mean(10**(y_arrays / 10), axis=1))
         y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))
+    else:
+        raise NotImplementedError("Curves do not have the exact same frequency points."
+                                  "Consider interpolating to a common frequency array first.")
 
     return Curve((curves_xy[0][0], y_mean)), Curve((curves_xy[0][0], y_median))
 
