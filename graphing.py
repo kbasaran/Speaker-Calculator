@@ -119,12 +119,14 @@ class MatplotlibWidget(qtw.QWidget):
 
     @qtc.Slot()
     def mark_selected_curve(self, i:int):
+        if not hasattr(self, "default_lw"):
+            self.default_lw = self.ax.get_lines()[0].get_lw()
         for line in self.ax.get_lines():
             if line.get_zorder() == i:
-                line.set_lw(3)
-                line.set_path_effects([mpe.Stroke(),])
+                line.set_lw(self.default_lw*2)
+                # line.set_path_effects([mpe.withSimplePatchShadow(offset=(2,-2))])
             else:
-                line.set_lw(1)
+                line.set_lw(self.default_lw)
                 line.set_path_effects(None)
                 print("hop")
         self.update_figure()
@@ -138,7 +140,10 @@ class MatplotlibWidget(qtw.QWidget):
     def hide_show_line2D(self, visibility_states:dict, update_figure=True):
         lines = self.lines_as_dict()
         for i, visible in visibility_states.items():
-            lines[i].set_visible(visible)
+            # lines[i].set_visible(visible)
+            alpha = (1 if visible else 0.2)
+            lines[i].set_alpha(alpha)
+            
 
             label = lines[i].get_label()
             if visible and label[0] == "_":
@@ -155,7 +160,7 @@ class MatplotlibWidget(qtw.QWidget):
 
         for line in self.ax.get_lines():
             zorder = line.get_zorder()
-            new_label = labels[zorder] if line.get_visible() else ("_" + labels[zorder])
+            new_label = labels[zorder] if line.get_alpha() == 1 else ("_" + labels[zorder])
             line.set_label(new_label)
             line.set_color(next(colors)["color"])
 

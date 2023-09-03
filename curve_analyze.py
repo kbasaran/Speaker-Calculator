@@ -292,6 +292,7 @@ class CurveAnalyze(qtw.QWidget):
             if data.shape[1] > 1:  # means if there are more than 1 frequency points
                 for name, values in data.iterrows():
                     curve = signal_tools.Curve(np.column_stack((data.columns, values)))
+                    curve.set_name(name)
                     self._add_curve(None, curve, update_figure=False)
                 self.signal_update_graph_request.emit()
                 
