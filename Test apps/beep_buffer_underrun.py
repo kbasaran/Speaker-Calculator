@@ -28,7 +28,8 @@ class SoundEngine():
         y = y.reshape((len(y) // self.stream.channels, self.stream.channels), order='F')
         y = np.ascontiguousarray(y, self.stream.dtype)
         plt.plot(y[-1000:, :]); plt.grid()
-        self.stream.write(y)
+        underflowed = self.stream.write(y)
+        print("Underflowed: ", underflowed)
 
     def test_beep(self):
         self.beep(1, 200)
