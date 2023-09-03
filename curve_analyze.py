@@ -123,7 +123,7 @@ class CurveAnalyze(qtw.QWidget):
         )
         self._user_input_widgets["import_table_pushbutton"].clicked.connect(self._import_table)
         self.signal_update_graph_request.connect(self.graph.update_figure)
-        self.signal_reposition_curves.connect(self.graph.set_curves_zorder)
+        self.signal_reposition_curves.connect(self.graph.change_lines_order)
         self.curve_list.currentRowChanged.connect(self.graph.mark_selected_curve)
 
     def _export_to_clipboard(self):
@@ -149,11 +149,13 @@ class CurveAnalyze(qtw.QWidget):
         else:
             logging.debug("Unrecognized curve object")
 
-    def get_selected_curves(self, value, **kwargs):
-        ix = []
-        for list_item in self.curve_list.selectedItems():
-            ix.append(self.curve_list.row(list_item))  # wow this will be slow..
-        return self.get_curves(value, rows=ix, **kwargs)
+    def get_selected_curves(self, value, as_dict=False, **kwargs):
+        selected_curves = self.curve_list.selectedItems()
+        if value == "q_list_items" and not as_dict:
+            return self.curve_list.selectedItems()
+        else:
+            ix = [self.curve_list.row(list_item) for list_item in selected_curves]
+            return self.get_curves(value, rows=ix, **kwargs)
 
 
     def get_curves(self, value:str, rows:list=None, as_dict=False):
@@ -290,19 +292,27 @@ class CurveAnalyze(qtw.QWidget):
                                  " Format unrecognized. Did you use the correct DBExtract template?")
             
             if data.shape[1] > 1:  # means if there are more than 1 frequency points
+                visible = data.shape[0] < 20
+                if not visible:
+                    pop_up = qtw.QMessageBox(qtw.QMessageBox.Information,
+                                             "Large table import",
+                                             "Curves will be imported as hidden, so as not to bloat the legend.",
+                                             )
+                    pop_up.exec()
                 for name, values in data.iterrows():
                     curve = signal_tools.Curve(np.column_stack((data.columns, values)))
                     curve.set_name(name)
-                    self._add_curve(None, curve, update_figure=False)
+                    self._add_curve(None, curve, visible=visible, update_figure=False)
+                self.send_visibility_states_to_graph()
                 self.signal_update_graph_request.emit()
                 
-    def _add_curve(self, i_insert, curve, update_figure=True):
+    def _add_curve(self, i_insert, curve, visible=True, update_figure=True):
         if curve.is_curve():
             i = self.curve_list.count()
             screen_name = f"#{i:02d} - {curve.get_name()}"
             list_item = qtw.QListWidgetItem(screen_name)
             list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve": curve,
-                                                             "visible": True,
+                                                             "visible": visible,
                                                              }
                               )
             if i_insert:
