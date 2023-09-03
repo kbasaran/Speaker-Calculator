@@ -52,7 +52,7 @@ def find_longest_match_in_name(names):
     
     max_occurring_key = max(substring_counts, key=substring_counts.get)  # max looks at the output of get method
 
-    return max_occurring_key
+    return max_occurring_key.strip().strip("-").strip().strip("-").strip()
 
 
 class CurveAnalyze(qtw.QWidget):
@@ -155,7 +155,7 @@ class CurveAnalyze(qtw.QWidget):
             return self.curve_list.selectedItems()
         else:
             ix = [self.curve_list.row(list_item) for list_item in selected_curves]
-            return self.get_curves(value, rows=ix, **kwargs)
+            return self.get_curves(value, rows=ix, as_dict=as_dict, **kwargs)
 
 
     def get_curves(self, value:str, rows:list=None, as_dict=False):
@@ -292,7 +292,7 @@ class CurveAnalyze(qtw.QWidget):
                                  " Format unrecognized. Did you use the correct DBExtract template?")
             
             if data.shape[1] > 1:  # means if there are more than 1 frequency points
-                visible = data.shape[0] < 20
+                visible = True  # data.shape[0] < 20
                 if not visible:
                     pop_up = qtw.QMessageBox(qtw.QMessageBox.Information,
                                              "Large table import",
@@ -374,7 +374,8 @@ class CurveAnalyze(qtw.QWidget):
         to_insert = getattr(self, analysis_fun)()
 
         for index_and_curve in to_insert:
-            self._add_curve(*index_and_curve)
+            self._add_curve(*index_and_curve, update_figure=False)
+        self.signal_update_graph_request.emit()
 
     def _mean_and_median_analysis(self):
         curves_xy = self.get_selected_curves("xy_s")
@@ -382,7 +383,7 @@ class CurveAnalyze(qtw.QWidget):
             raise ValueError("A minimum of 2 curves is needed for this analysis.")
         mean_xy, median_xy = signal_tools.mean_and_median_of_curves(curves_xy)
 
-        calculated_curve_name = find_longest_match_in_name(self.get_selected_curves("curve_names"))  # .strip().strip("-").strip()
+        calculated_curve_name = find_longest_match_in_name(self.get_selected_curves("curve_names"))
         mean_xy.set_name(calculated_curve_name + " - mean")
         median_xy.set_name(calculated_curve_name + " - median")
 
@@ -523,6 +524,9 @@ class SettingsDialog(qtw.QDialog):
         user_form.add_row(pwi.CheckBox("show_legend", "Show legend on the graph"),
                           "Show legend")
 
+        user_form.add_row(pwi.IntSpinBox("max_legend_size", "Limit the items that can be listed on the legend. Does not affect the shown curves in graph"),
+                          "Maximum legend size in graph")
+
         user_form.add_row(pwi.IntSpinBox("import_ppo",
                                         "Interpolate the curve to here defined points per octave in import"
                                         "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
@@ -540,7 +544,7 @@ class SettingsDialog(qtw.QDialog):
                                         ),
                           "Interpolate before export (ppo)",
                           )
-        user_form._user_input_widgets["export_ppo"].setValue(96)
+
 
         # Buttons
         button_group = pwi.PushButtonGroup({"save": "Save",
@@ -600,11 +604,11 @@ if __name__ == "__main__":
 
     mw = CurveAnalyze(settings)
     
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
 
 
     mw.show()

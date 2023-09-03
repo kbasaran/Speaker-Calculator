@@ -29,6 +29,7 @@ class Settings:
     freq_bad_beep: float = freq_good_beep / 2
     last_used_folder: str = os.path.expanduser('~')
     show_legend: bool = True
+    max_legend_size: int = 19
     import_ppo: int = 0
     export_ppo: int = 96
     octave_smooth_ppo: int = 12
