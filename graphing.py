@@ -1,6 +1,8 @@
+import logging
 import sys
 import numpy as np
 from operator import methodcaller
+from functools import partial
 
 from PySide6 import QtCore as qtc
 from matplotlib.backends.qt_compat import QtWidgets as qtw
@@ -14,8 +16,8 @@ plt.rcParams["figure.constrained_layout.w_pad"] = 0.4
 
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
-import logging
 logging.basicConfig(level=logging.INFO)
+
 
 class MatplotlibWidget(qtw.QWidget):
     def __init__(self, settings):
@@ -38,25 +40,27 @@ class MatplotlibWidget(qtw.QWidget):
         layout.addWidget(self.navigation_toolbar)
         # print(self.navigation_toolbar.layout().itemAt(3).tooltip())
         layout.addWidget(self.canvas)
-        
+
         self.ax = self.canvas.figure.subplots()
         self.ax.grid(which='minor')
-        
+
         # self._lines = {}  # dictionary of _lines
         # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.Line2D.html
 
     @qtc.Slot()
     def update_figure(self):
 
-        def ceil_to_multiple(number, multiple=5, clearance = 2):
+        def ceil_to_multiple(number, multiple=5, clearance=2):
             return multiple * np.ceil((number + clearance) / multiple)
 
         def floor_to_multiple(number, multiple=5, clearance=2):
             return multiple * np.floor((number - clearance) / multiple)
 
         if self.ax.get_lines():
-            y_min = floor_to_multiple(np.min(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])), clearance=1)
-            y_max = ceil_to_multiple(np.max(np.concatenate([line.get_ydata() for line in self.ax.get_lines()])))
+            y_min = floor_to_multiple(np.min(np.concatenate(
+                [line.get_ydata() for line in self.ax.get_lines()])), clearance=1)
+            y_max = ceil_to_multiple(np.max(np.concatenate(
+                [line.get_ydata() for line in self.ax.get_lines()])))
             self.ax.set_ylim((y_min, y_max))
 
         if self.ax.get_lines() and self.app_settings.show_legend:
@@ -67,7 +71,7 @@ class MatplotlibWidget(qtw.QWidget):
         self.canvas.draw()
 
     @qtc.Slot()
-    def update_line2D(self, i: int, name_with_number:str, new_data:np.ndarray, update_figure=True):
+    def update_line2D(self, i: int, name_with_number: str, new_data: np.ndarray, update_figure=True):
         line = self.lines_as_dict()[i]
         line.set_data(new_data)
         line.set_label(name_with_number)
@@ -76,7 +80,7 @@ class MatplotlibWidget(qtw.QWidget):
             self.update_figure()
 
     @qtc.Slot()
-    def add_line2D(self, i, label, data:tuple, update_figure=True, **kwargs):
+    def add_line2D(self, i, label, data: tuple, update_figure=True, **kwargs):
         for line in self.ax.get_lines():
             zorder = line.get_zorder()
             if zorder >= i:
@@ -86,20 +90,23 @@ class MatplotlibWidget(qtw.QWidget):
             self.update_figure()
 
     @qtc.Slot()
-    def remove_line2D(self, ix:list, update_figure=True):
+    def remove_line2D(self, ix: list, update_figure=True):
+        to_remove = np.array(ix)
         lines = self.lines_as_dict()
         for zorder, line in lines.items():
             if zorder in ix:
                 line.remove()
             else:
-                line.set_zorder(zorder - len([i_remove for i_remove in ix if i_remove < zorder]))
-        #     if zorder 
+                line.set_zorder(
+                    zorder - (to_remove < zorder).sum()
+                    )
+        #     if zorder
 
         # for i in reversed(sorted(ix)):
         #     for zorder, line in lines.items():
         #         if zorder > i:
         #             line.set_zorder(zorder - 1)
-            
+
         if update_figure:
             self.update_figure()
 
@@ -109,8 +116,8 @@ class MatplotlibWidget(qtw.QWidget):
 
         self.ax.legend(handles, labels)
         # print([line.get_zorder() for line in self.ax.get_lines()])
-        
-    def set_curves_zorder(self, zorders:list):
+
+    def set_curves_zorder(self, zorders: list):
         for line in self.ax.get_lines():
             zorder_old = line.get_zorder()
             line.set_zorder(zorders.index(zorder_old))
@@ -118,32 +125,31 @@ class MatplotlibWidget(qtw.QWidget):
         self.update_figure()
 
     @qtc.Slot()
-    def mark_selected_curve(self, i:int):
+    def mark_selected_curve(self, i: int):
         if not hasattr(self, "default_lw"):
             self.default_lw = self.ax.get_lines()[0].get_lw()
+        timer = qtc.QTimer()
         for line in self.ax.get_lines():
             if line.get_zorder() == i:
                 line.set_lw(self.default_lw*2)
+                timer.singleShot(1000, partial(self.remove_marking, line))
                 # line.set_path_effects([mpe.withSimplePatchShadow(offset=(2,-2))])
-            else:
-                line.set_lw(self.default_lw)
-                line.set_path_effects(None)
-                print("hop")
+            # else:
+                # line.set_lw(self.default_lw)
+                # line.set_path_effects(None)
         self.update_figure()
-                # path = line.get_path()
-                # self.ax.add_patch(PathPatch(path, linewidth=55))
-                # self.ax.fill_between(line.get_xdata, -np.ones(line.get_ydata().shape), np.ones(line.get_ydata().shape))
-                
 
+    def remove_marking(self, line):
+        line.set_lw(self.default_lw)
+        self.update_figure()
 
     @qtc.Slot()
-    def hide_show_line2D(self, visibility_states:dict, update_figure=True):
+    def hide_show_line2D(self, visibility_states: dict, update_figure=True):
         lines = self.lines_as_dict()
         for i, visible in visibility_states.items():
             # lines[i].set_visible(visible)
             alpha = (1 if visible else 0.2)
             lines[i].set_alpha(alpha)
-            
 
             label = lines[i].get_label()
             if visible and label[0] == "_":
@@ -160,7 +166,7 @@ class MatplotlibWidget(qtw.QWidget):
 
         for line in self.ax.get_lines():
             zorder = line.get_zorder()
-            new_label = labels[zorder] if line.get_alpha() == 1 else ("_" + labels[zorder])
+            new_label = labels[zorder] if line.get_alpha() in (None, 1) else ("_" + labels[zorder])
             line.set_label(new_label)
             line.set_color(next(colors)["color"])
 
