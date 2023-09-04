@@ -21,18 +21,18 @@ class SoundEngine():
         t = np.arange(T * self.FS) / self.FS
         y = 0.1 * np.sin(t * 2 * np.pi * freq)
 
-        # pad = np.zeros(100)
-        # y = np.concatenate([pad, y, pad])
+        pad = np.zeros(100)
+        y = np.concatenate([pad, y, pad])
 
         y = np.tile(y, self.stream.channels)
         y = y.reshape((len(y) // self.stream.channels, self.stream.channels), order='F')
         y = np.ascontiguousarray(y, self.stream.dtype)
-        plt.plot(y[-1000:, :]); plt.grid()
+        plt.plot(y[-150:-50, :]); plt.grid()
         underflowed = self.stream.write(y)
         print("Underflowed: ", underflowed)
 
     def test_beep(self):
-        self.beep(1, 200)
+        self.beep(1, 100)
 
 sound_engine = SoundEngine()
 time.sleep(1)
