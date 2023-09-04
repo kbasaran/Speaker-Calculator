@@ -435,8 +435,8 @@ class Curve:
             if key == "Curve":
                 self.set_xy(np.array(val)[:, :2])
                 # randomize for testing
-                x, y = self.get_xy()
-                self.set_xy((x, y + np.random.randint(0, high=21)))
+                # x, y = self.get_xy()
+                # self.set_xy((x, y + np.random.randint(0, high=21)))
             elif key == "Data_Legend":
                 self.set_name(val)
 
@@ -609,14 +609,12 @@ def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000):
     freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
-def smooth_curve(klippel_import, freq_array, ppo=3, ndarray=False):
+def smooth_curve_gaussian(klippel_import, sigma=3, ndarray=False):
     x = klippel_import.x
     y = klippel_import.y
-    y_new = np.interp(freq_array, x, y)
-    sigma = ppo  # but probably it is not!!!!
-    y_filt = gaussian_filter(y_new, sigma)
+    y_filt = gaussian_filter(y, sigma)
     if not ndarray:
-        return freq_array, y_filt
+        return x, y_filt
     else:
         raise NotImplementedError
 
@@ -656,7 +654,7 @@ def mean_and_median_of_curves(curves_xy: list):
         y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))
     else:
         raise NotImplementedError("Curves do not have the exact same frequency points."
-                                  "Consider interpolating to a common frequency array first.")
+                                  " Consider interpolating to a common frequency array first.")
 
     return Curve((curves_xy[0][0], y_mean)), Curve((curves_xy[0][0], y_median))
 

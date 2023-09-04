@@ -78,7 +78,7 @@ class MatplotlibWidget(qtw.QWidget):
         line, = self.ax.semilogx(*data, label=label, **kwargs)
         self.lines_in_order.insert(i, line)
 
-        self.update_zorders_from_lines_in_order()
+        self.update_line_zorders()
         if update_figure:
             self.update_figure()
 
@@ -88,7 +88,7 @@ class MatplotlibWidget(qtw.QWidget):
             line = self.lines_in_order.pop(i)
             line.remove()
 
-        self.update_zorders_from_lines_in_order()
+        self.update_line_zorders()
         if update_figure:
             self.update_figure()
 
@@ -104,15 +104,16 @@ class MatplotlibWidget(qtw.QWidget):
         for i_line in new_positions:
             lines_reordered.append(self.lines_in_order[i_line])
         self.lines_in_order = lines_reordered
-        self.update_zorders_from_lines_in_order()
+        self.update_line_zorders()
         self.update_figure(recalculate_limits=False)
 
-    def update_zorders_from_lines_in_order(self):
+    def update_line_zorders(self):
         for i, line in enumerate(self.lines_in_order):
-            line.set_zorder(i)
+            hide_offset = -1_000_000 if line.get_label()[0] == "_" else 0
+            line.set_zorder(len(self.lines_in_order) - i + hide_offset)
 
-    @qtc.Slot()
-    def mark_selected_curve(self, i: int):
+    @qtc.Slot(int)
+    def flash_curve(self, i: int):
         if not hasattr(self, "default_lw"):
             self.default_lw = self.ax.get_lines()[0].get_lw()
         line = self.lines_in_order[i]
@@ -124,7 +125,7 @@ class MatplotlibWidget(qtw.QWidget):
         self.update_figure(recalculate_limits=False, update_legend=False)
 
         timer = qtc.QTimer()
-        timer.singleShot(2000, partial(self.remove_marking, line, (old_alpha, self.default_lw)))
+        timer.singleShot(1000, partial(self.remove_marking, line, (old_alpha, self.default_lw)))
 
     def remove_marking(self, line, old_states):
         line.set_alpha(old_states[0])
@@ -133,33 +134,46 @@ class MatplotlibWidget(qtw.QWidget):
 
     @qtc.Slot()
     def hide_show_line2D(self, visibility_states: dict, update_figure=True):
-        # self.visibility_states = visibility_states
         for i, visible in visibility_states.items():
             line = self.lines_in_order[i]
+
             alpha = (1 if visible else 0.2)
             line.set_alpha(alpha)
 
-            label = self.lines_in_order[i].get_label()
+            label = line.get_label()
             if visible and label[0] == "_":
                 line.set_label(label.removeprefix("_"))
             if not visible and label[0] != "_":
                 line.set_label("_" + label)
 
+        self.update_line_zorders()
+
         if update_figure:
             self.update_figure(recalculate_limits=False)
 
     @qtc.Slot()
-    def update_labels_and_colors(self, labels: dict, update_figure=True):
+    def update_labels(self, labels: dict, update_figure=True):
+
+        for i, label in labels.items():
+            line = self.lines_in_order[i]
+            
+        # for i, line in enumerate(self.lines_in_order):
+            # zorder = line.get_zorder()
+            new_label = label if line.get_alpha() in (None, 1) else ("_" + label)
+            line.set_label(new_label)
+
+        if update_figure:
+            self.update_figure(recalculate_limits=False)
+
+    @qtc.Slot()
+    def reset_colors(self, update_figure=True):
         colors = plt.rcParams["axes.prop_cycle"]()
 
         for line in self.ax.get_lines():
-            zorder = line.get_zorder()
-            new_label = labels[zorder] if line.get_alpha() in (None, 1) else ("_" + labels[zorder])
-            line.set_label(new_label)
             line.set_color(next(colors)["color"])
 
         if update_figure:
-            self.update_figure()
+            self.update_figure(recalculate_limits=False)
 
 
 if __name__ == "__main__":
