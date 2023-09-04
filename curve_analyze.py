@@ -421,8 +421,8 @@ class CurveAnalyze(qtw.QWidget):
     def _analysis_dialog_return(self, analysis_fun):
         to_insert = getattr(self, analysis_fun)()
 
-        for index_and_curve in to_insert:
-            self._add_curve(*index_and_curve, update_figure=False, color="k")
+        for i, curve in reversed(sorted(to_insert.items())):  # sort the dict by highest key value first
+            self._add_curve(i, curve, update_figure=False, color="k")
         self.signal_update_graph_request.emit()
 
     def _mean_and_median_analysis(self):
@@ -436,12 +436,28 @@ class CurveAnalyze(qtw.QWidget):
         median_xy.set_name(calculated_curve_name + " - median")
 
         i_insert = 0
-        to_insert = []
+        to_insert = {}
         if settings.mean_selected:
-            to_insert.append((i_insert, mean_xy))
+            to_insert[i_insert] = mean_xy
             i_insert += 1
         if settings.median_selected:
-            to_insert.append((i_insert, median_xy))
+            to_insert[i_insert] = median_xy
+
+        return to_insert
+
+    def _smoothen_curves(self):
+        curves, curve_names, ix = self.get_selected_curves(["curves", "curve_names", "indexes"])
+
+        i_insert = 0
+        to_insert = {}
+        for i in ix:
+            if settings.smoothing_type == "Gaussian":
+                xy = signal_tools.smooth_curve(curves[i], sigma=settings.smoothing_strength)
+                new_curve = signal_tools.Curve(xy)
+                new_curve.set_name(curve_names[i] + " - smoothed")
+                to_insert[i_insert] = new_curve
+            else:
+                raise NotImplementedError("This smoothing type is not available")
 
         return to_insert
 
@@ -488,7 +504,30 @@ class AnalysisDialog(qtw.QDialog):
                           "Calculate median",
                           )
 
-        # Buttons - common to self. not per tab.
+        # Smoothing page
+        user_form_1 = pwi.UserForm()
+        tab_widget.addTab(user_form_1, "Smoothing")  # tab page is the UserForm widget
+        i = tab_widget.indexOf(user_form_1)
+        user_forms_and_recipient_functions[i] = (user_form_1, "_smoothen_curves")
+
+        user_form_1.add_row(pwi.ComboBox("smoothing_type",
+                                        None,
+                                        [("Gaussian",),
+                                         ("Klippel",),
+                                         ]
+                                        ),
+                          "Type",
+                          )
+        user_form_1._user_input_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
+        
+        user_form_1.add_row(pwi.IntSpinBox("smoothing_strength",
+                                           "Sigma value for Gaussian smoothing."
+                                           "\nPoints for octave for Klippel compatible smoothing"),
+                            "Strength",
+                            )
+
+
+        # Buttons for the dialog - common to self and not per tab
         button_group = pwi.PushButtonGroup({"run": "Run",
                                             "cancel": "Cancel",
                                             },
@@ -497,14 +536,15 @@ class AnalysisDialog(qtw.QDialog):
         button_group.buttons()["run_pushbutton"].setDefault(True)
         layout.addWidget(button_group)
 
-
+        # Update parameters from settings
         for i in range(tab_widget.count()):
             user_form = tab_widget.widget(i)
-            # read values from settings
             for key, widget in user_form._user_input_widgets.items():
                 saved_setting = getattr(settings, key)
                 if isinstance(widget, qtw.QCheckBox):
                     widget.setChecked(saved_setting)
+                elif isinstance(widget, qtw.QComboBox):
+                    widget.setCurrentIndex(saved_setting)
                 else:
                     widget.setValue(saved_setting)
 
@@ -518,6 +558,8 @@ class AnalysisDialog(qtw.QDialog):
         for key, widget in active_user_form._user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update_attr(key, widget.isChecked())
+            elif isinstance(widget, qtw.QComboBox):
+                settings.update_attr(key, widget.currentIndex())
             else:
                 settings.update_attr(key, widget.value())
 

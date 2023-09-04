@@ -609,14 +609,12 @@ def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000):
     freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
-def smooth_curve(klippel_import, freq_array, ppo=3, ndarray=False):
+def smooth_curve_gaussian(klippel_import, sigma=3, ndarray=False):
     x = klippel_import.x
     y = klippel_import.y
-    y_new = np.interp(freq_array, x, y)
-    sigma = ppo  # but probably it is not!!!!
-    y_filt = gaussian_filter(y_new, sigma)
+    y_filt = gaussian_filter(y, sigma)
     if not ndarray:
-        return freq_array, y_filt
+        return x, y_filt
     else:
         raise NotImplementedError
 
