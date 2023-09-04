@@ -435,8 +435,8 @@ class Curve:
             if key == "Curve":
                 self.set_xy(np.array(val)[:, :2])
                 # randomize for testing
-                x, y = self.get_xy()
-                self.set_xy((x, y + np.random.randint(0, high=21)))
+                # x, y = self.get_xy()
+                # self.set_xy((x, y + np.random.randint(0, high=21)))
             elif key == "Data_Legend":
                 self.set_name(val)
 
@@ -656,7 +656,7 @@ def mean_and_median_of_curves(curves_xy: list):
         y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))
     else:
         raise NotImplementedError("Curves do not have the exact same frequency points."
-                                  "Consider interpolating to a common frequency array first.")
+                                  " Consider interpolating to a common frequency array first.")
 
     return Curve((curves_xy[0][0], y_mean)), Curve((curves_xy[0][0], y_median))
 
