@@ -444,15 +444,24 @@ class CurveAnalyze(qtw.QWidget):
         return to_insert
 
     def _smoothen_curves(self):
-        curves, curve_names, ix = self.get_selected_curves(["curves", "curve_names", "indexes"])
+        curves, curve_names, ix = self.get_selected_curves(
+            ["curves", "curve_names", "indexes"],
+            as_dict=True,
+            )
 
         i_insert = 0
         to_insert = {}
-        for i in ix:
+        # print(ix)
+        # print(len(curves))
+        for i_curve, curve in curves.items():
+            # Make linearly spaced first
+            x, y = curve.get_xy()
+            x_intp, y_intp = signal_tools.interpolate_to_ppo(x, y, settings.smoothing_ppo)
+            # Smooth...
             if settings.smoothing_type == 0:
-                xy = signal_tools.smooth_curve_gaussian(curves[i], sigma=settings.smoothing_strength)
+                xy = signal_tools.smooth_curve_gaussian(x_intp, y_intp, sigma=settings.smoothing_strength / settings.smoothing_ppo)
                 new_curve = signal_tools.Curve(xy)
-                new_curve.set_name(str(curve_names[i]) + " - smoothed")
+                new_curve.set_name(str(curve_names[i_curve]) + " - smoothed")
                 to_insert[i_insert] = new_curve
             else:
                 raise NotImplementedError("This smoothing type is not available")
@@ -518,8 +527,12 @@ class ProcessingDialog(qtw.QDialog):
                           )
         user_form_1._user_input_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
         
+        user_form_1.add_row(pwi.IntSpinBox("smoothing_ppo",
+                                           "Parts per octave resolution for the operation"),
+                            "Resolution (ppo)",
+                            )        
         user_form_1.add_row(pwi.IntSpinBox("smoothing_strength",
-                                           "Sigma value for Gaussian smoothing."
+                                           "Sigma per bin value for Gaussian smoothing."
                                            "\nPoints for octave for Klippel compatible smoothing"),
                             "Strength",
                             )
@@ -645,7 +658,7 @@ class AutoImporter(qtc.QThread):
     def run(self):
         while not self.isInterruptionRequested():
             cb_data = pyperclip.waitForNewPaste()
-            print("\nClipboard read:" + "\n" + str(type(cb_data)) + "\n" + cb_data)
+            # print("\nClipboard read:" + "\n" + str(type(cb_data)) + "\n" + cb_data)
             try:
                 new_curve = signal_tools.Curve(cb_data)
                 if new_curve.is_curve():

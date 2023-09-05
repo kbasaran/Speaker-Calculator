@@ -609,9 +609,8 @@ def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000):
     freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
-def smooth_curve_gaussian(klippel_import, sigma=3, ndarray=False):
-    x, y = klippel_import.get_xy()
-    y_filt = gaussian_filter(y, sigma)
+def smooth_curve_gaussian(x, y, sigma=3, ndarray=False):
+    y_filt = gaussian_filter(y, sigma * (x[-1] - x[0]) / len(x))
     if not ndarray:
         return x, y_filt
     else:

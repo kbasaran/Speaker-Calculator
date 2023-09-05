@@ -37,6 +37,7 @@ class Settings:
     median_selected: bool = True
     smoothing_type: int = 0
     smoothing_strength: int = 6
+    smoothing_ppo: int = 96
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(
