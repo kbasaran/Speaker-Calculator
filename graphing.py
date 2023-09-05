@@ -166,14 +166,13 @@ class MatplotlibWidget(qtw.QWidget):
             self.update_figure(recalculate_limits=False)
 
     @qtc.Slot()
-    def reset_colors(self, update_figure=True):
+    def reset_colors(self):
         colors = plt.rcParams["axes.prop_cycle"]()
 
-        for line in self.ax.get_lines():
+        for line in self.lines_in_order:
             line.set_color(next(colors)["color"])
 
-        if update_figure:
-            self.update_figure(recalculate_limits=False)
+        self.update_figure(recalculate_limits=False)
 
 
 if __name__ == "__main__":

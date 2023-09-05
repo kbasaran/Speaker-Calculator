@@ -1,3 +1,5 @@
+Calculator----------
+
 write manual
 add a link to the manual
 for dof2 input f0 and not k2
@@ -20,3 +22,7 @@ Tooltip for dead weight should be added
 Separate target winding height from calculated winding height. Show calculated one in results.
 N_winding should reduce 1 per layer
 "analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
+
+
+Curve analysis------------
+remember latest tab selection in QTabWidget's

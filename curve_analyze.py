@@ -41,8 +41,8 @@ def find_longest_match_in_name(names):
 
     for i in range(0, len(names)):
         for j in range(i+1,len(names)):
-            string1 = names[i]
-            string2 = names[j]
+            string1 = str(names[i])
+            string2 = str(names[j])
             match = SequenceMatcher(None, string1, string2).find_longest_match(0, len(string1), 0, len(string2))
             matching_substring=string1[match.a:match.a+match.size]
             if(matching_substring not in substring_counts):
@@ -88,7 +88,7 @@ class CurveAnalyze(qtw.QWidget):
              "move_to_top": "Move to top",
              "hide": "Hide",
              "show": "Show",
-             "analysis": "Analysis",
+             "processing": "Processing",
              "export": "Export",
              "settings": "Settings",
              },
@@ -111,7 +111,7 @@ class CurveAnalyze(qtw.QWidget):
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
         self._user_input_widgets["reset_indexes_pushbutton"].clicked.connect(self._reset_indice_in_screen_name)
-        self._user_input_widgets["reset_indexes_pushbutton"].clicked.connect(self.graph.reset_colors)
+        self._user_input_widgets["reset_colors_pushbutton"].clicked.connect(self.graph.reset_colors)
         self._user_input_widgets["rename_pushbutton"].clicked.connect(self._rename_curve)
         self._user_input_widgets["move_up_pushbutton"].clicked.connect(self.move_up_1)
         self._user_input_widgets["move_to_top_pushbutton"].clicked.connect(self.move_to_top)
@@ -120,7 +120,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
         self._user_input_widgets["auto_import_pushbutton"].toggled.connect(self._auto_importer_status_toggle)
         self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings_dialog)
-        self._user_input_widgets["analysis_pushbutton"].clicked.connect(self._open_analysis_dialog)
+        self._user_input_widgets["processing_pushbutton"].clicked.connect(self._open_processing_dialog)
         self._user_input_widgets["import_curve_pushbutton"].clicked.connect(
             lambda: self._import_curve(self._read_clipboard())
         )
@@ -158,7 +158,7 @@ class CurveAnalyze(qtw.QWidget):
         if values == ["q_list_items"] and not as_dict:
             return (self.curve_list.selectedItems(),)
         else:
-            ix = [self.curve_list.row(list_item) for list_item in selected_curves]  # horribly slow!!!
+            ix = [self.curve_list.row(list_item) for list_item in selected_curves]  # horribly slow!!!!!!!!!!!!!!!!!!!!!1
             return self.get_curves(values, rows=ix, as_dict=as_dict, **kwargs)
 
     def get_curves(self, values: list, rows: list=None, as_dict=False):
@@ -350,20 +350,18 @@ class CurveAnalyze(qtw.QWidget):
         else:
             self.auto_importer.requestInterruption()  
 
-    def _add_curve(self, i_insert, curve, visible=True, update_figure=True, **kwargs):
+    def _add_curve(self, i, curve, visible=True, update_figure=True, **kwargs):
         if curve.is_curve():
-            i = self.curve_list.count()
-            screen_name = f"#{i:02d} - {curve.get_name()}"
+            i_max = self.curve_list.count()
+            i_insert = i if i is not None else i_max
+            screen_name = f"#{i_max:02d} - {curve.get_name()}"
             list_item = qtw.QListWidgetItem(screen_name)
             list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve": curve,
                                                              "visible": visible,
                                                              }
                               )
-            if i_insert:
-                self.curve_list.insertItem(i_insert, list_item)
-            else:
-                self.curve_list.insertItem(self.curve_list.count(), list_item)
-            self.graph.add_line2D(i, screen_name, curve.get_xy(), update_figure=update_figure, **kwargs)
+            self.curve_list.insertItem(i_insert, list_item)
+            self.graph.add_line2D(i_insert, screen_name, curve.get_xy(), update_figure=update_figure, **kwargs)
         else:
             raise ValueError("Invalid curve")
 
@@ -409,17 +407,17 @@ class CurveAnalyze(qtw.QWidget):
         visibility_states, = self.get_curves(["visibilities"], as_dict=True)
         self.graph.hide_show_line2D(visibility_states)
 
-    def _open_analysis_dialog(self):
-        analysis_dialog = AnalysisDialog(self.get_selected_curves(["q_list_items"]))
-        analysis_dialog.signal_analysis_request.connect(self._analysis_dialog_return)
+    def _open_processing_dialog(self):
+        processing_dialog = ProcessingDialog(self.get_selected_curves(["q_list_items"]))
+        processing_dialog.signal_processing_request.connect(self._processing_dialog_return)
 
-        return_value = analysis_dialog.exec()
+        return_value = processing_dialog.exec()
         if return_value:
             self.signal_bad_beep.emit()
             pass
 
-    def _analysis_dialog_return(self, analysis_fun):
-        to_insert = getattr(self, analysis_fun)()
+    def _processing_dialog_return(self, processing_fun):
+        to_insert = getattr(self, processing_fun)()
 
         for i, curve in reversed(sorted(to_insert.items())):  # sort the dict by highest key value first
             self._add_curve(i, curve, update_figure=False, color="k")
@@ -451,10 +449,10 @@ class CurveAnalyze(qtw.QWidget):
         i_insert = 0
         to_insert = {}
         for i in ix:
-            if settings.smoothing_type == "Gaussian":
-                xy = signal_tools.smooth_curve(curves[i], sigma=settings.smoothing_strength)
+            if settings.smoothing_type == 0:
+                xy = signal_tools.smooth_curve_gaussian(curves[i], sigma=settings.smoothing_strength)
                 new_curve = signal_tools.Curve(xy)
-                new_curve.set_name(curve_names[i] + " - smoothed")
+                new_curve.set_name(str(curve_names[i]) + " - smoothed")
                 to_insert[i_insert] = new_curve
             else:
                 raise NotImplementedError("This smoothing type is not available")
@@ -474,23 +472,23 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_update_graph_request.emit()
 
 
-class AnalysisDialog(qtw.QDialog):
+class ProcessingDialog(qtw.QDialog):
     global settings
-    signal_analysis_request = qtc.Signal(str)
+    signal_processing_request = qtc.Signal(str)
     def __init__(self, curves):
         super().__init__()
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
-        tab_widget = qtw.QTabWidget()
-        layout.addWidget(tab_widget)
+        self.tab_widget = qtw.QTabWidget()
+        layout.addWidget(self.tab_widget)
         
-        user_forms_and_recipient_functions = {}  # dict of tuples. key is index of tab. value is tuple with (UserForm, name of function to use for its calculation)
+        self.user_forms_and_recipient_functions = {}  # dict of tuples. key is index of tab. value is tuple with (UserForm, name of function to use for its calculation)
 
         # Statistics page
         user_form_0 = pwi.UserForm()
-        tab_widget.addTab(user_form_0, "Statistics")  # tab page is the UserForm widget
-        i = tab_widget.indexOf(user_form_0)
-        user_forms_and_recipient_functions[i] = (user_form_0, "_mean_and_median_analysis")
+        self.tab_widget.addTab(user_form_0, "Statistics")  # tab page is the UserForm widget
+        i = self.tab_widget.indexOf(user_form_0)
+        self.user_forms_and_recipient_functions[i] = (user_form_0, "_mean_and_median_analysis")
 
         user_form_0.add_row(pwi.CheckBox("mean_selected",
                                         "Mean value per frequency point.",
@@ -506,9 +504,9 @@ class AnalysisDialog(qtw.QDialog):
 
         # Smoothing page
         user_form_1 = pwi.UserForm()
-        tab_widget.addTab(user_form_1, "Smoothing")  # tab page is the UserForm widget
-        i = tab_widget.indexOf(user_form_1)
-        user_forms_and_recipient_functions[i] = (user_form_1, "_smoothen_curves")
+        self.tab_widget.addTab(user_form_1, "Smoothing")  # tab page is the UserForm widget
+        i = self.tab_widget.indexOf(user_form_1)
+        self.user_forms_and_recipient_functions[i] = (user_form_1, "_smoothen_curves")
 
         user_form_1.add_row(pwi.ComboBox("smoothing_type",
                                         None,
@@ -537,8 +535,8 @@ class AnalysisDialog(qtw.QDialog):
         layout.addWidget(button_group)
 
         # Update parameters from settings
-        for i in range(tab_widget.count()):
-            user_form = tab_widget.widget(i)
+        for i in range(self.tab_widget.count()):
+            user_form = self.tab_widget.widget(i)
             for key, widget in user_form._user_input_widgets.items():
                 saved_setting = getattr(settings, key)
                 if isinstance(widget, qtw.QCheckBox):
@@ -550,23 +548,24 @@ class AnalysisDialog(qtw.QDialog):
 
         # Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(self.reject)
-        button_group.buttons()["run_pushbutton"].clicked.connect(partial(self._save_and_close,
-                                                                         *user_forms_and_recipient_functions[tab_widget.currentIndex()],
-                                                                         ))
+        button_group.buttons()["run_pushbutton"].clicked.connect(self._save_and_close)
 
-    def _save_and_close(self, active_user_form, analysis_fun: str):
-        for key, widget in active_user_form._user_input_widgets.items():
+    def _save_and_close(self):
+        active_tab_index = self.tab_widget.currentIndex()
+        user_form, processing_fun = self.user_forms_and_recipient_functions[active_tab_index]
+
+        for key, widget in user_form._user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update_attr(key, widget.isChecked())
             elif isinstance(widget, qtw.QComboBox):
                 settings.update_attr(key, widget.currentIndex())
             else:
-                settings.update_attr(key, widget.value())
+                settings.update_attr(key, widget.value())        
 
         self.setWindowTitle("Calculating...")
         self.setEnabled(False)  # calculating
         self.repaint()
-        self.signal_analysis_request.emit(analysis_fun)
+        self.signal_processing_request.emit(processing_fun)
         self.accept()
 
 
