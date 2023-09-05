@@ -89,14 +89,17 @@ class CurveAnalyze(qtw.QWidget):
              "hide": "Hide",
              "show": "Show",
              "processing": "Processing",
-             "export": "Export",
+             "export_table": "Export table",
+             "export_image": "Export image",
              "settings": "Settings",
              },
-            {"import_curve": "Import 2D curve from clipboard"},
+            {"import_curve": "Import 2D curve from clipboard",
+             "auto_import": "Attempt an import whenever new data is found on the clipboard.",
+             },
         )
         self.graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
-        # self._user_input_widgets["move_to_top_pushbutton"].setEnabled(False)
+        self._user_input_widgets["export_image_pushbutton"].setEnabled(False)
 
         self.curve_list = qtw.QListWidget()
         self.curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
@@ -117,7 +120,8 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["move_to_top_pushbutton"].clicked.connect(self.move_to_top)
         self._user_input_widgets["hide_pushbutton"].clicked.connect(self._hide_curves)
         self._user_input_widgets["show_pushbutton"].clicked.connect(self._show_curves)
-        self._user_input_widgets["export_pushbutton"].clicked.connect(self._export_to_clipboard)
+        self._user_input_widgets["export_table_pushbutton"].clicked.connect(self._export_table)
+        self._user_input_widgets["export_image_pushbutton"].clicked.connect(self._export_image)
         self._user_input_widgets["auto_import_pushbutton"].toggled.connect(self._auto_importer_status_toggle)
         self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings_dialog)
         self._user_input_widgets["processing_pushbutton"].clicked.connect(self._open_processing_dialog)
@@ -130,7 +134,7 @@ class CurveAnalyze(qtw.QWidget):
         self.curve_list.itemActivated.connect(self._flash_curve)
         self.signal_flash_curve.connect(self.graph.flash_curve)
 
-    def _export_to_clipboard(self):
+    def _export_table(self):
         if len(self.curve_list.selectedItems()) > 1:
             raise NotImplementedError("Can export only one curve at a time")
         else:
@@ -144,6 +148,9 @@ class CurveAnalyze(qtw.QWidget):
             x_intp, y_intp = signal_tools.interpolate_to_ppo(*curve.get_xy(), settings.export_ppo)
             xy_intp = np.column_stack((x_intp, y_intp))
             pd.DataFrame(xy_intp).to_clipboard(excel=True, index=False, header=False)
+
+    def _export_image(self):
+        raise NotImplementedError("Not ready yet")
 
     def _read_clipboard(self):
         data = pyperclip.paste()
