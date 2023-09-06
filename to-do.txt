@@ -25,6 +25,4 @@ N_winding should reduce 1 per layer
 
 
 Curve analysis------------
-error handling - make an abject and move into personalized widgets
-do not interpolate while export if not necessary
 

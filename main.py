@@ -8,7 +8,6 @@ from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 # from PySide6 import QtGui as qtg
 
-import sounddevice as sd
 from graphing import MatplotlibWidget
 import personalized_widgets as pwi
 
@@ -18,43 +17,6 @@ logging.basicConfig(level=logging.INFO)
 # https://realpython.com/python-super/#an-overview-of-pythons-super-function
 # super(super_of_which_class?=this class, in_which_object?=self)
 # The parameterless call to super() is recommended and sufficient for most use cases
-
-class SoundEngine(qtc.QObject):
-    def __init__(self, settings):
-        super().__init__()
-        self.FS = sd.query_devices(device=sd.default.device, kind='output',
-                                   )["default_samplerate"]
-        self.verify_stream()
-
-    def verify_stream(self):
-        # needs to be improved and tested for device changes!
-        if not hasattr(self, "stream"):
-            self.stream = sd.OutputStream(samplerate=self.FS, channels=2)
-        if not self.stream.active:
-            self.stream.start()
-
-    @qtc.Slot(float, float)
-    def beep(self, T, freq):
-        self.verify_stream()
-        t = np.arange(T * self.FS) / self.FS
-        y = np.sin(t * 2 * np.pi * freq)
-        y = np.tile(y, self.stream.channels)
-        y = y.reshape((len(y) // self.stream.channels,
-                      self.stream.channels), order='F').astype(self.stream.dtype)
-        y = np.ascontiguousarray(y, self.stream.dtype)
-        self.stream.write(y)
-
-    @qtc.Slot()
-    def good_beep(self):
-        self.beep(settings.T_beep, settings.freq_good_beep)
-
-    @qtc.Slot()
-    def bad_beep(self):
-        self.beep(settings.T_beep, settings.freq_bad_beep)
-
-    @qtc.Slot()
-    def release_all(self):
-        self.stream.stop(ignore_errors=True)
 
 class LeftHandForm(pwi.UserForm):
     signal_save_clicked = qtc.Signal()
@@ -567,7 +529,7 @@ if __name__ == "__main__":
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
-    sound_engine = SoundEngine(settings)
+    sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
     sound_engine_thread.start(qtc.QThread.HighPriority)

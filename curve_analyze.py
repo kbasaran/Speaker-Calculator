@@ -135,6 +135,8 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_flash_curve.connect(self.graph.flash_curve)
 
     def _export_table(self):
+        if self.no_curve_selected():
+            return
         if len(self.curve_list.selectedItems()) > 1:
             raise NotImplementedError("Can export only one curve at a time")
         else:
@@ -145,7 +147,10 @@ class CurveAnalyze(qtw.QWidget):
             xy_export = np.transpose(curve.get_xy(ndarray=True))
         else:
             x_intp, y_intp = signal_tools.interpolate_to_ppo(*curve.get_xy(), settings.export_ppo)
-            xy_export = np.column_stack((x_intp, y_intp))
+            if signal_tools.arrays_are_equal((x_intp, curve.get_xy()[0])):
+                xy_export = np.transpose(curve.get_xy(ndarray=True))
+            else:
+                xy_export = np.column_stack((x_intp, y_intp))
 
         pd.DataFrame(xy_export).to_clipboard(excel=True, index=False, header=False)
 
@@ -204,6 +209,13 @@ class CurveAnalyze(qtw.QWidget):
         
         return tuple(return_list)
 
+    def no_curve_selected(self):
+        if self.curve_list.currentRow() == -1:
+            self.signal_bad_beep.emit()
+            return True
+        else:
+            return False
+
     def _move_curve_up(self, i_insert):
         new_positions = list(range(self.curve_list.count()))
         # each number in the list is the index before location change. index in the list is the new location. 
@@ -227,6 +239,8 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_reposition_curves.emit(new_positions)
 
     def move_up_1(self):
+        if self.no_curve_selected():
+            return
         indexes, = self.get_selected_curves(["indexes"])
         i_insert = max(0, indexes[0] - 1)
         self._move_curve_up(i_insert)
@@ -234,6 +248,8 @@ class CurveAnalyze(qtw.QWidget):
             self.curve_list.setCurrentRow(i_insert)
 
     def move_to_top(self):
+        if self.no_curve_selected():
+            return
         self._move_curve_up(0)
         self.curve_list.setCurrentRow(-1)
 
@@ -247,6 +263,8 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.update_labels(screen_names)
 
     def _rename_curve(self):
+        if self.no_curve_selected():
+            return
         if len(self.curve_list.selectedItems()) > 1:
             raise NotImplementedError("Can rename only one curve at a time")
         else:
@@ -279,9 +297,10 @@ class CurveAnalyze(qtw.QWidget):
 
         except Exception as e:
             self.signal_bad_beep.emit()
-            raise e
 
     def remove_curves(self):
+        if self.no_curve_selected():
+            return
         ix, = self.get_selected_curves(["indexes"])
         self.graph.remove_line2D(ix)
 
@@ -295,13 +314,13 @@ class CurveAnalyze(qtw.QWidget):
                                                filter='dBExtract XY_data (*.txt)',
                                                )[0]
         if file:
+            print(file, type(file))
             try:
                 os.path.isfile(file)
             except:
                 raise FileNotFoundError()
-                return
         else:
-            raise KeyError("Not a file")
+            return
 
         self.app_settings.update_attr(
             "last_used_folder", os.path.dirname(file))
@@ -353,7 +372,7 @@ class CurveAnalyze(qtw.QWidget):
     def _auto_importer_status_toggle(self, checked):
         if checked == 1:
             self.auto_importer = AutoImporter()
-            self.auto_importer.new_import.connect(self._import_curve)
+            self.auto_importer.signal_new_import.connect(self._import_curve)
             self.auto_importer.start()
         else:
             self.auto_importer.requestInterruption()  
@@ -374,6 +393,8 @@ class CurveAnalyze(qtw.QWidget):
             raise ValueError("Invalid curve")
 
     def _hide_curves(self, rows=None):
+        if self.no_curve_selected():
+            return
         if rows:
             items, = self.get_curves(["q_list_items"], rows=rows)
         else:
@@ -391,6 +412,8 @@ class CurveAnalyze(qtw.QWidget):
         self.send_visibility_states_to_graph()
 
     def _show_curves(self, rows=None):
+        if self.no_curve_selected():
+            return
         if rows:
             items, = self.get_curves(["q_list_items"], rows=rows)
         else:
@@ -416,6 +439,8 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.hide_show_line2D(visibility_states)
 
     def _open_processing_dialog(self):
+        if self.no_curve_selected():
+            return
         processing_dialog = ProcessingDialog(self.get_selected_curves(["q_list_items"]))
         processing_dialog.signal_processing_request.connect(self._processing_dialog_return)
 
@@ -645,6 +670,12 @@ class SettingsDialog(qtw.QDialog):
                           "Interpolate before export (ppo)",
                           )
 
+        user_form.add_row(pwi.FloatSpinBox("A_beep",
+                                        "Amplitude of the beep. Not in dB. 0 is off, 1 is maximum amplitude",
+                                        min_max=(0, 1),
+                                        ),
+                          "Beep amplitude",
+                          )
 
         # Buttons
         button_group = pwi.PushButtonGroup({"save": "Save",
@@ -678,7 +709,7 @@ class SettingsDialog(qtw.QDialog):
 
 
 class AutoImporter(qtc.QThread):
-    new_import = qtc.Signal(signal_tools.Curve)
+    signal_new_import = qtc.Signal(signal_tools.Curve)
     def __init__(self):
         super().__init__()
 
@@ -689,7 +720,7 @@ class AutoImporter(qtc.QThread):
             try:
                 new_curve = signal_tools.Curve(cb_data)
                 if new_curve.is_curve():
-                    self.new_import.emit(new_curve)
+                    self.signal_new_import.emit(new_curve)
             except Exception as e:
                 logging.warning(e)
 
@@ -700,10 +731,19 @@ if __name__ == "__main__":
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
-    settings = pwi.Settings()
 
+    settings = pwi.Settings()
+    error_handler = pwi.ErrorHandler(app)
+    sys.excepthook = error_handler.excepthook
     mw = CurveAnalyze(settings)
-    
+
+    sound_engine = pwi.SoundEngine(settings)
+    sound_engine_thread = qtc.QThread()
+    sound_engine.moveToThread(sound_engine_thread)
+    sound_engine_thread.start(qtc.QThread.HighPriority)
+    mw.signal_bad_beep.connect(sound_engine.bad_beep)
+    mw.signal_good_beep.connect(sound_engine.good_beep)
+
     # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
     # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
     # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))

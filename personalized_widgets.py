@@ -1,10 +1,14 @@
 import os
+import traceback
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
 from dataclasses import dataclass, fields
+import sounddevice as sd
+import numpy as np
+import signal_tools
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +27,7 @@ class Settings:
     f_max: int = 3000
     ppo: int = 48 * 8
     FS: int = 48000
-    A_beep: int = 0.05
+    A_beep: int = 0.4
     T_beep = 0.1
     freq_good_beep: float = 1175
     freq_bad_beep: float = freq_good_beep / 2
@@ -328,3 +332,66 @@ class UserForm(qtw.QWidget):
             logging.debug(val, type(val), key, type(key))
 
         return values
+
+
+class SoundEngine(qtc.QObject):
+    def __init__(self, settings):
+        super().__init__()
+        self.app_settings = settings
+        self.verify_stream()
+
+    def verify_stream(self):
+        self.FS = sd.query_devices(device=sd.default.device, kind='output',
+                                   )["default_samplerate"]
+        # needs to be improved and tested for device changes!
+        if not hasattr(self, "stream"):
+            self.stream = sd.OutputStream(samplerate=self.FS, channels=2)
+        if not self.stream.active:
+            self.stream.start()
+
+    @qtc.Slot(float, float, float)
+    def beep(self, A, T, freq):
+        self.verify_stream()
+        t = np.arange(T * self.FS) / self.FS
+        y = A * np.sin(t * 2 * np.pi * freq)
+        fade_window = signal_tools.make_fade_window_n(1, 0, len(y), fade_start_end_idx=(len(y) - int(self.FS / 10), len(y)))
+        y = y * fade_window
+        y = np.tile(y, self.stream.channels)
+        y = y.reshape((len(y) // self.stream.channels,
+                      self.stream.channels), order='F').astype(self.stream.dtype)
+        y = np.ascontiguousarray(y, self.stream.dtype)
+        self.stream.write(y)
+
+    @qtc.Slot()
+    def good_beep(self):
+        self.beep(self.app_settings.A_beep, self.app_settings.T_beep, self.app_settings.freq_good_beep)
+
+    @qtc.Slot()
+    def bad_beep(self):
+        self.beep(self.app_settings.A_beep, self.app_settings.T_beep, self.app_settings.freq_bad_beep)
+
+    @qtc.Slot()
+    def release_all(self):
+        self.stream.stop(ignore_errors=True)
+
+class ErrorHandler:
+    def __init__(self, app):
+        self.app = app
+    
+    def excepthook(self, etype, value, tb):
+        error_msg = ''.join(traceback.format_exception(etype, value, tb))
+        message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
+                                      "Error",
+                                      error_msg +
+                                      "\nYour application may now be in an unstable state."
+                                      "\n\nThis event will be logged unless ignored.",
+                                      )
+        message_box.addButton(qtw.QMessageBox.Ignore)
+        close_button = message_box.addButton(qtw.QMessageBox.Close)
+    
+        message_box.setEscapeButton(qtw.QMessageBox.Ignore)
+        message_box.setDefaultButton(qtw.QMessageBox.Close)
+    
+        close_button.clicked.connect(logging.warning(error_msg))
+    
+        message_box.exec()
