@@ -21,8 +21,8 @@ class SoundEngine():
         t = np.arange(T * self.FS) / self.FS
         y = 0.1 * np.sin(t * 2 * np.pi * freq)
 
-        pad = np.zeros(100)
-        y = np.concatenate([pad, y, pad])
+        # pad = np.zeros(100)
+        # y = np.concatenate([pad, y, pad])
 
         y = np.tile(y, self.stream.channels)
         y = y.reshape((len(y) // self.stream.channels, self.stream.channels), order='F')

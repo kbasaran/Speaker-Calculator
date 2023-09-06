@@ -21,6 +21,7 @@ logging.basicConfig(level=logging.INFO)
 
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
+
 def find_longest_match_in_name(names):
     """
     https://stackoverflow.com/questions/58585052/find-most-common-substring-in-a-list-of-strings
@@ -37,20 +38,22 @@ def find_longest_match_in_name(names):
         The piece of string that accurs most commonly in the beginning of names.
 
     """
-    substring_counts={}
+    substring_counts = {}
     names_list = list(names)
     for i in range(0, len(names)):
-        for j in range(i+1,len(names)):
+        for j in range(i+1, len(names)):
             string1 = str(names_list[i])
             string2 = str(names_list[j])
-            match = SequenceMatcher(None, string1, string2).find_longest_match(0, len(string1), 0, len(string2))
-            matching_substring=string1[match.a:match.a+match.size]
+            match = SequenceMatcher(None, string1, string2).find_longest_match(
+                0, len(string1), 0, len(string2))
+            matching_substring = string1[match.a:match.a+match.size]
             if(matching_substring not in substring_counts):
-                substring_counts[matching_substring]=1
+                substring_counts[matching_substring] = 1
             else:
-                substring_counts[matching_substring]+=1
-    
-    max_occurring_key = max(substring_counts, key=substring_counts.get)  # max looks at the output of get method
+                substring_counts[matching_substring] += 1
+
+    # max looks at the output of get method
+    max_occurring_key = max(substring_counts, key=substring_counts.get)
 
     return max_occurring_key.strip().strip("-").strip().strip("-").strip()
 
@@ -79,9 +82,9 @@ class CurveAnalyze(qtw.QWidget):
         self.graph_buttons = pwi.PushButtonGroup(
             {"import_curve": "Import curve",
              "import_table": "Import table",
-             "auto_import": "Auto Import",
-             "reset_indexes": "Reset Indexes",
-             "reset_colors": "Reset Colors",
+             "auto_import": "Auto import",
+             "reset_indexes": "Reset indexes",
+             "reset_colors": "Reset colors",
              "remove": "Remove",
              "rename": "Rename",
              "move_up": "Move up",
@@ -89,6 +92,7 @@ class CurveAnalyze(qtw.QWidget):
              "hide": "Hide",
              "show": "Show",
              "processing": "Processing",
+             "set_reference": "Set reference",
              "export_table": "Export table",
              "export_image": "Export image",
              "settings": "Settings",
@@ -100,9 +104,11 @@ class CurveAnalyze(qtw.QWidget):
         self.graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         self._user_input_widgets["export_image_pushbutton"].setEnabled(False)
+        self._user_input_widgets["set_reference_pushbutton"].setEnabled(False)
 
         self.curve_list = qtw.QListWidget()
-        self.curve_list.setSelectionMode(qtw.QAbstractItemView.ExtendedSelection)
+        self.curve_list.setSelectionMode(
+            qtw.QAbstractItemView.ExtendedSelection)
         # self.curve_list.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
 
     def _place_widgets(self):
@@ -112,23 +118,39 @@ class CurveAnalyze(qtw.QWidget):
         self.layout().addWidget(self.curve_list)
 
     def _make_connections(self):
-        self._user_input_widgets["remove_pushbutton"].clicked.connect(self.remove_curves)
-        self._user_input_widgets["reset_indexes_pushbutton"].clicked.connect(self._reset_indice_in_screen_name)
-        self._user_input_widgets["reset_colors_pushbutton"].clicked.connect(self.graph.reset_colors)
-        self._user_input_widgets["rename_pushbutton"].clicked.connect(self._rename_curve)
-        self._user_input_widgets["move_up_pushbutton"].clicked.connect(self.move_up_1)
-        self._user_input_widgets["move_to_top_pushbutton"].clicked.connect(self.move_to_top)
-        self._user_input_widgets["hide_pushbutton"].clicked.connect(self._hide_curves)
-        self._user_input_widgets["show_pushbutton"].clicked.connect(self._show_curves)
-        self._user_input_widgets["export_table_pushbutton"].clicked.connect(self._export_table)
-        self._user_input_widgets["export_image_pushbutton"].clicked.connect(self._export_image)
-        self._user_input_widgets["auto_import_pushbutton"].toggled.connect(self._auto_importer_status_toggle)
-        self._user_input_widgets["settings_pushbutton"].clicked.connect(self._open_settings_dialog)
-        self._user_input_widgets["processing_pushbutton"].clicked.connect(self._open_processing_dialog)
+        self._user_input_widgets["remove_pushbutton"].clicked.connect(
+            self.remove_curves)
+        self._user_input_widgets["reset_indexes_pushbutton"].clicked.connect(
+            self._reset_indice_in_screen_name)
+        self._user_input_widgets["reset_colors_pushbutton"].clicked.connect(
+            self.graph.reset_colors)
+        self._user_input_widgets["rename_pushbutton"].clicked.connect(
+            self._rename_curve)
+        self._user_input_widgets["set_reference_pushbutton"].clicked.connect(
+            self._set_reference_curve)
+        self._user_input_widgets["move_up_pushbutton"].clicked.connect(
+            self.move_up_1)
+        self._user_input_widgets["move_to_top_pushbutton"].clicked.connect(
+            self.move_to_top)
+        self._user_input_widgets["hide_pushbutton"].clicked.connect(
+            self._hide_curves)
+        self._user_input_widgets["show_pushbutton"].clicked.connect(
+            self._show_curves)
+        self._user_input_widgets["export_table_pushbutton"].clicked.connect(
+            self._export_table)
+        self._user_input_widgets["export_image_pushbutton"].clicked.connect(
+            self._export_image)
+        self._user_input_widgets["auto_import_pushbutton"].toggled.connect(
+            self._auto_importer_status_toggle)
+        self._user_input_widgets["settings_pushbutton"].clicked.connect(
+            self._open_settings_dialog)
+        self._user_input_widgets["processing_pushbutton"].clicked.connect(
+            self._open_processing_dialog)
         self._user_input_widgets["import_curve_pushbutton"].clicked.connect(
             lambda: self._import_curve(self._read_clipboard())
         )
-        self._user_input_widgets["import_table_pushbutton"].clicked.connect(self._import_table)
+        self._user_input_widgets["import_table_pushbutton"].clicked.connect(
+            self._import_table)
         self.signal_update_graph_request.connect(self.graph.update_figure)
         self.signal_reposition_curves.connect(self.graph.change_lines_order)
         self.curve_list.itemActivated.connect(self._flash_curve)
@@ -142,18 +164,19 @@ class CurveAnalyze(qtw.QWidget):
         else:
             list_item = self.curve_list.selectedItems()[0]
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
-            
+
         if settings.export_ppo == 0:
             xy_export = np.transpose(curve.get_xy(ndarray=True))
         else:
-            x_intp, y_intp = signal_tools.interpolate_to_ppo(*curve.get_xy(), settings.export_ppo)
+            x_intp, y_intp = signal_tools.interpolate_to_ppo(
+                *curve.get_xy(), settings.export_ppo)
             if signal_tools.arrays_are_equal((x_intp, curve.get_xy()[0])):
                 xy_export = np.transpose(curve.get_xy(ndarray=True))
             else:
                 xy_export = np.column_stack((x_intp, y_intp))
 
-        pd.DataFrame(xy_export).to_clipboard(excel=True, index=False, header=False)
-
+        pd.DataFrame(xy_export).to_clipboard(
+            excel=True, index=False, header=False)
 
     def _export_image(self):
         raise NotImplementedError("Not ready yet")
@@ -171,10 +194,12 @@ class CurveAnalyze(qtw.QWidget):
         if values == ["q_list_items"] and not as_dict:
             return (self.curve_list.selectedItems(),)
         else:
-            ix = [self.curve_list.row(list_item) for list_item in selected_curves]  # horribly slow!!!!!!!!!!!!!!!!!!!!!1
+            # horribly slow!!!!!!!!!!!!!!!!!!!!!1
+            ix = [self.curve_list.row(list_item)
+                  for list_item in selected_curves]
             return self.get_curves(values, rows=ix, as_dict=as_dict, **kwargs)
 
-    def get_curves(self, values: list, rows: list=None, as_dict=False):
+    def get_curves(self, values: list, rows: list = None, as_dict=False):
         q_list_items = {}
         for i in range(self.curve_list.count()):
             if rows is None or (i in rows):
@@ -186,27 +211,35 @@ class CurveAnalyze(qtw.QWidget):
                 case "q_list_items":
                     result_dict = q_list_items
                 case "indexes":
-                    result_dict = dict(zip(q_list_items.keys(), q_list_items.keys()))
+                    result_dict = dict(
+                        zip(q_list_items.keys(), q_list_items.keys()))
                 case "screen_names":  # name with number as shown on screen
-                    result_dict = {i: list_item.text() for (i, list_item) in q_list_items.items()}
+                    result_dict = {i: list_item.text()
+                                   for (i, list_item) in q_list_items.items()}
                 case "curves":  # signal_tools.Curve instances
-                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"] for (i, list_item) in q_list_items.items()}
+                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
+                        "curve"] for (i, list_item) in q_list_items.items()}
                 case "curve_names":  # this is the name stored inside curve object. does not include screen number
-                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"].get_name() for (i, list_item) in q_list_items.items()}
+                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
+                        "curve"].get_name() for (i, list_item) in q_list_items.items()}
                 case "xy_s":  # this is the name stored inside curve object. does not include screen number
-                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"].get_xy(ndarray=False) for (i, list_item) in q_list_items.items()}
+                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"].get_xy(
+                        ndarray=False) for (i, list_item) in q_list_items.items()}
                 case "user_data":
-                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole) for (i, list_item) in q_list_items.items()}
+                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole) for (
+                        i, list_item) in q_list_items.items()}
                 case "visibilities":
-                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["visible"] for (i, list_item) in q_list_items.items()}
+                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
+                        "visible"] for (i, list_item) in q_list_items.items()}
                 case _:
-                    raise KeyError(f"Unrecognized type '{value}' for value arg")
-    
+                    raise KeyError(
+                        f"Unrecognized type '{value}' for value arg")
+
             if as_dict:
                 return_list.append(result_dict)
             else:
                 return_list.append(list(result_dict.values()))
-        
+
         return tuple(return_list)
 
     def no_curve_selected(self):
@@ -218,8 +251,9 @@ class CurveAnalyze(qtw.QWidget):
 
     def _move_curve_up(self, i_insert):
         new_positions = list(range(self.curve_list.count()))
-        # each number in the list is the index before location change. index in the list is the new location. 
-        curves, screen_names, visibilities = self.get_selected_curves(["curves", "screen_names", "visibilities"], as_dict=True)
+        # each number in the list is the index before location change. index in the list is the new location.
+        curves, screen_names, visibilities = self.get_selected_curves(
+            ["curves", "screen_names", "visibilities"], as_dict=True)
         for i, i_curve in enumerate(curves.keys()):
             screen_name = screen_names[i_curve]
             visible = visibilities[i_curve]
@@ -255,7 +289,8 @@ class CurveAnalyze(qtw.QWidget):
 
     def _reset_indice_in_screen_name(self):
         screen_names = {}
-        curve_names, q_list_items = self.get_curves(["curve_names", "q_list_items"], as_dict=True)
+        curve_names, q_list_items = self.get_curves(
+            ["curve_names", "q_list_items"], as_dict=True)
         for i, list_item in q_list_items.items():
             screen_name = f"#{i:02d} - {curve_names[i]}"
             list_item.setText(screen_name)
@@ -272,12 +307,13 @@ class CurveAnalyze(qtw.QWidget):
             if self.no_curve_selected():
                 return
             if len(self.curve_list.selectedItems()) > 1:
-                raise NotImplementedError("Can rename only one curve at a time")
+                raise NotImplementedError(
+                    "Can rename only one curve at a time")
             else:
                 list_item = self.curve_list.currentItem()
                 i = self.curve_list.currentRow()
                 curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
-        
+
                 text, ok = qtw.QInputDialog.getText(self,
                                                     "Change curve name",
                                                     "New name:", qtw.QLineEdit.Normal,
@@ -297,7 +333,8 @@ class CurveAnalyze(qtw.QWidget):
         try:
             if settings.import_ppo > 0:
                 x, y = curve.get_xy()
-                x_intp, y_intp = signal_tools.interpolate_to_ppo(x, y, settings.import_ppo)
+                x_intp, y_intp = signal_tools.interpolate_to_ppo(
+                    x, y, settings.import_ppo)
                 curve.set_xy((x_intp, y_intp))
 
             if curve.is_curve():
@@ -307,20 +344,22 @@ class CurveAnalyze(qtw.QWidget):
         except Exception as e:
             self.signal_bad_beep.emit()
 
-    def remove_curves(self, indexes:list=None):
-        if indexes is not None:
-            ix = indexes
-        else:
-            if self.no_curve_selected():
+    def remove_curves(self, indexes: list=None):
+        if isinstance(indexes, list):
+            if indexes:
+                ix = indexes
+            else:
                 return
+        elif self.no_curve_selected():
+            return
+        else:
             ix, = self.get_selected_curves(["indexes"])
-
-        self.graph.remove_line2D(ix)    
+        self.graph.remove_line2D(ix)
         for i in reversed(ix):
             self.curve_list.takeItem(i)
 
     def _import_table(self):
-    
+
         file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
                                                dir=self.app_settings.last_used_folder,
                                                filter='dBExtract XY_data (*.txt)',
@@ -336,7 +375,6 @@ class CurveAnalyze(qtw.QWidget):
 
         self.app_settings.update_attr(
             "last_used_folder", os.path.dirname(file))
-        
 
         with open(file, mode="rt") as extract_file:
             lines = extract_file.read().splitlines()
@@ -351,7 +389,7 @@ class CurveAnalyze(qtw.QWidget):
                                    skipinitialspace=True,
                                    )
                 data.columns = [float(i) for i in data.columns]
-    
+
             elif "DUT" == lines[0][:3]:
                 extract_file.seek(0, 0)
                 data = pd.read_csv(extract_file,
@@ -361,11 +399,11 @@ class CurveAnalyze(qtw.QWidget):
                                    encoding='unicode_escape',
                                    )
                 data = data.sort_values(by=['DBTitle'])
-    
+
             else:
                 raise ValueError("Unable to parse the text file."
                                  " Format unrecognized. Did you use the correct DBExtract template?")
-            
+
             if data.shape[1] > 1:  # means if there are more than 1 frequency points
                 visible = True  # data.shape[0] < 20
                 if not visible:
@@ -375,19 +413,21 @@ class CurveAnalyze(qtw.QWidget):
                                              )
                     pop_up.exec()
                 for name, values in data.iterrows():
-                    curve = signal_tools.Curve(np.column_stack((data.columns, values)))
+                    curve = signal_tools.Curve(
+                        np.column_stack((data.columns, values)))
                     curve.set_name(name)
-                    self._add_curve(None, curve, visible=visible, update_figure=False)
+                    self._add_curve(None, curve, visible=visible,
+                                    update_figure=False)
                 self.send_visibility_states_to_graph()
                 self.signal_update_graph_request.emit()
-              
+
     def _auto_importer_status_toggle(self, checked):
         if checked == 1:
             self.auto_importer = AutoImporter()
             self.auto_importer.signal_new_import.connect(self._import_curve)
             self.auto_importer.start()
         else:
-            self.auto_importer.requestInterruption()  
+            self.auto_importer.requestInterruption()
 
     def _add_curve(self, i, curve, visible=True, update_figure=True, **kwargs):
         if curve.is_curve():
@@ -400,7 +440,8 @@ class CurveAnalyze(qtw.QWidget):
                                                              }
                               )
             self.curve_list.insertItem(i_insert, list_item)
-            self.graph.add_line2D(i_insert, screen_name, curve.get_xy(), update_figure=update_figure, **kwargs)
+            self.graph.add_line2D(i_insert, screen_name, curve.get_xy(
+            ), update_figure=update_figure, **kwargs)
         else:
             raise ValueError("Invalid curve")
 
@@ -446,6 +487,9 @@ class CurveAnalyze(qtw.QWidget):
         i = self.curve_list.row(item)
         self.signal_flash_curve.emit(i)
 
+    def _set_reference_curve(self):
+        raise NotImplementedError
+
     def send_visibility_states_to_graph(self):
         visibility_states, = self.get_curves(["visibilities"], as_dict=True)
         self.graph.hide_show_line2D(visibility_states)
@@ -453,27 +497,32 @@ class CurveAnalyze(qtw.QWidget):
     def _open_processing_dialog(self):
         if self.no_curve_selected():
             return
-        processing_dialog = ProcessingDialog(self.get_selected_curves(["q_list_items"]))
-        processing_dialog.signal_processing_request.connect(self._processing_dialog_return)
+        processing_dialog = ProcessingDialog(
+            self.get_selected_curves(["q_list_items"]))
+        processing_dialog.signal_processing_request.connect(
+            self._processing_dialog_return)
 
         return_value = processing_dialog.exec()
         # if return_value:
-            # self.signal_bad_beep.emit()
+        # self.signal_bad_beep.emit()
 
     def _processing_dialog_return(self, processing_fun):
         to_insert = getattr(self, processing_fun)()
 
         if to_insert:
-            for i, curve in sorted(to_insert.items()):  # sort the dict by highest key value first
+            # sort the dict by highest key value first
+            for i, curve in sorted(to_insert.items()):
                 self._add_curve(i, curve, update_figure=False, color="k")
 
             self.signal_good_beep.emit()
             self.signal_update_graph_request.emit()
 
     def _mean_and_median_analysis(self):
-        curves_xy, curve_names, ix = self.get_selected_curves(["xy_s", "curve_names", "indexes"])
+        curves_xy, curve_names, ix = self.get_selected_curves(
+            ["xy_s", "curve_names", "indexes"])
         if len(curves_xy) < 2:
-            raise ValueError("A minimum of 2 curves is needed for this analysis.")
+            raise ValueError(
+                "A minimum of 2 curves is needed for this analysis.")
         mean_xy, median_xy = signal_tools.mean_and_median_of_curves(curves_xy)
 
         calculated_curve_name = find_longest_match_in_name(curve_names)
@@ -490,18 +539,22 @@ class CurveAnalyze(qtw.QWidget):
 
         return to_insert
 
-
     def _outlier_detection(self):
-        curves_xy, curve_names, screen_names = self.get_selected_curves(["xy_s", "curve_names", "screen_names"], as_dict=True)
+        curves_xy, curve_names, screen_names = self.get_selected_curves(
+            ["xy_s", "curve_names", "screen_names"], as_dict=True)
         if len(curves_xy) < 3:
-            raise ValueError("A minimum of 3 curves is needed for this analysis.")
+            raise ValueError(
+                "A minimum of 3 curves is needed for this analysis.")
 
         lower_fence, median, upper_fence, outlier_indexes = \
             signal_tools.iqr_analysis(curves_xy, settings.outlier_fence_iqr)
 
-        calculated_curve_name_stub = find_longest_match_in_name(curve_names.values())
-        lower_fence.set_name(calculated_curve_name_stub + f" - -{settings.outlier_fence_iqr:.1f}xIQR")
-        upper_fence.set_name(calculated_curve_name_stub + f" - +{settings.outlier_fence_iqr:.1f}xIQR")
+        calculated_curve_name_stub = find_longest_match_in_name(
+            curve_names.values())
+        lower_fence.set_name(calculated_curve_name_stub +
+                             f" - -{settings.outlier_fence_iqr:.1f}xIQR")
+        upper_fence.set_name(calculated_curve_name_stub +
+                             f" - +{settings.outlier_fence_iqr:.1f}xIQR")
         median.set_name(calculated_curve_name_stub + " - median")
 
         if settings.outlier_action == 0:  # Rename
@@ -510,10 +563,10 @@ class CurveAnalyze(qtw.QWidget):
                 new_name = current_name + " (outlier)"
                 self._rename_curve(index=i, new_name=new_name)
         elif settings.outlier_action == 1:  # Hide
-            self._hide_curves(indexes=outlier_indexes)  
+            self._hide_curves(indexes=outlier_indexes)
         elif settings.outlier_action == 2:  # Remove
-            self.remove_curves(indexes=outlier_indexes)  
-                
+            self.remove_curves(indexes=outlier_indexes)
+
         to_insert = {}
         to_insert[0] = upper_fence
         to_insert[1] = median
@@ -521,12 +574,11 @@ class CurveAnalyze(qtw.QWidget):
 
         return to_insert
 
-
     def _smoothen_curves(self):
         curves, curve_names, ix = self.get_selected_curves(
             ["curves", "curve_names", "indexes"],
             as_dict=True,
-            )
+        )
 
         to_insert = {}
 
@@ -534,17 +586,17 @@ class CurveAnalyze(qtw.QWidget):
 
             if settings.smoothing_type == 0:
                 xy = signal_tools.smooth_curve_butterworth(*curve.get_xy(),
-                                                        ppo=settings.smoothing_ppo,
-                                                        resolution=settings.smoothing_resolution,
-                                                        order=8,
-                                                        )
+                                                           ppo=settings.smoothing_ppo,
+                                                           resolution=settings.smoothing_resolution,
+                                                           order=8,
+                                                           )
 
             elif settings.smoothing_type == 1:
                 xy = signal_tools.smooth_curve_butterworth(*curve.get_xy(),
-                                                        ppo=settings.smoothing_ppo,
-                                                        resolution=settings.smoothing_resolution,
-                                                        order=4,
-                                                        )
+                                                           ppo=settings.smoothing_ppo,
+                                                           resolution=settings.smoothing_resolution,
+                                                           order=4,
+                                                           )
 
             elif settings.smoothing_type == 2:
                 xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
@@ -553,17 +605,20 @@ class CurveAnalyze(qtw.QWidget):
                                                         )
 
             else:
-                raise NotImplementedError("This smoothing type is not available")
+                raise NotImplementedError(
+                    "This smoothing type is not available")
 
             new_curve = signal_tools.Curve(xy)
-            new_curve.set_name(str(curve_names[i_curve]) + f" - smoothed 1/{settings.smoothing_ppo}")
+            new_curve.set_name(
+                str(curve_names[i_curve]) + f" - smoothed 1/{settings.smoothing_ppo}")
             to_insert[i_curve + len(to_insert) + 1] = new_curve
 
         return to_insert
 
     def _open_settings_dialog(self):
         settings_dialog = SettingsDialog()
-        settings_dialog.signal_settings_changed.connect(self._settings_dialog_return)
+        settings_dialog.signal_settings_changed.connect(
+            self._settings_dialog_return)
 
         return_value = settings_dialog.exec()
         if return_value:
@@ -573,57 +628,64 @@ class CurveAnalyze(qtw.QWidget):
     def _settings_dialog_return(self):
         self.signal_update_graph_request.emit()
 
+
 class ProcessingDialog(qtw.QDialog):
     global settings
     signal_processing_request = qtc.Signal(str)
+
     def __init__(self, curves):
         super().__init__()
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
         self.tab_widget = qtw.QTabWidget()
         layout.addWidget(self.tab_widget)
-        
-        self.user_forms_and_recipient_functions = {}  # dict of tuples. key is index of tab. value is tuple with (UserForm, name of function to use for its calculation)
+
+        # dict of tuples. key is index of tab. value is tuple with (UserForm, name of function to use for its calculation)
+        self.user_forms_and_recipient_functions = {}
 
         # Statistics page
         user_form_0 = pwi.UserForm()
-        self.tab_widget.addTab(user_form_0, "Statistics")  # tab page is the UserForm widget
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_0, "Statistics")
         i = self.tab_widget.indexOf(user_form_0)
-        self.user_forms_and_recipient_functions[i] = (user_form_0, "_mean_and_median_analysis")
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_0, "_mean_and_median_analysis")
 
         user_form_0.add_row(pwi.CheckBox("mean_selected",
-                                        "Mean value per frequency point.",
-                                        ),
-                          "Calculate mean",
-                          )
+                                         "Mean value per frequency point.",
+                                         ),
+                            "Calculate mean",
+                            )
 
         user_form_0.add_row(pwi.CheckBox("median_selected",
-                                        "Median value per frequency point. Less sensitive to outliers.",
-                                        ),
-                          "Calculate median",
-                          )
+                                         "Median value per frequency point. Less sensitive to outliers.",
+                                         ),
+                            "Calculate median",
+                            )
 
         # Smoothing page
         user_form_1 = pwi.UserForm()
-        self.tab_widget.addTab(user_form_1, "Smoothing")  # tab page is the UserForm widget
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_1, "Smoothing")
         i = self.tab_widget.indexOf(user_form_1)
-        self.user_forms_and_recipient_functions[i] = (user_form_1, "_smoothen_curves")
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_1, "_smoothen_curves")
 
         user_form_1.add_row(pwi.ComboBox("smoothing_type",
-                                        None,
-                                        [("Butterworth 8",),
-                                         ("Butterworth 4",),
-                                         ("Gaussian",),
-                                         ]
-                                        ),
-                          "Type",
-                          )
+                                         None,
+                                         [("Butterworth 8",),
+                                          ("Butterworth 4",),
+                                          ("Gaussian",),
+                                          ]
+                                         ),
+                            "Type",
+                            )
         # user_form_1._user_input_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
-        
+
         user_form_1.add_row(pwi.IntSpinBox("smoothing_resolution",
                                            "Parts per octave resolution for the operation"),
                             "Resolution (ppo)",
-                            )        
+                            )
         user_form_1.add_row(pwi.IntSpinBox("smoothing_ppo",
                                            "Width of the frequency bands in octaves."
                                            "\nFor Gaussion, bandwidth is 2x the standard deviation."
@@ -632,38 +694,38 @@ class ProcessingDialog(qtw.QDialog):
                             "Bandwidth (ppo)",
                             )
 
-
         # Outlier detection page
         user_form_2 = pwi.UserForm()
-        self.tab_widget.addTab(user_form_2, "Outliers")  # tab page is the UserForm widget
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_2, "Outliers")
         i = self.tab_widget.indexOf(user_form_2)
-        self.user_forms_and_recipient_functions[i] = (user_form_2, "_outlier_detection")
-
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_2, "_outlier_detection")
 
         user_form_2.add_row(pwi.FloatSpinBox("outlier_fence_iqr",
-                                           "Fence post for outlier detection using IQR method. Unit is the interquartile range of the data points for given frequency."
-                                           "\nIf unsure, set to 1.5.",
-                                           decimals=1,
-                                           ),
+                                             "Fence post for outlier detection using IQR method. Unit is the interquartile range of the data points for given frequency."
+                                             "\nIf unsure, set to 1.5.",
+                                             decimals=1,
+                                             ),
                             "Outlier fence (IQR)",
-                            ) 
+                            )
 
         user_form_2.add_row(pwi.ComboBox("outlier_action",
-                                        "Action to carry out on curves that fall partly or fully outside the fence.",
-                                        [("Rename",),
-                                         ("Hide",),
-                                         ("Remove",),
-                                         ]
-                                        ),
-                          "Action on outliers",
-                          )
-        
+                                         "Action to carry out on curves that fall partly or fully outside the fence.",
+                                         [("Rename",),
+                                          ("Hide",),
+                                          ("Remove",),
+                                          ]
+                                         ),
+                            "Action on outliers",
+                            )
+
         # Buttons for the dialog - common to self and not per tab
         button_group = pwi.PushButtonGroup({"run": "Run",
                                             "cancel": "Cancel",
                                             },
-                                            {},
-                                            )
+                                           {},
+                                           )
         button_group.buttons()["run_pushbutton"].setDefault(True)
         layout.addWidget(button_group)
 
@@ -681,13 +743,16 @@ class ProcessingDialog(qtw.QDialog):
                     widget.setValue(saved_setting)
 
         # Connections
-        button_group.buttons()["cancel_pushbutton"].clicked.connect(self.reject)
-        button_group.buttons()["run_pushbutton"].clicked.connect(self._save_and_close)
+        button_group.buttons()["cancel_pushbutton"].clicked.connect(
+            self.reject)
+        button_group.buttons()["run_pushbutton"].clicked.connect(
+            self._save_and_close)
 
     def _save_and_close(self):
         active_tab_index = self.tab_widget.currentIndex()
         user_form, processing_fun = self.user_forms_and_recipient_functions[active_tab_index]
-        settings.update_attr("processing_selected_tab", self.tab_widget.currentIndex())
+        settings.update_attr("processing_selected_tab",
+                             self.tab_widget.currentIndex())
 
         for key, widget in user_form._user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
@@ -695,9 +760,8 @@ class ProcessingDialog(qtw.QDialog):
             elif isinstance(widget, qtw.QComboBox):
                 settings.update_attr(key, widget.currentIndex())
             else:
-                settings.update_attr(key, widget.value())        
+                settings.update_attr(key, widget.value())
 
-        
         self.setWindowTitle("Calculating...")
         self.setEnabled(False)  # calculating
         self.repaint()
@@ -708,15 +772,16 @@ class ProcessingDialog(qtw.QDialog):
 class SettingsDialog(qtw.QDialog):
     global settings
     signal_settings_changed = qtc.Signal()
+
     def __init__(self):
         super().__init__()
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
-        
+
         # Form
         user_form = pwi.UserForm()
         layout.addWidget(user_form)
-        
+
         user_form.add_row(pwi.CheckBox("show_legend", "Show legend on the graph"),
                           "Show legend")
 
@@ -724,27 +789,27 @@ class SettingsDialog(qtw.QDialog):
                           "Maximum legend size in graph")
 
         user_form.add_row(pwi.IntSpinBox("import_ppo",
-                                        "Interpolate the curve to here defined points per octave in import"
-                                        "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
-                                        "\nSet to '0' to do no modification to curve."
-                                        "\nDefault value: 384",
-                                        ),
+                                         "Interpolate the curve to here defined points per octave in import"
+                                         "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
+                                         "\nSet to '0' to do no modification to curve."
+                                         "\nDefault value: 384",
+                                         ),
                           "Interpolate during import (ppo)",
                           )
 
         user_form.add_row(pwi.IntSpinBox("export_ppo",
-                                        "Interpolate the curve to here defined points per octave while exporting"
-                                        "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
-                                        "\nSet to '0' to do no modifications to curve."
-                                        "\nDefault value: 96",
-                                        ),
+                                         "Interpolate the curve to here defined points per octave while exporting"
+                                         "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
+                                         "\nSet to '0' to do no modifications to curve."
+                                         "\nDefault value: 96",
+                                         ),
                           "Interpolate before export (ppo)",
                           )
 
         user_form.add_row(pwi.FloatSpinBox("A_beep",
-                                        "Amplitude of the beep. Not in dB. 0 is off, 1 is maximum amplitude",
-                                        min_max=(0, 1),
-                                        ),
+                                           "Amplitude of the beep. Not in dB. 0 is off, 1 is maximum amplitude",
+                                           min_max=(0, 1),
+                                           ),
                           "Beep amplitude",
                           )
 
@@ -752,8 +817,8 @@ class SettingsDialog(qtw.QDialog):
         button_group = pwi.PushButtonGroup({"save": "Save",
                                             "cancel": "Cancel",
                                             },
-                                            {},
-                                            )
+                                           {},
+                                           )
         button_group.buttons()["save_pushbutton"].setDefault(True)
         layout.addWidget(button_group)
 
@@ -766,8 +831,10 @@ class SettingsDialog(qtw.QDialog):
                 widget.setValue(saved_setting)
 
         # Connections
-        button_group.buttons()["cancel_pushbutton"].clicked.connect(self.reject)
-        button_group.buttons()["save_pushbutton"].clicked.connect(partial(self._save_and_close,  user_form._user_input_widgets, settings))
+        button_group.buttons()["cancel_pushbutton"].clicked.connect(
+            self.reject)
+        button_group.buttons()["save_pushbutton"].clicked.connect(
+            partial(self._save_and_close,  user_form._user_input_widgets, settings))
 
     def _save_and_close(self, user_input_widgets, settings):
         for key, widget in user_input_widgets.items():
@@ -781,6 +848,7 @@ class SettingsDialog(qtw.QDialog):
 
 class AutoImporter(qtc.QThread):
     signal_new_import = qtc.Signal(signal_tools.Curve)
+
     def __init__(self):
         super().__init__()
 
@@ -797,11 +865,10 @@ class AutoImporter(qtc.QThread):
 
 
 if __name__ == "__main__":
-    
+
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
-
 
     settings = pwi.Settings()
     error_handler = pwi.ErrorHandler(app)
@@ -834,7 +901,6 @@ if __name__ == "__main__":
     # mw._add_curve(None, signal_tools.Curve(np.array([[0,512],
     #                                                   [0, 0],
     #                                                   ])))
-
 
     mw.show()
     app.exec()

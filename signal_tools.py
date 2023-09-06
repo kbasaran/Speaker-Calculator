@@ -701,7 +701,7 @@ def iqr_analysis(curves_xy: dict, outlier_fence_iqr):
     outlier_up = np.any(y_arrays > upper_fence.reshape((-1, 1)), axis=0)
     outliers_all = outlier_up | outlier_down
 
-    outlier_indexes = np.array(list(curves_xy.keys()), dtype=int)[outliers_all]
+    outlier_indexes = list(np.array(list(curves_xy.keys()), dtype=int)[outliers_all])
 
 
 
