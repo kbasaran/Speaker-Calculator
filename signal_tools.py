@@ -685,6 +685,23 @@ def mean_and_median_of_curves(curves_xy: list):
     return Curve((curves_xy[0][0], y_mean)), Curve((curves_xy[0][0], y_median))
 
 
+def calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0)):
+
+    def floor_to_multiple(number, multiple, clearance_down):
+        return multiple * np.floor((number - clearance_down) / multiple)
+    def ceil_to_multiple(number, multiple, clearance_up):
+        return multiple * np.ceil((number + clearance_up) / multiple)
+
+    if y_arrays:
+        y_points = np.concatenate([y_array for y_array in y_arrays])
+        y_points = y_points[np.isfinite(y_points)]
+        y_min = floor_to_multiple(np.min(y_points), multiple, clearance_up_down[0])
+        y_max = ceil_to_multiple(np.max(y_points), multiple, clearance_up_down[1])    
+        return y_min, y_max
+    else:
+        return None, None
+
+
 if __name__ == "__main__":
     test_make_fade_window_n()
     # test_make_fade_window_t()

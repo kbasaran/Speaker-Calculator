@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from operator import methodcaller
 from functools import partial
+import signal_tools
 
 from PySide6 import QtCore as qtc
 from matplotlib.backends.qt_compat import QtWidgets as qtw
@@ -49,21 +50,11 @@ class MatplotlibWidget(qtw.QWidget):
 
     @qtc.Slot()
     def update_figure(self, recalculate_limits=True, update_legend=True):
-
+        
         if recalculate_limits:
-            def ceil_to_multiple(number, multiple=5, clearance=2):
-                return multiple * np.ceil((number + clearance) / multiple)
-    
-            def floor_to_multiple(number, multiple=5, clearance=2):
-                return multiple * np.floor((number - clearance) / multiple)
-    
-            if self.ax.get_lines():
-                y_points = np.concatenate([line.get_ydata() for line in self.ax.get_lines()])
-                y_points = y_points[np.isfinite(y_points)]
-                y_min = floor_to_multiple(np.min(y_points))
-                y_max = ceil_to_multiple(np.max(y_points))
-                # print(y_min, y_max)
-                self.ax.set_ylim((y_min, y_max))
+            y_arrays = [line.get_ydata() for line in self.ax.get_lines()]
+            y_min_max = signal_tools.calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0))
+            self.ax.set_ylim(y_min_max)
 
         if update_legend:
             if self.ax.has_data() and self.app_settings.show_legend:
