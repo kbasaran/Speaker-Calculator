@@ -142,12 +142,13 @@ class CurveAnalyze(qtw.QWidget):
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
             
         if settings.export_ppo == 0:
-            xy = np.transpose(curve.get_xy(ndarray=True))
-            pd.DataFrame(xy).to_clipboard(excel=True, index=False)
+            xy_export = np.transpose(curve.get_xy(ndarray=True))
         else:
             x_intp, y_intp = signal_tools.interpolate_to_ppo(*curve.get_xy(), settings.export_ppo)
-            xy_intp = np.column_stack((x_intp, y_intp))
-            pd.DataFrame(xy_intp).to_clipboard(excel=True, index=False, header=False)
+            xy_export = np.column_stack((x_intp, y_intp))
+
+        pd.DataFrame(xy_export).to_clipboard(excel=True, index=False, header=False)
+
 
     def _export_image(self):
         raise NotImplementedError("Not ready yet")
@@ -456,7 +457,6 @@ class CurveAnalyze(qtw.QWidget):
             as_dict=True,
             )
 
-        i_insert = 0
         to_insert = {}
 
         for i_curve, curve in curves.items():
@@ -486,7 +486,7 @@ class CurveAnalyze(qtw.QWidget):
 
             new_curve = signal_tools.Curve(xy)
             new_curve.set_name(str(curve_names[i_curve]) + f" - smoothed 1/{settings.smoothing_ppo}")
-            to_insert[i_insert] = new_curve
+            to_insert[i_curve + 1] = new_curve
 
         return to_insert
 
@@ -572,6 +572,7 @@ class ProcessingDialog(qtw.QDialog):
         layout.addWidget(button_group)
 
         # Update parameters from settings
+        self.tab_widget.setCurrentIndex(settings.processing_selected_tab)
         for i in range(self.tab_widget.count()):
             user_form = self.tab_widget.widget(i)
             for key, widget in user_form._user_input_widgets.items():
@@ -590,6 +591,7 @@ class ProcessingDialog(qtw.QDialog):
     def _save_and_close(self):
         active_tab_index = self.tab_widget.currentIndex()
         user_form, processing_fun = self.user_forms_and_recipient_functions[active_tab_index]
+        settings.update_attr("processing_selected_tab", self.tab_widget.currentIndex())
 
         for key, widget in user_form._user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
@@ -599,6 +601,7 @@ class ProcessingDialog(qtw.QDialog):
             else:
                 settings.update_attr(key, widget.value())        
 
+        
         self.setWindowTitle("Calculating...")
         self.setEnabled(False)  # calculating
         self.repaint()

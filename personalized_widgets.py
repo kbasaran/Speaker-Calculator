@@ -29,15 +29,16 @@ class Settings:
     freq_bad_beep: float = freq_good_beep / 2
     last_used_folder: str = os.path.expanduser('~')
     show_legend: bool = True
-    max_legend_size: int = 19
+    max_legend_size: int = 10
     import_ppo: int = 0
     export_ppo: int = 96
-    octave_smooth_ppo: int = 12
+    processing_selected_tab: int = 0
     mean_selected: bool = False
     median_selected: bool = True
     smoothing_type: int = 0
     smoothing_resolution: int = 96
     smoothing_ppo: int = 6
+    
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(

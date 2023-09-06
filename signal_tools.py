@@ -621,7 +621,7 @@ def smooth_curve_gaussian(x, y, ppo=3, resolution=96, ndarray=False):
 
 def smooth_curve_butterworth(x, y, ppo=3, resolution=96, order=8, ndarray=False, FS=None):
     if not FS:
-        FS = 48000 * 2**(x[-1]//48000)  # set sampling rate to cover frequency range
+        FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
     else:
         pass
     x_intp, y_intp = interpolate_to_ppo(x, y, resolution)
@@ -643,16 +643,12 @@ def smooth_curve_butterworth(x, y, ppo=3, resolution=96, order=8, ndarray=False,
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
-
 def interpolate_to_ppo(x, y, ppo, must_include_freq=1000, superset=False):
     """
     Reduce a curve to lesser points
     """
     freq_start, freq_end = x[0], x[-1]
     freqs = generate_freq_list(freq_start, freq_end, ppo, must_include_freq=must_include_freq, superset=superset)
-    if len(freqs) > len(x):
-        raise RuntimeError("There aren't enough points in your dataset to be able to interpolate accurately for so many points per octave."
-                           "\nApply smoothing first to generate more points.")
 
     f = intp.interp1d(np.log(x), y, assume_sorted=True, bounds_error=False)
     return freqs, f(np.log(freqs))

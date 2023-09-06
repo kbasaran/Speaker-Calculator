@@ -38,13 +38,12 @@ class MatplotlibWidget(qtw.QWidget):
         # toolbar as a plain widget instead.
         self.navigation_toolbar = NavigationToolbar(self.canvas, self)
         layout.addWidget(self.navigation_toolbar)
-        # print(self.navigation_toolbar.layout().itemAt(3).tooltip())
+        # print(self.navigation_toolbar.layout().itemAt(3).tooltip())  - test access to buttons in toolbar
         layout.addWidget(self.canvas)
 
         self.ax = self.canvas.figure.subplots()
         self.ax.grid(which='minor')
         self.lines_in_order = []
-        # self.visibility_states = {}
 
         # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.Line2D.html
 
@@ -138,7 +137,7 @@ class MatplotlibWidget(qtw.QWidget):
         for i, visible in visibility_states.items():
             line = self.lines_in_order[i]
 
-            alpha = (1 if visible else 0.2)
+            alpha = (1 if visible else 0.1)
             line.set_alpha(alpha)
 
             label = line.get_label()
