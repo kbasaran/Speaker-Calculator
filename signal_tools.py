@@ -676,14 +676,36 @@ def mean_and_median_of_curves(curves_xy: list):
     """
     if arrays_are_equal([x for x, y in curves_xy]):
         y_arrays = np.column_stack([y for x, y in curves_xy])
-        y_mean = 10 * np.log10(np.mean(10**(y_arrays / 10), axis=1))
-        y_median = 10 * np.log10(np.median(10**(y_arrays / 10), axis=1))  # how about scipy.signal median filter??
+        y_mean = np.mean(y_arrays, axis=1)
+        y_median = np.median(y_arrays, axis=1)  # how about scipy.signal median filter??
     else:
         raise NotImplementedError("Curves do not have the exact same frequency points."
-                                  " Consider interpolating to a common frequency array first.")
+                                  "\nConsider interpolating to a common frequency array first.")
 
     return Curve((curves_xy[0][0], y_mean)), Curve((curves_xy[0][0], y_median))
 
+def iqr_analysis(curves_xy: dict, outlier_fence_iqr):
+    if not arrays_are_equal([x for x, y in curves_xy.values()]):
+        raise NotImplementedError("Curves do not have the exact same frequency points."
+                                  "\nConsider interpolating to a common frequency array first.")
+
+    x_array = list(curves_xy.values())[0][0]
+    y_arrays = np.column_stack([y for x, y in curves_xy.values()])
+
+    q1, median, q3 = np.percentile(y_arrays, (25, 50, 75), axis=1)
+    iqr = q3 - q1
+    lower_fence = median - iqr * outlier_fence_iqr
+    upper_fence = median + iqr * outlier_fence_iqr
+   
+    outlier_down = np.any(y_arrays < lower_fence.reshape((-1, 1)), axis=0)
+    outlier_up = np.any(y_arrays > upper_fence.reshape((-1, 1)), axis=0)
+    outliers_all = outlier_up | outlier_down
+
+    outlier_indexes = np.array(list(curves_xy.keys()), dtype=int)[outliers_all]
+
+
+
+    return Curve((x_array, lower_fence)), Curve((x_array, median)), Curve((x_array, upper_fence)), outlier_indexes
 
 def calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0)):
 

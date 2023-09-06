@@ -29,8 +29,8 @@ class Settings:
     FS: int = 48000
     A_beep: int = 0.4
     T_beep = 0.1
-    freq_good_beep: float = 1175
-    freq_bad_beep: float = freq_good_beep / 2
+    freq_good_beep: float = 1175 / 2
+    freq_bad_beep: float = freq_good_beep / 4
     last_used_folder: str = os.path.expanduser('~')
     show_legend: bool = True
     max_legend_size: int = 10
@@ -42,6 +42,8 @@ class Settings:
     smoothing_type: int = 0
     smoothing_resolution: int = 96
     smoothing_ppo: int = 6
+    outlier_fence_iqr: float = 1.5
+    outlier_action: int = 0
     
 
     def __post_init__(self):

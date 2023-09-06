@@ -38,11 +38,11 @@ def find_longest_match_in_name(names):
 
     """
     substring_counts={}
-
+    names_list = list(names)
     for i in range(0, len(names)):
         for j in range(i+1,len(names)):
-            string1 = str(names[i])
-            string2 = str(names[j])
+            string1 = str(names_list[i])
+            string2 = str(names_list[j])
             match = SequenceMatcher(None, string1, string2).find_longest_match(0, len(string1), 0, len(string2))
             matching_substring=string1[match.a:match.a+match.size]
             if(matching_substring not in substring_counts):
@@ -262,25 +262,34 @@ class CurveAnalyze(qtw.QWidget):
             screen_names[i] = screen_name
         self.graph.update_labels(screen_names)
 
-    def _rename_curve(self):
-        if self.no_curve_selected():
-            return
-        if len(self.curve_list.selectedItems()) > 1:
-            raise NotImplementedError("Can rename only one curve at a time")
-        else:
-            list_item = self.curve_list.currentItem()
-            i = self.curve_list.currentRow()
+    def _rename_curve(self, index=None, new_name=None):
+        if index is not None:
+            list_item = self.curve_list.item(index)
+            i = index
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
+            text = new_name
+        else:
+            if self.no_curve_selected():
+                return
+            if len(self.curve_list.selectedItems()) > 1:
+                raise NotImplementedError("Can rename only one curve at a time")
+            else:
+                list_item = self.curve_list.currentItem()
+                i = self.curve_list.currentRow()
+                curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
+        
+                text, ok = qtw.QInputDialog.getText(self,
+                                                    "Change curve name",
+                                                    "New name:", qtw.QLineEdit.Normal,
+                                                    curve.get_name(),
+                                                    )
+                if not ok or text == '':
+                    self.signal_bad_beep.emit()
 
-        text, ok = qtw.QInputDialog.getText(self,
-                                            "Change curve name",
-                                            "New name:", qtw.QLineEdit.Normal,
-                                            curve.get_name(),
-                                            )
-        if ok and text != '':
-            curve.set_name(text)
-            list_item.setText(text)
-            self.graph.update_labels({i: text})
+        curve.set_name(text)
+        list_item.setText(text)
+
+        self.graph.update_labels({i: text})
 
     @qtc.Slot(signal_tools.Curve)
     def _import_curve(self, curve):
@@ -298,12 +307,15 @@ class CurveAnalyze(qtw.QWidget):
         except Exception as e:
             self.signal_bad_beep.emit()
 
-    def remove_curves(self):
-        if self.no_curve_selected():
-            return
-        ix, = self.get_selected_curves(["indexes"])
-        self.graph.remove_line2D(ix)
+    def remove_curves(self, indexes:list=None):
+        if indexes:
+            ix = indexes
+        else:
+            if self.no_curve_selected():
+                return
+            ix, = self.get_selected_curves(["indexes"])
 
+        self.graph.remove_line2D(ix)    
         for i in reversed(ix):
             self.curve_list.takeItem(i)
 
@@ -445,16 +457,18 @@ class CurveAnalyze(qtw.QWidget):
         processing_dialog.signal_processing_request.connect(self._processing_dialog_return)
 
         return_value = processing_dialog.exec()
-        if return_value:
-            self.signal_bad_beep.emit()
-            pass
+        # if return_value:
+            # self.signal_bad_beep.emit()
 
     def _processing_dialog_return(self, processing_fun):
         to_insert = getattr(self, processing_fun)()
 
-        for i, curve in reversed(sorted(to_insert.items())):  # sort the dict by highest key value first
-            self._add_curve(i, curve, update_figure=False, color="k")
-        self.signal_update_graph_request.emit()
+        if to_insert:
+            for i, curve in reversed(sorted(to_insert.items())):  # sort the dict by highest key value first
+                self._add_curve(i, curve, update_figure=False, color="k")
+
+            self.signal_good_beep.emit()
+            self.signal_update_graph_request.emit()
 
     def _mean_and_median_analysis(self):
         curves_xy, curve_names, ix = self.get_selected_curves(["xy_s", "curve_names", "indexes"])
@@ -475,6 +489,38 @@ class CurveAnalyze(qtw.QWidget):
             to_insert[i_insert] = median_xy
 
         return to_insert
+
+
+    def _outlier_detection(self):
+        curves_xy, curve_names, screen_names = self.get_selected_curves(["xy_s", "curve_names", "screen_names"], as_dict=True)
+        if len(curves_xy) < 3:
+            raise ValueError("A minimum of 3 curves is needed for this analysis.")
+
+        lower_fence, median, upper_fence, outlier_indexes = \
+            signal_tools.iqr_analysis(curves_xy, settings.outlier_fence_iqr)
+
+        calculated_curve_name_stub = find_longest_match_in_name(curve_names.values())
+        lower_fence.set_name(calculated_curve_name_stub + f" - -{settings.outlier_fence_iqr:.1f}xIQR")
+        upper_fence.set_name(calculated_curve_name_stub + f" - +{settings.outlier_fence_iqr:.1f}xIQR")
+        median.set_name(calculated_curve_name_stub + " - median")
+
+        if settings.outlier_action == 0:  # Rename
+            for i in outlier_indexes:
+                current_name = screen_names[i] if screen_names[i] else ""
+                new_name = current_name + " (outlier)"
+                self._rename_curve(index=i, new_name=new_name)
+            
+        elif settings.outlier_action == 1:  # Remove
+            self.remove_curves(indexes=outlier_indexes)  
+                
+        i_insert = 0
+        to_insert = {}
+        to_insert[i_insert] = upper_fence
+        to_insert[i_insert + 1] = median
+        to_insert[i_insert + 2] = lower_fence
+
+        return to_insert
+
 
     def _smoothen_curves(self):
         curves, curve_names, ix = self.get_selected_curves(
@@ -587,6 +633,30 @@ class ProcessingDialog(qtw.QDialog):
                             )
 
 
+        # Outlier detection page
+        user_form_2 = pwi.UserForm()
+        self.tab_widget.addTab(user_form_2, "Outliers")  # tab page is the UserForm widget
+        i = self.tab_widget.indexOf(user_form_2)
+        self.user_forms_and_recipient_functions[i] = (user_form_2, "_outlier_detection")
+
+
+        user_form_2.add_row(pwi.FloatSpinBox("outlier_fence_iqr",
+                                           "Fence post for outlier detection using IQR method. Unit is the interquartile range of the data points for given frequency."
+                                           "\nIf unsure, set to 1.5.",
+                                           decimals=1,
+                                           ),
+                            "Outlier fence (IQR)",
+                            ) 
+
+        user_form_2.add_row(pwi.ComboBox("outlier_action",
+                                        "Action to carry out on curves that fall partly or fully outside the fence.",
+                                        [("Rename",),
+                                         ("Remove",),
+                                         ]
+                                        ),
+                          "Action on outliers",
+                          )
+        
         # Buttons for the dialog - common to self and not per tab
         button_group = pwi.PushButtonGroup({"run": "Run",
                                             "cancel": "Cancel",
@@ -744,11 +814,17 @@ if __name__ == "__main__":
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
     # mw._add_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [80, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
