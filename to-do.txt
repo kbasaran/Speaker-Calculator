@@ -28,3 +28,7 @@ Curve analysis------------
 remember latest tab selection in QTabWidget's
 remove bias for s calculation
 limit calculation is not done after removing curves sometimes
+error handling - make an abject and move into personalized widgets
+improve smoothing Gaussian
+do not interpolate while export if not necessary
+recalculate y axis limits can be put into signal tools module

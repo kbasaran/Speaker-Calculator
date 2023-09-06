@@ -143,7 +143,7 @@ class CurveAnalyze(qtw.QWidget):
             
         if settings.export_ppo == 0:
             xy = np.transpose(curve.get_xy(ndarray=True))
-            pd.DataFrame(xy, columns=["frequency", "value"]).to_clipboard(excel=True, index=False)
+            pd.DataFrame(xy).to_clipboard(excel=True, index=False)
         else:
             x_intp, y_intp = signal_tools.interpolate_to_ppo(*curve.get_xy(), settings.export_ppo)
             xy_intp = np.column_stack((x_intp, y_intp))
@@ -458,20 +458,35 @@ class CurveAnalyze(qtw.QWidget):
 
         i_insert = 0
         to_insert = {}
-        # print(ix)
-        # print(len(curves))
+
         for i_curve, curve in curves.items():
-            # Make linearly spaced first
-            x, y = curve.get_xy()
-            x_intp, y_intp = signal_tools.interpolate_to_ppo(x, y, settings.smoothing_ppo)
-            # Smooth...
+
             if settings.smoothing_type == 0:
-                xy = signal_tools.smooth_curve_gaussian(x_intp, y_intp, sigma=settings.smoothing_strength / settings.smoothing_ppo)
-                new_curve = signal_tools.Curve(xy)
-                new_curve.set_name(str(curve_names[i_curve]) + " - smoothed")
-                to_insert[i_insert] = new_curve
+                xy = signal_tools.smooth_curve_butterworth(*curve.get_xy(),
+                                                        ppo=settings.smoothing_ppo,
+                                                        resolution=settings.smoothing_resolution,
+                                                        order=8,
+                                                        )
+
+            elif settings.smoothing_type == 1:
+                xy = signal_tools.smooth_curve_butterworth(*curve.get_xy(),
+                                                        ppo=settings.smoothing_ppo,
+                                                        resolution=settings.smoothing_resolution,
+                                                        order=4,
+                                                        )
+
+            elif settings.smoothing_type == 2:
+                xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
+                                                        ppo=settings.smoothing_ppo,
+                                                        resolution=settings.smoothing_resolution,
+                                                        )
+
             else:
                 raise NotImplementedError("This smoothing type is not available")
+
+            new_curve = signal_tools.Curve(xy)
+            new_curve.set_name(str(curve_names[i_curve]) + f" - smoothed 1/{settings.smoothing_ppo}")
+            to_insert[i_insert] = new_curve
 
         return to_insert
 
@@ -486,7 +501,6 @@ class CurveAnalyze(qtw.QWidget):
 
     def _settings_dialog_return(self):
         self.signal_update_graph_request.emit()
-
 
 class ProcessingDialog(qtw.QDialog):
     global settings
@@ -526,22 +540,25 @@ class ProcessingDialog(qtw.QDialog):
 
         user_form_1.add_row(pwi.ComboBox("smoothing_type",
                                         None,
-                                        [("Gaussian",),
-                                         ("Klippel",),
+                                        [("Butterworth 8",),
+                                         ("Butterworth 4",),
+                                         ("Gaussian",),
                                          ]
                                         ),
                           "Type",
                           )
-        user_form_1._user_input_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
+        # user_form_1._user_input_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
         
-        user_form_1.add_row(pwi.IntSpinBox("smoothing_ppo",
+        user_form_1.add_row(pwi.IntSpinBox("smoothing_resolution",
                                            "Parts per octave resolution for the operation"),
                             "Resolution (ppo)",
                             )        
-        user_form_1.add_row(pwi.IntSpinBox("smoothing_strength",
-                                           "Sigma per bin value for Gaussian smoothing."
-                                           "\nPoints for octave for Klippel compatible smoothing"),
-                            "Strength",
+        user_form_1.add_row(pwi.IntSpinBox("smoothing_ppo",
+                                           "Width of the frequency bands in octaves."
+                                           "\nFor Gaussion, bandwidth is 2x the standard deviation."
+                                           "\nFor Butterworth, bandwidth is the distance between critical frequencies, e.g. -3dB points for a first order filter.",
+                                           ),
+                            "Bandwidth (ppo)",
                             )
 
 
@@ -689,6 +706,14 @@ if __name__ == "__main__":
     # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
     # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
     # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+
+    # mw._add_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
+    #                                                   [80, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
+    #                                                   ])))
+
+    # mw._add_curve(None, signal_tools.Curve(np.array([[0,512],
+    #                                                   [0, 0],
+    #                                                   ])))
 
 
     mw.show()

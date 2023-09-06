@@ -59,10 +59,11 @@ class MatplotlibWidget(qtw.QWidget):
                 return multiple * np.floor((number - clearance) / multiple)
     
             if self.ax.get_lines():
-                y_min = floor_to_multiple(np.min(np.concatenate(
-                    [line.get_ydata() for line in self.ax.get_lines()])), clearance=1)
-                y_max = ceil_to_multiple(np.max(np.concatenate(
-                    [line.get_ydata() for line in self.ax.get_lines()])))
+                y_points = np.concatenate([line.get_ydata() for line in self.ax.get_lines()])
+                y_points = y_points[np.isfinite(y_points)]
+                y_min = floor_to_multiple(np.min(y_points))
+                y_max = ceil_to_multiple(np.max(y_points))
+                # print(y_min, y_max)
                 self.ax.set_ylim((y_min, y_max))
 
         if update_legend:
