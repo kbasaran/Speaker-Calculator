@@ -20,16 +20,16 @@ class Settings:
     GAMMA: float = 1.401  # adiabatic index of air
     P0: int = 101325
     RHO: float = 1.1839  # 25 degrees celcius
-    Kair: float = 101325 * RHO
+    Kair: float = 101325. * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
     vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
     f_min: int = 10
     f_max: int = 3000
     ppo: int = 48 * 8
     FS: int = 48000
-    A_beep: int = 0.4
+    A_beep: int = 0.5
     T_beep = 0.1
-    freq_good_beep: float = 1175 / 2
+    freq_good_beep: float = 1175. / 2
     freq_bad_beep: float = freq_good_beep / 4
     last_used_folder: str = os.path.expanduser('~')
     show_legend: bool = True
@@ -42,7 +42,7 @@ class Settings:
     smoothing_type: int = 0
     smoothing_resolution: int = 96
     smoothing_ppo: int = 6
-    outlier_fence_iqr: float = 1.5
+    outlier_fence_iqr: float = 6.
     outlier_action: int = 0
     
 

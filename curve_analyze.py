@@ -177,7 +177,7 @@ class CurveAnalyze(qtw.QWidget):
     def get_curves(self, values: list, rows: list=None, as_dict=False):
         q_list_items = {}
         for i in range(self.curve_list.count()):
-            if not rows or (i in rows):
+            if rows is None or (i in rows):
                 q_list_items[i] = self.curve_list.item(i)
 
         return_list = []
@@ -308,7 +308,7 @@ class CurveAnalyze(qtw.QWidget):
             self.signal_bad_beep.emit()
 
     def remove_curves(self, indexes:list=None):
-        if indexes:
+        if indexes is not None:
             ix = indexes
         else:
             if self.no_curve_selected():
@@ -404,11 +404,11 @@ class CurveAnalyze(qtw.QWidget):
         else:
             raise ValueError("Invalid curve")
 
-    def _hide_curves(self, rows=None):
+    def _hide_curves(self, indexes=None):
         if self.no_curve_selected():
             return
-        if rows:
-            items, = self.get_curves(["q_list_items"], rows=rows)
+        if indexes is not None:
+            items, = self.get_curves(["q_list_items"], rows=indexes)
         else:
             items, = self.get_selected_curves(["q_list_items"])
 
@@ -423,11 +423,11 @@ class CurveAnalyze(qtw.QWidget):
 
         self.send_visibility_states_to_graph()
 
-    def _show_curves(self, rows=None):
+    def _show_curves(self, indexes=None):
         if self.no_curve_selected():
             return
-        if rows:
-            items, = self.get_curves(["q_list_items"], rows=rows)
+        if indexes is not None:
+            items, = self.get_curves(["q_list_items"], rows=indexes)
         else:
             items, = self.get_selected_curves(["q_list_items"])
 
@@ -464,7 +464,7 @@ class CurveAnalyze(qtw.QWidget):
         to_insert = getattr(self, processing_fun)()
 
         if to_insert:
-            for i, curve in reversed(sorted(to_insert.items())):  # sort the dict by highest key value first
+            for i, curve in sorted(to_insert.items()):  # sort the dict by highest key value first
                 self._add_curve(i, curve, update_figure=False, color="k")
 
             self.signal_good_beep.emit()
@@ -509,15 +509,15 @@ class CurveAnalyze(qtw.QWidget):
                 current_name = screen_names[i] if screen_names[i] else ""
                 new_name = current_name + " (outlier)"
                 self._rename_curve(index=i, new_name=new_name)
-            
-        elif settings.outlier_action == 1:  # Remove
+        elif settings.outlier_action == 1:  # Hide
+            self._hide_curves(indexes=outlier_indexes)  
+        elif settings.outlier_action == 2:  # Remove
             self.remove_curves(indexes=outlier_indexes)  
                 
-        i_insert = 0
         to_insert = {}
-        to_insert[i_insert] = upper_fence
-        to_insert[i_insert + 1] = median
-        to_insert[i_insert + 2] = lower_fence
+        to_insert[0] = upper_fence
+        to_insert[1] = median
+        to_insert[2] = lower_fence
 
         return to_insert
 
@@ -557,7 +557,7 @@ class CurveAnalyze(qtw.QWidget):
 
             new_curve = signal_tools.Curve(xy)
             new_curve.set_name(str(curve_names[i_curve]) + f" - smoothed 1/{settings.smoothing_ppo}")
-            to_insert[i_curve + 1] = new_curve
+            to_insert[i_curve + len(to_insert) + 1] = new_curve
 
         return to_insert
 
@@ -651,6 +651,7 @@ class ProcessingDialog(qtw.QDialog):
         user_form_2.add_row(pwi.ComboBox("outlier_action",
                                         "Action to carry out on curves that fall partly or fully outside the fence.",
                                         [("Rename",),
+                                         ("Hide",),
                                          ("Remove",),
                                          ]
                                         ),
@@ -814,17 +815,17 @@ if __name__ == "__main__":
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
     # mw._add_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [80, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
