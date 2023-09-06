@@ -592,26 +592,28 @@ def convolve_with_signal(ir, my_sig, ir_FS=None, my_sig_FS=None, trim_zeros=True
 
     return y_conv, y2_FS
 
-
 def calculate_third_oct_power_from_pressure(p, FS):
     third_oct_freqs = ac.standards.iec_61672_1_2013.NOMINAL_THIRD_OCTAVE_CENTER_FREQUENCIES
 
     return third_oct_freqs, ac.signal.third_octaves(p, FS, frequencies=third_oct_freqs)[1]
 
-
-def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000):
+def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000, superset=False):
     """
     Create a numpy array for frequencies to use in calculation.
     ppo means points per octave
-    makes sure all points fall within defined frequency range
+    makes sure all points fall within defined frequency range if superset is False. Otherwise 1 more point will be added to each end.
     """
-    numStart = np.ceil(np.log2(freq_start/must_include_freq)*ppo)
-    numEnd = np.floor(np.log2(freq_end/must_include_freq)*ppo)
+    if superset:
+        numStart = np.floor(np.log2(freq_start/must_include_freq)*ppo)
+        numEnd = np.ceil(np.log2(freq_end/must_include_freq)*ppo)
+    else:
+        numStart = np.ceil(np.log2(freq_start/must_include_freq)*ppo)
+        numEnd = np.floor(np.log2(freq_end/must_include_freq)*ppo)
     freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
 def smooth_curve_gaussian(x, y, ppo=3, resolution=96, ndarray=False):
-    x_intp, y_intp = interpolate_to_ppo(x, y, resolution)
+    x_intp, y_intp = interpolate_to_ppo(x, y, resolution, superset=True)
     sigma = resolution / ppo  # one octave, divided by ppo
     y_filt = gaussian_filter(y_intp, sigma, mode="nearest")
 
@@ -635,17 +637,19 @@ def smooth_curve_butterworth(x, y, ppo=3, resolution=96, order=8, ndarray=False,
             _, filtering_array = sig.sosfreqz(ba, x_intp, fs=FS)
             filtering_array_abs = np.abs(filtering_array)
             filtered_array = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
+            # in above line instead of the division by the sum, division by "resolution * ppo"
+            # should also have worked but has some offset in it..
             y_filt[i] = 10 * np.log10(np.sum(filtered_array))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
 
-def interpolate_to_ppo(x, y, ppo, must_include_freq=1000):
+def interpolate_to_ppo(x, y, ppo, must_include_freq=1000, superset=False):
     """
     Reduce a curve to lesser points
     """
     freq_start, freq_end = x[0], x[-1]
-    freqs = generate_freq_list(freq_start, freq_end, ppo, must_include_freq=must_include_freq)
+    freqs = generate_freq_list(freq_start, freq_end, ppo, must_include_freq=must_include_freq, superset=superset)
     if len(freqs) > len(x):
         raise RuntimeError("There aren't enough points in your dataset to be able to interpolate accurately for so many points per octave."
                            "\nApply smoothing first to generate more points.")
