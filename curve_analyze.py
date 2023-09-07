@@ -709,8 +709,7 @@ class ProcessingDialog(qtw.QDialog):
             user_form_2, "_outlier_detection")
 
         user_form_2.add_row(pwi.FloatSpinBox("outlier_fence_iqr",
-                                             "Fence post for outlier detection using IQR method. Unit is the interquartile range of the data points for given frequency."
-                                             "\nIf unsure, set to 1.5.",
+                                             "Fence post for outlier detection using IQR method. Unit is the interquartile range of the data points for given frequency.",
                                              decimals=1,
                                              ),
                             "Outlier fence (IQR)",
