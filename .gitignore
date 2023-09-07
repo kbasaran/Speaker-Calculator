@@ -6,7 +6,4 @@ personal_space/
 *.lnk
 dist/
 pss data/
-dist2/
-dist3/
-dist4/
-dist5/
+dist*/
