@@ -147,9 +147,7 @@ class MatplotlibWidget(qtw.QWidget):
 
         for i, label in labels.items():
             line = self.lines_in_order[i]
-            
-        # for i, line in enumerate(self.lines_in_order):
-            # zorder = line.get_zorder()
+
             new_label = label if line.get_alpha() in (None, 1) else ("_" + label)
             line.set_label(new_label)
 

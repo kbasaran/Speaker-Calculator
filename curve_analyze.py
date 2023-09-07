@@ -300,6 +300,9 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.update_labels(screen_names)
 
     def _rename_curve(self, index=None, new_name=None):
+        """
+        Update the curve and the screen name. Does not store the index part of the screen name.
+        """
         if isinstance(index, (list, np.ndarray)):
             raise NotImplementedError(
                 "Can rename only one curve at a time")
@@ -307,7 +310,7 @@ class CurveAnalyze(qtw.QWidget):
             assert index > -1
             list_item = self.curve_list.item(index)
             i = index
-            curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
+            curve = self.get_curves(["curves"], indexes=[i])[0][0]
             text = new_name
         else:
             if self.no_curve_selected():
@@ -546,8 +549,8 @@ class CurveAnalyze(qtw.QWidget):
         return to_insert
 
     def _outlier_detection(self):
-        curves_xy, curve_names, screen_names = self.get_selected_curves(
-            ["xy_s", "curve_names", "screen_names"], as_dict=True)
+        curves_xy, curve_names = self.get_selected_curves(
+            ["xy_s", "curve_names"], as_dict=True)
         if len(curves_xy) < 3:
             raise ValueError(
                 "A minimum of 3 curves is needed for this analysis.")
@@ -563,12 +566,12 @@ class CurveAnalyze(qtw.QWidget):
                              f" - +{settings.outlier_fence_iqr:.1f}xIQR")
         median.set_name(calculated_curve_name_stub + " - median")
 
-        if settings.outlier_action == 0:  # Rename
-            for i in outlier_indexes:
-                current_name = screen_names[i] if screen_names[i] else ""
-                new_name = current_name + " (outlier)"
-                self._rename_curve(index=i, new_name=new_name)
-        elif settings.outlier_action == 1:  # Hide
+        # if settings.outlier_action == 1:  # Rename
+        #     for i in outlier_indexes:
+        #         current_name = curve_names[i] if curve_names[i] else ""
+        #         new_name = current_name + " (outlier)"
+        #         self._rename_curve(index=i, new_name=new_name)
+        if settings.outlier_action in (0, 1):  # Hide
             self._hide_curves(indexes=outlier_indexes)
         elif settings.outlier_action == 2:  # Remove
             self.remove_curves(indexes=outlier_indexes)
@@ -718,8 +721,8 @@ class ProcessingDialog(qtw.QDialog):
 
         user_form_2.add_row(pwi.ComboBox("outlier_action",
                                          "Action to carry out on curves that fall partly or fully outside the fence.",
-                                         [("Rename",),
-                                          ("Hide",),
+                                         [("Hide",),
+                                          # ("Hide and rename",),
                                           ("Remove",),
                                           ]
                                          ),
@@ -889,17 +892,17 @@ if __name__ == "__main__":
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
     # mw._add_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [80, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],

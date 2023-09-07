@@ -42,7 +42,7 @@ class Settings:
     smoothing_type: int = 0
     smoothing_resolution: int = 96
     smoothing_ppo: int = 6
-    outlier_fence_iqr: float = 6.
+    outlier_fence_iqr: float = 10.
     outlier_action: int = 0
     
 

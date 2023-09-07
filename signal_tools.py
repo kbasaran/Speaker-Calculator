@@ -692,7 +692,7 @@ def iqr_analysis(curves_xy: dict, outlier_fence_iqr):
     x_array = list(curves_xy.values())[0][0]
     y_arrays = np.column_stack([y for x, y in curves_xy.values()])
 
-    q1, median, q3 = np.percentile(y_arrays, (25, 50, 75), axis=1)
+    q1, median, q3 = np.percentile(y_arrays, (25, 50, 75), axis=1, method='median_unbiased')
     iqr = q3 - q1
     lower_fence = median - iqr * outlier_fence_iqr
     upper_fence = median + iqr * outlier_fence_iqr
