@@ -21,6 +21,7 @@ logging.basicConfig(level=logging.INFO)
 
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
+version = "Build 2023.09.07"
 
 def find_longest_match_in_name(names):
     """
@@ -194,16 +195,17 @@ class CurveAnalyze(qtw.QWidget):
         if values == ["q_list_items"] and not as_dict:
             return (self.curve_list.selectedItems(),)
         else:
-            # horribly slow!!!!!!!!!!!!!!!!!!!!!1
+            # horribly slow!
             ix = [self.curve_list.row(list_item)
                   for list_item in selected_curves]
-            return self.get_curves(values, rows=ix, as_dict=as_dict, **kwargs)
+            return self.get_curves(values, indexes=ix, as_dict=as_dict, **kwargs)
 
-    def get_curves(self, values: list, rows: list = None, as_dict=False):
+    def get_curves(self, values: list, indexes: list = None, as_dict=False):
         q_list_items = {}
-        for i in range(self.curve_list.count()):
-            if rows is None or (i in rows):
-                q_list_items[i] = self.curve_list.item(i)
+        if isinstance(indexes, (list, np.ndarray)):
+            q_list_items = {i: self.curve_list.item(i) for i in range(self.curve_list.count()) if i in indexes}
+        else:
+            q_list_items = {i: self.curve_list.item(i) for i in range(self.curve_list.count())}
 
         return_list = []
         for value in values:
@@ -243,13 +245,13 @@ class CurveAnalyze(qtw.QWidget):
         return tuple(return_list)
 
     def no_curve_selected(self):
-        if self.curve_list.currentRow() == -1:
+        if self.curve_list.selectedItems():
+            return False
+        else:
             self.signal_bad_beep.emit()
             return True
-        else:
-            return False
 
-    def _move_curve_up(self, i_insert):
+    def _move_curve_up(self, i_insert: int):
         new_positions = list(range(self.curve_list.count()))
         # each number in the list is the index before location change. index in the list is the new location.
         curves, screen_names, visibilities = self.get_selected_curves(
@@ -298,7 +300,11 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.update_labels(screen_names)
 
     def _rename_curve(self, index=None, new_name=None):
-        if index is not None:
+        if isinstance(index, (list, np.ndarray)):
+            raise NotImplementedError(
+                "Can rename only one curve at a time")
+        elif isinstance(index, (int, np.int32, np.int64)):
+            assert index > -1
             list_item = self.curve_list.item(index)
             i = index
             curve = list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"]
@@ -306,7 +312,7 @@ class CurveAnalyze(qtw.QWidget):
         else:
             if self.no_curve_selected():
                 return
-            if len(self.curve_list.selectedItems()) > 1:
+            elif len(self.curve_list.selectedItems()) > 1:
                 raise NotImplementedError(
                     "Can rename only one curve at a time")
             else:
@@ -345,10 +351,11 @@ class CurveAnalyze(qtw.QWidget):
             self.signal_bad_beep.emit()
 
     def remove_curves(self, indexes: list=None):
-        if isinstance(indexes, list):
+        if isinstance(indexes, (list, np.ndarray)):
             if indexes:
                 ix = indexes
             else:
+                self.signal_bad_beep.emit()
                 return
         elif self.no_curve_selected():
             return
@@ -365,7 +372,6 @@ class CurveAnalyze(qtw.QWidget):
                                                filter='dBExtract XY_data (*.txt)',
                                                )[0]
         if file:
-            print(file, type(file))
             try:
                 os.path.isfile(file)
             except:
@@ -446,10 +452,10 @@ class CurveAnalyze(qtw.QWidget):
             raise ValueError("Invalid curve")
 
     def _hide_curves(self, indexes=None):
-        if self.no_curve_selected():
+        if isinstance(indexes, (list, np.ndarray)):
+            items, = self.get_curves(["q_list_items"], indexes=indexes)
+        elif self.no_curve_selected():
             return
-        if indexes is not None:
-            items, = self.get_curves(["q_list_items"], rows=indexes)
         else:
             items, = self.get_selected_curves(["q_list_items"])
 
@@ -465,10 +471,10 @@ class CurveAnalyze(qtw.QWidget):
         self.send_visibility_states_to_graph()
 
     def _show_curves(self, indexes=None):
-        if self.no_curve_selected():
+        if isinstance(indexes, (list, np.ndarray)):
+            items, = self.get_curves(["q_list_items"], indexes=indexes)
+        elif self.no_curve_selected():
             return
-        if indexes is not None:
-            items, = self.get_curves(["q_list_items"], rows=indexes)
         else:
             items, = self.get_selected_curves(["q_list_items"])
 
@@ -874,6 +880,7 @@ if __name__ == "__main__":
     error_handler = pwi.ErrorHandler(app)
     sys.excepthook = error_handler.excepthook
     mw = CurveAnalyze(settings)
+    mw.setWindowTitle("Curve Analyze - {}".format(version))
 
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
@@ -882,17 +889,17 @@ if __name__ == "__main__":
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
     # mw._add_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [80, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
