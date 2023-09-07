@@ -512,8 +512,6 @@ class CurveAnalyze(qtw.QWidget):
             self._processing_dialog_return)
 
         return_value = processing_dialog.exec()
-        # if return_value:
-        # self.signal_bad_beep.emit()
 
     def _processing_dialog_return(self, processing_fun):
         to_insert = getattr(self, processing_fun)()
@@ -631,8 +629,7 @@ class CurveAnalyze(qtw.QWidget):
 
         return_value = settings_dialog.exec()
         if return_value:
-            self.signal_bad_beep.emit()
-            pass
+            self.signal_good_beep.emit()
 
     def _settings_dialog_return(self):
         self.signal_update_graph_request.emit()
