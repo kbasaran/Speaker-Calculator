@@ -6,6 +6,7 @@ import logging
 from scipy import interpolate as intp
 from scipy.ndimage import gaussian_filter
 from scipy import signal as sig
+import time
 
 
 class TestSignal():
@@ -628,18 +629,16 @@ def smooth_curve_butterworth(x, y, ppo=3, resolution=96, order=8, ndarray=False,
     
     y_filt = np.zeros(len(x_intp), dtype=float)
     for i, freq in enumerate(x_intp):
-        fn = freq * 2**(-1 / 2 / ppo), freq * 2**(1 / 2 / ppo)
-        if fn[0] < min(x_intp) or fn[-1] > max(x_intp):
-            y_filt[i] = np.nan
-        else:
-            # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
-            ba = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
-            _, filtering_array = sig.sosfreqz(ba, x_intp, fs=FS)
-            filtering_array_abs = np.abs(filtering_array)
-            filtered_array = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
-            # in above line instead of the division by the sum, division by "resolution * ppo"
-            # should also have worked but has some offset in it..
-            y_filt[i] = 10 * np.log10(np.sum(filtered_array))
+        fn = max(min(x_intp), freq * 2**(-1 / 2 / ppo)), min(max(x_intp), freq * 2**(1 / 2 / ppo))
+
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
+        ba = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
+        _, filtering_array = sig.sosfreqz(ba, x_intp, fs=FS)
+        filtering_array_abs = np.abs(filtering_array)
+        filtered_array = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
+        # in above line instead of the division by the sum, division by "resolution * ppo"
+        # should also have worked but has some offset in it..
+        y_filt[i] = 10 * np.log10(np.sum(filtered_array))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 

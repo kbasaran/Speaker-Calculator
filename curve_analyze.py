@@ -569,9 +569,9 @@ class CurveAnalyze(qtw.QWidget):
         #         current_name = curve_names[i] if curve_names[i] else ""
         #         new_name = current_name + " (outlier)"
         #         self._rename_curve(index=i, new_name=new_name)
-        if settings.outlier_action in (0, 1):  # Hide
+        if settings.outlier_action in (0):  # Hide
             self._hide_curves(indexes=outlier_indexes)
-        elif settings.outlier_action == 2:  # Remove
+        elif settings.outlier_action == 1:  # Remove
             self.remove_curves(indexes=outlier_indexes)
 
         to_insert = {}
