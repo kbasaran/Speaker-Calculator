@@ -533,16 +533,20 @@ class Curve:
     def get_name_base(self):
         return self._identification["base"]
 
+    def get_name_suffixes(self):
+        suffixes = self._identification["suffixes"]
+        return suffixes
+
     def get_base_name_and_suffixes(self, joiner=" - "):
         full_name = ""
         if base := self._identification["base"]:
             full_name += base
         else:
             raise ValueError("Curve has no base name")
-        if suffixes := self._identification["suffixes"]:
-            for suffix in suffixes:
-                full_name += (joiner + str(suffix))
+        for suffix in self.get_name_suffixes():
+            full_name += (joiner + str(suffix))
         return full_name
+
 
     def get_full_name(self, joiner=" - "):
         base_name_and_suffixes = self.get_base_name_and_suffixes()

@@ -196,8 +196,7 @@ class CurveAnalyze(qtw.QWidget):
             return (self.curve_list.selectedItems(),)
         else:
             # dict search for each item. a bit slow..
-            ix = [self.curve_list.row(list_item)
-                  for list_item in selected_curves]
+            ix = [self.curve_list.row(list_item) for list_item in selected_curves]
             return self.get_curves(values, indexes=ix, as_dict=as_dict, **kwargs)
 
     def get_curves(self, values: list, indexes: list = None, as_dict=False):
@@ -215,21 +214,21 @@ class CurveAnalyze(qtw.QWidget):
                 case "indexes":
                     result_dict = dict(
                         zip(q_list_items.keys(), q_list_items.keys()))
-                case "screen_names":  # name with number as shown on screen
-                    result_dict = {i: list_item.text()
-                                   for (i, list_item) in q_list_items.items()}
+                # case "screen_names":  # name with number as shown on screen
+                #     result_dict = {i: list_item.text()
+                #                    for (i, list_item) in q_list_items.items()}
                 case "curves":  # signal_tools.Curve instances
                     result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
                         "curve"] for (i, list_item) in q_list_items.items()}
                 # case "curve_names_w_suffixes":  # this is the name stored inside curve object. does not include screen number
                 #     result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
                 #         "curve"].get_base_name_and_suffixes() for (i, list_item) in q_list_items.items()}
-                case "xy_s":  # this is the name stored inside curve object. does not include screen number
-                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"].get_xy(
-                        ndarray=False) for (i, list_item) in q_list_items.items()}
-                case "user_data":
-                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole) for (
-                        i, list_item) in q_list_items.items()}
+                # case "xy_s":  # this is the name stored inside curve object. does not include screen number
+                #     result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"].get_xy(
+                #         ndarray=False) for (i, list_item) in q_list_items.items()}
+                # case "user_data":
+                #     result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole) for (
+                #         i, list_item) in q_list_items.items()}
                 case "visibilities":
                     result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
                         "visible"] for (i, list_item) in q_list_items.items()}
@@ -290,11 +289,14 @@ class CurveAnalyze(qtw.QWidget):
 
     def _reset_indice_in_screen_name(self):
         curves, q_list_items = self.get_curves(["curves", "q_list_items"])
-        for i, curve in curves():
+        updated_full_names = {}
+        for i, curve in enumerate(curves):
             curve.set_name_prefix(f"#{i:02d}")
-            q_list_items[i].setText(curve.get_full_name())
-        self.graph.update_labels({i: curve.get_full_name()}, update_figure=False)
-        self.graph.update_labels({})
+            full_name = curve.get_full_name()
+            q_list_items[i].setText(full_name)
+            updated_full_names[i] = full_name
+        self.graph.update_labels(updated_full_names)
+
 
     def _rename_curve(self, index=None, new_name=None):
         """
@@ -523,7 +525,7 @@ class CurveAnalyze(qtw.QWidget):
             self.signal_update_graph_request.emit()
 
     def _mean_and_median_analysis(self):
-        curves = self.get_selected_curves(["curves"])
+        curves, = self.get_selected_curves(["curves"])
         if len(curves) < 2:
             raise ValueError(
                 "A minimum of 2 curves is needed for this analysis.")
@@ -552,18 +554,18 @@ class CurveAnalyze(qtw.QWidget):
         return to_insert
 
     def _outlier_detection(self):
-        curves = self.get_selected_curves(["curves"])
+        curves, = self.get_selected_curves(["curves"], as_dict=True)
         if len(curves) < 3:
             raise ValueError(
                 "A minimum of 3 curves is needed for this analysis.")
 
         lower_fence, curve_median, upper_fence, outlier_indexes = signal_tools.iqr_analysis(
-            [curve.get_xy() for curve in curves],
+            {i: curve.get_xy() for i, curve in curves.items()},
             settings.outlier_fence_iqr,
             )
 
         representative_base_name = find_longest_match_in_name(
-            [curve.get_base_name_and_suffixes() for curve in curves]
+            [curve.get_base_name_and_suffixes() for curve in curves.values()]
             )
 
         for curve in (lower_fence, upper_fence, curve_median):
@@ -572,7 +574,7 @@ class CurveAnalyze(qtw.QWidget):
         upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR")
         curve_median.add_name_suffix("median")
 
-        if settings.outlier_action in (0):  # Hide
+        if settings.outlier_action == 0:  # Hide
             self._hide_curves(indexes=outlier_indexes)
         elif settings.outlier_action == 1:  # Remove
             self.remove_curves(indexes=outlier_indexes)
@@ -585,10 +587,7 @@ class CurveAnalyze(qtw.QWidget):
         return to_insert
 
     def _smoothen_curves(self):
-        curves, ix = self.get_selected_curves(
-            ["curves", "indexes"],
-            as_dict=True,
-        )
+        curves, = self.get_selected_curves(["curves"], as_dict=True)
 
         to_insert = {}
 
