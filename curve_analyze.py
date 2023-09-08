@@ -424,9 +424,9 @@ class CurveAnalyze(qtw.QWidget):
                     curve.set_name_base(name)
                     self._add_curve(None, curve, visible=visible,
                                     update_figure=False)
-                self.signal_good_beep.emit()
                 self.send_visibility_states_to_graph()
                 self.signal_update_graph_request.emit()
+                self.signal_good_beep.emit()
 
     def _auto_importer_status_toggle(self, checked):
         if checked == 1:
