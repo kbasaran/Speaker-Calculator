@@ -49,9 +49,9 @@ class MatplotlibWidget(qtw.QWidget):
         # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.Line2D.html
 
     @qtc.Slot()
-    def update_figure(self, recalculate_limits=True, update_legend=True):
+    def update_figure(self, legend_only=False, recalculate_limits=True, update_legend=True):
         
-        if recalculate_limits:
+        if recalculate_limits and not legend_only:
             y_arrays = [line.get_ydata() for line in self.ax.get_lines()]
             y_min_max = signal_tools.calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0))
             self.ax.set_ylim(y_min_max)
@@ -62,7 +62,8 @@ class MatplotlibWidget(qtw.QWidget):
             else:
                 self.ax.legend().remove()
 
-        self.canvas.draw()
+        if not legend_only:
+            self.canvas.draw()
 
     @qtc.Slot()
     def add_line2D(self, i, label, data: tuple, update_figure=True, **kwargs):
@@ -144,14 +145,15 @@ class MatplotlibWidget(qtw.QWidget):
 
     @qtc.Slot()
     def update_labels(self, labels: dict, update_figure=True):
-
+        changed_indexes = []
         for i, label in labels.items():
             line = self.lines_in_order[i]
 
             new_label = label if line.get_alpha() in (None, 1) else ("_" + label)
             line.set_label(new_label)
+            changed_indexes.append(i)
 
-        if update_figure:
+        if update_figure and max(changed_indexes) > self.app_settings.max_legend_size:
             self.update_figure(recalculate_limits=False)
 
     @qtc.Slot()

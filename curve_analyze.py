@@ -195,7 +195,7 @@ class CurveAnalyze(qtw.QWidget):
         if values == ["q_list_items"] and not as_dict:
             return (self.curve_list.selectedItems(),)
         else:
-            # horribly slow!
+            # dict search for each item. a bit slow..
             ix = [self.curve_list.row(list_item)
                   for list_item in selected_curves]
             return self.get_curves(values, indexes=ix, as_dict=as_dict, **kwargs)
@@ -221,9 +221,9 @@ class CurveAnalyze(qtw.QWidget):
                 case "curves":  # signal_tools.Curve instances
                     result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
                         "curve"] for (i, list_item) in q_list_items.items()}
-                case "curve_names":  # this is the name stored inside curve object. does not include screen number
-                    result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
-                        "curve"].get_name() for (i, list_item) in q_list_items.items()}
+                # case "curve_names_w_suffixes":  # this is the name stored inside curve object. does not include screen number
+                #     result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)[
+                #         "curve"].get_base_name_and_suffixes() for (i, list_item) in q_list_items.items()}
                 case "xy_s":  # this is the name stored inside curve object. does not include screen number
                     result_dict = {i: list_item.data(qtc.Qt.ItemDataRole.UserRole)["curve"].get_xy(
                         ndarray=False) for (i, list_item) in q_list_items.items()}
@@ -254,17 +254,16 @@ class CurveAnalyze(qtw.QWidget):
     def _move_curve_up(self, i_insert: int):
         new_positions = list(range(self.curve_list.count()))
         # each number in the list is the index before location change. index in the list is the new location.
-        curves, screen_names, visibilities = self.get_selected_curves(
-            ["curves", "screen_names", "visibilities"], as_dict=True)
-        for i, i_curve in enumerate(curves.keys()):
-            screen_name = screen_names[i_curve]
+        curves, visibilities = self.get_selected_curves(
+            ["curves", "visibilities"], as_dict=True)
+        for i, (i_curve, curve) in enumerate(curves.items()):
             visible = visibilities[i_curve]
-            list_item = qtw.QListWidgetItem(screen_name)
+            list_item = qtw.QListWidgetItem(curve.get_full_name())
             if not visible:
                 font = list_item.font()
                 font.setWeight(qtg.QFont.Thin)
                 list_item.setFont(font)
-            list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve": copy.deepcopy(curves[i_curve]),
+            list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve": copy.deepcopy(curve),
                                                              "visible": visible,
                                                              }
                               )
@@ -290,14 +289,12 @@ class CurveAnalyze(qtw.QWidget):
         self.curve_list.setCurrentRow(-1)
 
     def _reset_indice_in_screen_name(self):
-        screen_names = {}
-        curve_names, q_list_items = self.get_curves(
-            ["curve_names", "q_list_items"], as_dict=True)
-        for i, list_item in q_list_items.items():
-            screen_name = f"#{i:02d} - {curve_names[i]}"
-            list_item.setText(screen_name)
-            screen_names[i] = screen_name
-        self.graph.update_labels(screen_names)
+        curves, q_list_items = self.get_curves(["curves", "q_list_items"])
+        for i, curve in curves():
+            curve.set_name_prefix(f"#{i:02d}")
+            q_list_items[i].setText(curve.get_full_name())
+        self.graph.update_labels({i: curve.get_full_name()}, update_figure=False)
+        self.graph.update_labels({})
 
     def _rename_curve(self, index=None, new_name=None):
         """
@@ -326,15 +323,15 @@ class CurveAnalyze(qtw.QWidget):
                 text, ok = qtw.QInputDialog.getText(self,
                                                     "Change curve name",
                                                     "New name:", qtw.QLineEdit.Normal,
-                                                    curve.get_name(),
+                                                    curve.get_base_name_and_suffixes(),
                                                     )
                 if not ok or text == '':
                     self.signal_bad_beep.emit()
 
-        curve.set_name(text)
-        list_item.setText(text)
-
-        self.graph.update_labels({i: text})
+        curve.clear_name_suffixes()
+        curve.set_name_base(text)
+        list_item.setText(curve.get_full_name())
+        self.graph.update_labels({i: curve.get_full_name()})
 
     @qtc.Slot(signal_tools.Curve)
     def _import_curve(self, curve):
@@ -424,9 +421,10 @@ class CurveAnalyze(qtw.QWidget):
                 for name, values in data.iterrows():
                     curve = signal_tools.Curve(
                         np.column_stack((data.columns, values)))
-                    curve.set_name(name)
+                    curve.set_name_base(name)
                     self._add_curve(None, curve, visible=visible,
                                     update_figure=False)
+                self.signal_good_beep.emit()
                 self.send_visibility_states_to_graph()
                 self.signal_update_graph_request.emit()
 
@@ -442,14 +440,14 @@ class CurveAnalyze(qtw.QWidget):
         if curve.is_curve():
             i_max = self.curve_list.count()
             i_insert = i if i is not None else i_max
-            screen_name = f"#{i_max:02d} - {curve.get_name()}"
-            list_item = qtw.QListWidgetItem(screen_name)
+            curve.set_name_prefix(f"#{i_max:02d}")
+            list_item = qtw.QListWidgetItem(curve.get_full_name())
             list_item.setData(qtc.Qt.ItemDataRole.UserRole, {"curve": curve,
                                                              "visible": visible,
                                                              }
                               )
             self.curve_list.insertItem(i_insert, list_item)
-            self.graph.add_line2D(i_insert, screen_name, curve.get_xy(
+            self.graph.add_line2D(i_insert, curve.get_full_name(), curve.get_xy(
             ), update_figure=update_figure, **kwargs)
         else:
             raise ValueError("Invalid curve")
@@ -525,50 +523,55 @@ class CurveAnalyze(qtw.QWidget):
             self.signal_update_graph_request.emit()
 
     def _mean_and_median_analysis(self):
-        curves_xy, curve_names, ix = self.get_selected_curves(
-            ["xy_s", "curve_names", "indexes"])
-        if len(curves_xy) < 2:
+        curves = self.get_selected_curves(["curves"])
+        if len(curves) < 2:
             raise ValueError(
                 "A minimum of 2 curves is needed for this analysis.")
-        mean_xy, median_xy = signal_tools.mean_and_median_of_curves(curves_xy)
+        curve_mean, curve_median = signal_tools.mean_and_median_of_curves(
+            [curve.get_xy() for curve in curves]
+            )
 
-        calculated_curve_name = find_longest_match_in_name(curve_names)
-        mean_xy.set_name(calculated_curve_name + " - mean")
-        median_xy.set_name(calculated_curve_name + " - median")
+        representative_base_name = find_longest_match_in_name(
+            [curve.get_base_name_and_suffixes() for curve in curves]
+            )
+
+        for curve in (curve_mean, curve_median):
+            curve.set_name_base(representative_base_name)
+
+        curve_mean.add_name_suffix("mean")
+        curve_median.add_name_suffix("median")
 
         i_insert = 0
         to_insert = {}
         if settings.mean_selected:
-            to_insert[i_insert] = mean_xy
+            to_insert[i_insert] = curve_mean
             i_insert += 1
         if settings.median_selected:
-            to_insert[i_insert] = median_xy
+            to_insert[i_insert] = curve_median
 
         return to_insert
 
     def _outlier_detection(self):
-        curves_xy, curve_names = self.get_selected_curves(
-            ["xy_s", "curve_names"], as_dict=True)
-        if len(curves_xy) < 3:
+        curves = self.get_selected_curves(["curves"])
+        if len(curves) < 3:
             raise ValueError(
                 "A minimum of 3 curves is needed for this analysis.")
 
-        lower_fence, median, upper_fence, outlier_indexes = \
-            signal_tools.iqr_analysis(curves_xy, settings.outlier_fence_iqr)
+        lower_fence, curve_median, upper_fence, outlier_indexes = signal_tools.iqr_analysis(
+            [curve.get_xy() for curve in curves],
+            settings.outlier_fence_iqr,
+            )
 
-        calculated_curve_name_stub = find_longest_match_in_name(
-            curve_names.values())
-        lower_fence.set_name(calculated_curve_name_stub +
-                             f" - -{settings.outlier_fence_iqr:.1f}xIQR")
-        upper_fence.set_name(calculated_curve_name_stub +
-                             f" - +{settings.outlier_fence_iqr:.1f}xIQR")
-        median.set_name(calculated_curve_name_stub + " - median")
+        representative_base_name = find_longest_match_in_name(
+            [curve.get_base_name_and_suffixes() for curve in curves]
+            )
 
-        # if settings.outlier_action == 1:  # Rename
-        #     for i in outlier_indexes:
-        #         current_name = curve_names[i] if curve_names[i] else ""
-        #         new_name = current_name + " (outlier)"
-        #         self._rename_curve(index=i, new_name=new_name)
+        for curve in (lower_fence, upper_fence, curve_median):
+            curve.set_name_base(representative_base_name)
+        lower_fence.add_name_suffix(f"-{settings.outlier_fence_iqr:.1f}xIQR")
+        upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR")
+        curve_median.add_name_suffix("median")
+
         if settings.outlier_action in (0):  # Hide
             self._hide_curves(indexes=outlier_indexes)
         elif settings.outlier_action == 1:  # Remove
@@ -576,14 +579,14 @@ class CurveAnalyze(qtw.QWidget):
 
         to_insert = {}
         to_insert[0] = upper_fence
-        to_insert[1] = median
+        to_insert[1] = curve_median
         to_insert[2] = lower_fence
 
         return to_insert
 
     def _smoothen_curves(self):
-        curves, curve_names, ix = self.get_selected_curves(
-            ["curves", "curve_names", "indexes"],
+        curves, ix = self.get_selected_curves(
+            ["curves", "indexes"],
             as_dict=True,
         )
 
@@ -616,8 +619,10 @@ class CurveAnalyze(qtw.QWidget):
                     "This smoothing type is not available")
 
             new_curve = signal_tools.Curve(xy)
-            new_curve.set_name(
-                str(curve_names[i_curve]) + f" - smoothed 1/{settings.smoothing_ppo}")
+            new_curve.set_name_base(curves[i_curve].get_name_base())
+            for suffix in curve.get_name_suffixes():
+                new_curve.add_name_suffix(suffix)
+            new_curve.add_name_suffix(f"smoothed 1/{settings.smoothing_ppo}")
             to_insert[i_curve + len(to_insert) + 1] = new_curve
 
         return to_insert

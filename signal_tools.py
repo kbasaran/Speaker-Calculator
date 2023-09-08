@@ -366,7 +366,13 @@ def test_make_fade_window_t():
 
 
 class Curve:
+    """
+    Item holding a 2D line and information with it such as:
+        a dictionary called identification, that holds name, prefix, suffix
+    """
+
     def __init__(self, initial_data):
+        self._identification = {"prefix": "", "base": "", "suffixes": []}
         if isinstance(initial_data, str):
             self._initial_data = initial_data.strip()
             if self.is_Klippel(self._initial_data):
@@ -438,7 +444,7 @@ class Curve:
                 # x, y = self.get_xy()
                 # self.set_xy((x, y + np.random.randint(0, high=21)))
             elif key == "Data_Legend":
-                self.set_name(val)
+                self.set_name_base(val)
 
     def set_xy(self, xy):
         if isinstance(xy, np.ndarray):
@@ -505,12 +511,45 @@ class Curve:
         else:
             return getattr(self, "_x", None), getattr(self, "_y", None)
 
-    def set_name(self, name):
-        assert isinstance(name, str)
-        setattr(self, "_name", name)
+    def set_name_base(self, name):
+        val = name if isinstance(name, str) else None
+        self._identification["base"] = val
 
-    def get_name(self):
-        return getattr(self, "_name", None)
+    def set_name_prefix(self, prefix):
+        val = prefix if isinstance(prefix, str) else None
+        self._identification["prefix"] = val
+
+    def clear_name_suffixes(self):
+        self._identification["suffixes"].clear()
+
+    def has_name_prefix(self):
+        prefix = self._identification["prefix"]
+        return isinstance(prefix, str) and len(prefix) > 0
+
+    def add_name_suffix(self, name):
+        if isinstance(name, (str, int)):
+            self._identification["suffixes"].append(name)
+
+    def get_name_base(self):
+        return self._identification["base"]
+
+    def get_base_name_and_suffixes(self, joiner=" - "):
+        full_name = ""
+        if base := self._identification["base"]:
+            full_name += base
+        else:
+            raise ValueError("Curve has no base name")
+        if suffixes := self._identification["suffixes"]:
+            for suffix in suffixes:
+                full_name += (joiner + str(suffix))
+        return full_name
+
+    def get_full_name(self, joiner=" - "):
+        base_name_and_suffixes = self.get_base_name_and_suffixes()
+        if prefix := self._identification.get("prefix"):
+            return joiner.join((prefix, base_name_and_suffixes))
+        else:
+            raise ValueError("Prefix was not defined")
 
 
 def discover_fs_from_time_signature(curve):

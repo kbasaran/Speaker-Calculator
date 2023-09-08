@@ -382,10 +382,10 @@ class ErrorHandler:
     def excepthook(self, etype, value, tb):
         error_msg = ''.join(traceback.format_exception(etype, value, tb))
         message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
-                                      "Error",
+                                      "Error    :(",
                                       error_msg +
                                       "\nYour application may now be in an unstable state."
-                                      "\n\nThis event will be logged unless ignored.",
+                                      "\n\nThis event may be logged unless ignore is chosen.",
                                       )
         message_box.addButton(qtw.QMessageBox.Ignore)
         close_button = message_box.addButton(qtw.QMessageBox.Close)
