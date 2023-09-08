@@ -6,7 +6,6 @@ import logging
 from scipy import interpolate as intp
 from scipy.ndimage import gaussian_filter
 from scipy import signal as sig
-import time
 
 
 class TestSignal():
@@ -108,11 +107,11 @@ class TestSignal():
         self.make_time_array(**kwargs)
 
         self.initial_data_analysis = (f"File name: {self.import_file_name}"
-                                    + f"\nOriginal channel count: {self.imported_channel_count}"
-                                    + f"\nImported channel: {str(self.imported_channel + 1) if isinstance(self.imported_channel, int) else self.imported_channel}"
-                                    # integer count for user, starting from 1
-                                    + f"\nOriginal sample rate: {self.imported_FS}"
-                                    )
+                                      f"\nOriginal channel count: {self.imported_channel_count}"
+                                      f"\nImported channel: {str(self.imported_channel + 1) if isinstance(self.imported_channel, int) else self.imported_channel}"
+                                      # integer count for user, starting from 1
+                                      f"\nOriginal sample rate: {self.imported_FS}"
+                                      )
 
     def reduce_channels(self, channel_to_use):
         # Channel to use can be an integer starting from 1 or "downmix_all"
@@ -385,7 +384,6 @@ class Curve:
         else:
             return False
 
-
     def is_Klippel(self, import_text):
         return (True if (import_text[:18] == "SourceDesc='dB-Lab") else False)
 
@@ -494,11 +492,11 @@ class Curve:
                 setattr(self, "_x", np.array(x))
                 setattr(self, "_y", np.array(y))
                 setattr(self, "_xy", np.row_stack([self._x, self._y]))
-                
-            else: ValueError("xy input unrecognized")
+
+            else:
+                ValueError("xy input unrecognized")
         else:
             raise ValueError("xy input unrecognized")
-
 
     def get_xy(self, ndarray=False):
         if ndarray:
@@ -593,16 +591,19 @@ def convolve_with_signal(ir, my_sig, ir_FS=None, my_sig_FS=None, trim_zeros=True
 
     return y_conv, y2_FS
 
+
 def calculate_third_oct_power_from_pressure(p, FS):
     third_oct_freqs = ac.standards.iec_61672_1_2013.NOMINAL_THIRD_OCTAVE_CENTER_FREQUENCIES
 
     return third_oct_freqs, ac.signal.third_octaves(p, FS, frequencies=third_oct_freqs)[1]
 
+
 def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000, superset=False):
     """
     Create a numpy array for frequencies to use in calculation.
     ppo means points per octave
-    makes sure all points fall within defined frequency range if superset is False. Otherwise 1 more point will be added to each end.
+    makes sure all points fall within defined frequency range if superset is False.
+    Otherwise 1 more point will be added to each end.
     """
     if superset:
         numStart = np.floor(np.log2(freq_start/must_include_freq)*ppo)
@@ -613,6 +614,7 @@ def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000, supers
     freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
+
 def smooth_curve_gaussian(x, y, ppo=3, resolution=96, ndarray=False):
     x_intp, y_intp = interpolate_to_ppo(x, y, resolution, superset=True)
     sigma = resolution / ppo  # one octave, divided by ppo
@@ -620,20 +622,20 @@ def smooth_curve_gaussian(x, y, ppo=3, resolution=96, ndarray=False):
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
+
 def smooth_curve_butterworth(x, y, ppo=3, resolution=96, order=8, ndarray=False, FS=None):
     if not FS:
         FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
     else:
         pass
     x_intp, y_intp = interpolate_to_ppo(x, y, resolution)
-    
+
     y_filt = np.zeros(len(x_intp), dtype=float)
     for i, freq in enumerate(x_intp):
         fn = max(min(x_intp), freq * 2**(-1 / 2 / ppo)), min(max(x_intp), freq * 2**(1 / 2 / ppo))
-
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
-        ba = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
-        _, filtering_array = sig.sosfreqz(ba, x_intp, fs=FS)
+        sos = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
+        _, filtering_array = sig.sosfreqz(sos, x_intp, fs=FS)
         filtering_array_abs = np.abs(filtering_array)
         filtered_array = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
         # in above line instead of the division by the sum, division by "resolution * ppo"
@@ -642,12 +644,18 @@ def smooth_curve_butterworth(x, y, ppo=3, resolution=96, order=8, ndarray=False,
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
+
 def interpolate_to_ppo(x, y, ppo, must_include_freq=1000, superset=False):
     """
     Reduce a curve to lesser points
     """
     freq_start, freq_end = x[0], x[-1]
-    freqs = generate_freq_list(freq_start, freq_end, ppo, must_include_freq=must_include_freq, superset=superset)
+    freqs = generate_freq_list(freq_start,
+                               freq_end,
+                               ppo,
+                               must_include_freq=must_include_freq,
+                               superset=superset,
+                               )
 
     f = intp.interp1d(np.log(x), y, assume_sorted=True, bounds_error=False)
     return freqs, f(np.log(freqs))
@@ -658,6 +666,7 @@ def arrays_are_equal(arrays):
         if not np.array_equal(arrays[0], arrays[i]):
             return False
     return True
+
 
 def mean_and_median_of_curves(curves_xy: list):
     """
@@ -683,6 +692,7 @@ def mean_and_median_of_curves(curves_xy: list):
 
     return Curve((curves_xy[0][0], y_mean)), Curve((curves_xy[0][0], y_median))
 
+
 def iqr_analysis(curves_xy: dict, outlier_fence_iqr):
     if not arrays_are_equal([x for x, y in curves_xy.values()]):
         raise NotImplementedError("Curves do not have the exact same frequency points."
@@ -695,21 +705,26 @@ def iqr_analysis(curves_xy: dict, outlier_fence_iqr):
     iqr = q3 - q1
     lower_fence = median - iqr * outlier_fence_iqr
     upper_fence = median + iqr * outlier_fence_iqr
-   
+
     outlier_down = np.any(y_arrays < lower_fence.reshape((-1, 1)), axis=0)
     outlier_up = np.any(y_arrays > upper_fence.reshape((-1, 1)), axis=0)
     outliers_all = outlier_up | outlier_down
 
     outlier_indexes = list(np.array(list(curves_xy.keys()), dtype=int)[outliers_all])
 
+    return (
+        Curve((x_array, lower_fence)),
+        Curve((x_array, median)),
+        Curve((x_array, upper_fence)),
+        outlier_indexes
+        )
 
-
-    return Curve((x_array, lower_fence)), Curve((x_array, median)), Curve((x_array, upper_fence)), outlier_indexes
 
 def calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0)):
 
     def floor_to_multiple(number, multiple, clearance_down):
         return multiple * np.floor((number - clearance_down) / multiple)
+
     def ceil_to_multiple(number, multiple, clearance_up):
         return multiple * np.ceil((number + clearance_up) / multiple)
 
@@ -717,7 +732,7 @@ def calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0)):
         y_points = np.concatenate([y_array for y_array in y_arrays])
         y_points = y_points[np.isfinite(y_points)]
         y_min = floor_to_multiple(np.min(y_points), multiple, clearance_up_down[0])
-        y_max = ceil_to_multiple(np.max(y_points), multiple, clearance_up_down[1])    
+        y_max = ceil_to_multiple(np.max(y_points), multiple, clearance_up_down[1])
         return y_min, y_max
     else:
         return None, None
