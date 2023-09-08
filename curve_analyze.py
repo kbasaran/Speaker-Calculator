@@ -95,7 +95,7 @@ class CurveAnalyze(qtw.QWidget):
              "processing": "Processing",
              "set_reference": "Set reference",
              "export_table": "Export table",
-             "export_image": "Export image",
+              "export_image": "Export image",
              "settings": "Settings",
              },
             {"import_curve": "Import 2D curve from clipboard",
@@ -104,8 +104,8 @@ class CurveAnalyze(qtw.QWidget):
         )
         self.graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
+        self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
         self._user_input_widgets["export_image_pushbutton"].setEnabled(False)
-        self._user_input_widgets["set_reference_pushbutton"].setEnabled(False)
 
         self.curve_list = qtw.QListWidget()
         self.curve_list.setSelectionMode(
@@ -127,8 +127,6 @@ class CurveAnalyze(qtw.QWidget):
             self.graph.reset_colors)
         self._user_input_widgets["rename_pushbutton"].clicked.connect(
             self._rename_curve)
-        self._user_input_widgets["set_reference_pushbutton"].clicked.connect(
-            self._set_reference_curve)
         self._user_input_widgets["move_up_pushbutton"].clicked.connect(
             self.move_up_1)
         self._user_input_widgets["move_to_top_pushbutton"].clicked.connect(
@@ -143,6 +141,8 @@ class CurveAnalyze(qtw.QWidget):
             self._export_image)
         self._user_input_widgets["auto_import_pushbutton"].toggled.connect(
             self._auto_importer_status_toggle)
+        self._user_input_widgets["set_reference_pushbutton"].toggled.connect(
+            self._reference_curve_status_toggle)
         self._user_input_widgets["settings_pushbutton"].clicked.connect(
             self._open_settings_dialog)
         self._user_input_widgets["processing_pushbutton"].clicked.connect(
@@ -438,6 +438,18 @@ class CurveAnalyze(qtw.QWidget):
         else:
             self.auto_importer.requestInterruption()
 
+    def _reference_curve_status_toggle(self, checked):
+        if checked == 1:
+            curves, = self.get_selected_curves(["curves"])
+            if len(curves) == 1:
+                curve = curves[0]
+                self.graph.toggle_reference_curve(curve)
+                
+            else:
+                self.signal_bad_beep.emit()
+        else:
+            self.graph.toggle_reference_curve(None)
+
     def _add_curve(self, i, curve, visible=True, update_figure=True, **kwargs):
         if curve.is_curve():
             i_max = self.curve_list.count()
@@ -495,9 +507,6 @@ class CurveAnalyze(qtw.QWidget):
     def _flash_curve(self, item):
         i = self.curve_list.row(item)
         self.signal_flash_curve.emit(i)
-
-    def _set_reference_curve(self):
-        raise NotImplementedError
 
     def send_visibility_states_to_graph(self):
         visibility_states, = self.get_curves(["visibilities"], as_dict=True)

@@ -83,6 +83,26 @@ class MatplotlibWidget(qtw.QWidget):
         if update_figure:
             self.update_figure()
 
+    @qtc.Slot()
+    def toggle_reference_curve(self, ref_curve:tuple):
+        if ref_curve:
+            ref_x, ref_y = ref_curve.get_xy()
+            for line2d in self.lines_in_order:
+                x, y = line2d.get_xdata(), line2d.get_ydata()
+                # setattr(line2d, "pure_x", x)
+                setattr(line2d, "pure_y", y)
+                ref_y_intp = np.interp(x, ref_x, ref_y, left=np.nan, right=np.nan)
+                # line2d.set_xdata(getattr(line2d, "pure_x", ref_x))
+                line2d.set_ydata(y - ref_y_intp)
+            self.update_figure()
+
+        else:
+            for line2d in self.lines_in_order:
+                # line2d.set_xdata(getattr(line2d, "pure_x", []))
+                if pure_y := getattr(line2d, "pure_y", None) is not None:
+                    line2d.set_ydata(pure_y)
+            self.update_figure()
+
     def show_legend_ordered(self):
         visible_lines = [line for line in self.lines_in_order if line.get_alpha() in (None, 1)]
         handles = visible_lines[:self.app_settings.max_legend_size]
