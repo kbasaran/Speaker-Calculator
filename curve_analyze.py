@@ -65,6 +65,7 @@ class CurveAnalyze(qtw.QWidget):
     signal_update_graph_request = qtc.Signal()
     signal_reposition_curves = qtc.Signal(list)
     signal_flash_curve = qtc.Signal(int)
+    # signal_key_pressed = qtc.Signal(str)
 
     def __init__(self, settings):
         super().__init__()
@@ -73,6 +74,14 @@ class CurveAnalyze(qtw.QWidget):
         self._create_widgets()
         self._place_widgets()
         self._make_connections()
+
+    def keyPressEvent(self, keyEvent):
+        # overwriting method inherited from class
+        # Sequence names: https://doc.qt.io/qtforpython-6/PySide6/QtGui/QKeySequence.html
+        if keyEvent.matches(qtg.QKeySequence.Delete):
+            self.remove_curves()
+        if keyEvent.matches(qtg.QKeySequence.Cancel):
+            self.qlistwidget_for_curves.setCurrentRow(-1)
 
     def _create_core_objects(self):
         self._user_input_widgets = dict()
@@ -157,6 +166,8 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_reposition_curves.connect(self.graph.change_lines_order)
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
         self.signal_flash_curve.connect(self.graph.flash_curve)
+        # self.signal_key_pressed.connect(self._keyboard_key_pressed)
+
 
     def _export_table(self):
         if self.no_curve_selected():
