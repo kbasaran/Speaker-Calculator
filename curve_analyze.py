@@ -652,6 +652,7 @@ class CurveAnalyze(qtw.QWidget):
             self.signal_good_beep.emit()
 
     def _settings_dialog_return(self):
+        #### What to do if matplotlib style changes ####
         self.signal_update_graph_request.emit()
 
 class ProcessingDialog(qtw.QDialog):
@@ -860,7 +861,7 @@ class SettingsDialog(qtw.QDialog):
             saved_setting = getattr(settings, key)
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
-            elif isinstance(widget, qtw.QComboBox):
+            elif key == "matplotlib_style":
                 widget.setCurrentIndex(matplotlib.style.available.index(saved_setting))
             else:
                 widget.setValue(saved_setting)
@@ -876,7 +877,7 @@ class SettingsDialog(qtw.QDialog):
         for key, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update_attr(key, widget.isChecked())
-            elif isinstance(widget, qtw.QComboBox):
+            elif key == "matplotlib_style":
                settings.update_attr(key, matplotlib.style.available[widget.currentIndex()])
             else:
                 settings.update_attr(key, widget.value())
