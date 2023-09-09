@@ -172,7 +172,7 @@ class MatplotlibWidget(qtw.QWidget):
             line.set_label(new_label)
             changed_indexes.append(i)
 
-        if update_figure and (min(changed_indexes) < self.app_settings.max_legend_size):
+        if changed_indexes and update_figure and (min(changed_indexes) < self.app_settings.max_legend_size):
             self.update_figure(recalculate_limits=False)
 
     @qtc.Slot()

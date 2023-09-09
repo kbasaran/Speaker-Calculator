@@ -373,6 +373,7 @@ class Curve:
 
     def __init__(self, initial_data):
         self._identification = {"prefix": "", "base": "", "suffixes": []}
+        self._visible = True
         if isinstance(initial_data, str):
             self._initial_data = initial_data.strip()
             if self.is_Klippel(self._initial_data):
@@ -530,6 +531,10 @@ class Curve:
         if isinstance(name, (str, int)):
             self._identification["suffixes"].append(name)
 
+    def remove_name_suffix(self, name):
+        suffixes = self._identification["suffixes"]
+        self._identification["suffixes"] = [suffix for suffix in suffixes if suffix != name]
+
     def get_name_base(self):
         return self._identification["base"]
 
@@ -547,7 +552,6 @@ class Curve:
             full_name += (joiner + str(suffix))
         return full_name
 
-
     def get_full_name(self, joiner=" - "):
         base_name_and_suffixes = self.get_base_name_and_suffixes()
         if prefix := self._identification.get("prefix"):
@@ -555,6 +559,12 @@ class Curve:
         else:
             raise ValueError("Prefix was not defined")
 
+    def set_visible(self, val):
+        assert isinstance(val, bool)
+        self._visible = val
+
+    def is_visible(self):
+        return self._visible
 
 def discover_fs_from_time_signature(curve):
     if not any(["[ms]" in string for string in curve.klippel_attrs["unresolved_parts"]]):
