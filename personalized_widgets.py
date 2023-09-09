@@ -45,6 +45,8 @@ class Settings:
     outlier_fence_iqr: float = 10.
     outlier_action: int = 0
     matplotlib_style: str = "bmh"
+    precessing_interpolation: int = 96
+    interpolate_must_contain: int = 1000
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(

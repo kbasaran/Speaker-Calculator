@@ -181,7 +181,10 @@ class CurveAnalyze(qtw.QWidget):
             xy_export = np.transpose(curve.get_xy(ndarray=True))
         else:
             x_intp, y_intp = signal_tools.interpolate_to_ppo(
-                *curve.get_xy(), settings.export_ppo)
+                *curve.get_xy(),
+                settings.export_ppo,
+                settings.interpolate_must_contain,
+                )
             if signal_tools.arrays_are_equal((x_intp, curve.get_xy()[0])):
                 xy_export = np.transpose(curve.get_xy(ndarray=True))
             else:
@@ -330,7 +333,10 @@ class CurveAnalyze(qtw.QWidget):
             if settings.import_ppo > 0:
                 x, y = curve.get_xy()
                 x_intp, y_intp = signal_tools.interpolate_to_ppo(
-                    x, y, settings.import_ppo)
+                    x, y,
+                    settings.import_ppo,
+                    settings.interpolate_must_contain,
+                    )
                 curve.set_xy((x_intp, y_intp))
 
             if curve.is_curve():
@@ -602,6 +608,10 @@ class CurveAnalyze(qtw.QWidget):
 
         return to_insert
 
+
+    def _interpolate_curves(self):
+        self.signal_bad_beep.emit()
+
     def _smoothen_curves(self):
         curves, = self.get_selected_curves(["curves"], as_dict=True)
 
@@ -745,6 +755,20 @@ class ProcessingDialog(qtw.QDialog):
                             "Action on outliers",
                             )
 
+        # Interpolation page
+        user_form_2 = pwi.UserForm()
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_2, "Smoothing")
+        i = self.tab_widget.indexOf(user_form_2)
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_2, "_interpolate_curves")
+
+        user_form_2.add_row(pwi.IntSpinBox("processing_interpolation",
+                                           None,
+                                           ),
+                            "Points per octave (ppo)",
+                            )
+
         # Buttons for the dialog - common to self and not per tab
         button_group = pwi.PushButtonGroup({"run": "Run",
                                             "cancel": "Cancel",
@@ -838,6 +862,13 @@ class SettingsDialog(qtw.QDialog):
                                          "\nDefault value: 96",
                                          ),
                           "Interpolate before export (ppo)",
+                          )
+
+        user_form.add_row(pwi.IntSpinBox("interpolate_must_contain",
+                                         "Frequency that will always be a point within interpolated frequency array."
+                                         "\nDefault value: 1000",
+                                         ),
+                          "Interpolate must contain frequency (Hz)",
                           )
 
         user_form.add_row(pwi.FloatSpinBox("A_beep",
