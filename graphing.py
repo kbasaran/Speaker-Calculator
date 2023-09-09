@@ -25,11 +25,13 @@ class MatplotlibWidget(qtw.QWidget):
         self.app_settings = settings
         super().__init__()
         layout = qtw.QVBoxLayout(self)
-        desired_style = 'bmh'
+        self.available_styles = list(plt.style.available)
+
+        desired_style = self.app_settings.matplotlib_style
         if desired_style in plt.style.available:
             plt.style.use(desired_style)
         else:
-            print(f"Desired style '{desired_style}' not available.")
+            raise KeyError(f"Desired style '{desired_style}' not available.")
 
         fig = Figure()
         fig.set_layout_engine("constrained")

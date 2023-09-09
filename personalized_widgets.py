@@ -44,6 +44,7 @@ class Settings:
     smoothing_ppo: int = 6
     outlier_fence_iqr: float = 10.
     outlier_action: int = 0
+    matplotlib_style: str = "bmh"
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(

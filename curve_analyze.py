@@ -654,7 +654,6 @@ class CurveAnalyze(qtw.QWidget):
     def _settings_dialog_return(self):
         self.signal_update_graph_request.emit()
 
-
 class ProcessingDialog(qtw.QDialog):
     global settings
     signal_processing_request = qtc.Signal(str)
@@ -800,6 +799,7 @@ class SettingsDialog(qtw.QDialog):
 
     def __init__(self):
         super().__init__()
+        import matplotlib
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
 
@@ -812,6 +812,14 @@ class SettingsDialog(qtw.QDialog):
 
         user_form.add_row(pwi.IntSpinBox("max_legend_size", "Limit the items that can be listed on the legend. Does not affect the shown curves in graph"),
                           "Maximum legend size in graph")
+
+        user_form.add_row(pwi.ComboBox("matplotlib_style", 
+                                       "Style for the canvas. To see options info, web search: 'matplotlib style sheets reference'",
+                                       [(style_name, None) for style_name in matplotlib.style.available],
+                                       ),
+                          "Matplotlib style",
+                          )
+        user_form._user_input_widgets["matplotlib_style"].setEnabled(False)
 
         user_form.add_row(pwi.IntSpinBox("import_ppo",
                                          "Interpolate the curve to here defined points per octave in import"
@@ -852,6 +860,8 @@ class SettingsDialog(qtw.QDialog):
             saved_setting = getattr(settings, key)
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
+            elif isinstance(widget, qtw.QComboBox):
+                widget.setCurrentIndex(matplotlib.style.available.index(saved_setting))
             else:
                 widget.setValue(saved_setting)
 
@@ -862,9 +872,12 @@ class SettingsDialog(qtw.QDialog):
             partial(self._save_and_close,  user_form._user_input_widgets, settings))
 
     def _save_and_close(self, user_input_widgets, settings):
+        import matplotlib
         for key, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update_attr(key, widget.isChecked())
+            elif isinstance(widget, qtw.QComboBox):
+               settings.update_attr(key, matplotlib.style.available[widget.currentIndex()])
             else:
                 settings.update_attr(key, widget.value())
         self.signal_settings_changed.emit()
