@@ -26,6 +26,7 @@ class MatplotlibWidget(qtw.QWidget):
         super().__init__()
         layout = qtw.QVBoxLayout(self)
         self.available_styles = list(plt.style.available)
+        self._reference_index = None
 
         desired_style = self.app_settings.matplotlib_style
         if desired_style in plt.style.available:
@@ -84,6 +85,8 @@ class MatplotlibWidget(qtw.QWidget):
 
     @qtc.Slot()
     def add_line2d(self, i, label, data: tuple, update_figure=True, line2d_kwargs={}):
+        if self._reference_index and i <= self._reference_index:
+            self._reference_index += 1
         line, = self.ax.semilogx(*data, label=label, **line2d_kwargs)
         self.lines_in_order.insert(i, line)
 
@@ -94,6 +97,10 @@ class MatplotlibWidget(qtw.QWidget):
     @qtc.Slot()
     def remove_line2d(self, ix: list, update_figure=True):
         for i in reversed(ix):
+            if self._reference_index and i == self._reference_index:
+                self.toggle_reference_curve(None)
+            elif self._reference_index and i < self._reference_index:
+                self._reference_index -= 1
             line = self.lines_in_order.pop(i)
             line.remove()
 
@@ -115,14 +122,18 @@ class MatplotlibWidget(qtw.QWidget):
                     setattr(line2d, "pure_y", y)
                     ref_y_intp = np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
                     line2d.set_ydata(y - ref_y_intp)
+            self._reference_index = i
             self.update_figure()
 
         else:
-            for line2d in self.lines_in_order:
-                if pure_y := getattr(line2d, "pure_y", None) is not None:
+            for i, line2d in enumerate(self.lines_in_order):
+                if not self._reference_index:
+                    return
+                elif i == self._reference_index:
+                    pass
+                elif pure_y := getattr(line2d, "pure_y", None) is not None:
                     line2d.set_ydata(pure_y)
-                # self.hide_show_line2d({i: True})
-                # how to unhide the previously hidden reference here???
+            self.hide_show_line2d({self._reference_index: True})
             self.ax.legend().set_title(None)
             self.update_figure()
 
@@ -134,10 +145,14 @@ class MatplotlibWidget(qtw.QWidget):
         self.ax.legend(handles, labels)
 
     def change_lines_order(self, new_positions: list):
+        # each number in the new_positions is the index before location change. index in the list is the new location.
         lines_reordered = []
-        for i_line in new_positions:
-            lines_reordered.append(self.lines_in_order[i_line])
+        for i_after, i_before in enumerate(new_positions):
+            lines_reordered.append(self.lines_in_order[i_before])
+            if self._reference_index and i_before == self._reference_index:
+                self._reference_index = i_after  # keep the reference index correct with this
         self.lines_in_order = lines_reordered
+
         self.update_line_zorders()
         self.update_figure(recalculate_limits=False)
 
