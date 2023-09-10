@@ -40,13 +40,13 @@ class Settings:
     mean_selected: bool = False
     median_selected: bool = True
     smoothing_type: int = 0
-    smoothing_resolution: int = 96
-    smoothing_ppo: int = 6
+    smoothing_resolution_ppo: int = 96
+    smoothing_bandwidth: int = 6
     outlier_fence_iqr: float = 10.
     outlier_action: int = 0
     matplotlib_style: str = "bmh"
-    precessing_interpolation: int = 96
-    interpolate_must_contain: int = 1000
+    processing_interpolation_ppo: int = 96
+    interpolate_must_contain_hz: int = 1000
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(

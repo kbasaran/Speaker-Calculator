@@ -183,7 +183,7 @@ class CurveAnalyze(qtw.QWidget):
             x_intp, y_intp = signal_tools.interpolate_to_ppo(
                 *curve.get_xy(),
                 settings.export_ppo,
-                settings.interpolate_must_contain,
+                settings.interpolate_must_contain_hz,
                 )
             if signal_tools.arrays_are_equal((x_intp, curve.get_xy()[0])):
                 xy_export = np.transpose(curve.get_xy(ndarray=True))
@@ -209,7 +209,7 @@ class CurveAnalyze(qtw.QWidget):
         indexes = [self.qlistwidget_for_curves.row(list_item) for list_item in selected_list_items]
         return indexes
 
-    def get_selected_curves(self, as_dict:bool=False, **kwargs) -> list:
+    def get_selected_curves(self, as_dict:bool=False) -> (list, dict):
         selected_indexes = self.get_selected_curve_indexes()
 
         if as_dict:
@@ -335,7 +335,7 @@ class CurveAnalyze(qtw.QWidget):
                 x_intp, y_intp = signal_tools.interpolate_to_ppo(
                     x, y,
                     settings.import_ppo,
-                    settings.interpolate_must_contain,
+                    settings.interpolate_must_contain_hz,
                     )
                 curve.set_xy((x_intp, y_intp))
 
@@ -462,7 +462,7 @@ class CurveAnalyze(qtw.QWidget):
             self.reference_curve = None
             self.graph.toggle_reference_curve(None)
 
-    def _add_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, **kwargs):
+    def _add_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2D_kwargs={}):
         if curve.is_curve():
             i_max = len(self.curves)
             i_insert = i if i is not None else i_max
@@ -477,7 +477,7 @@ class CurveAnalyze(qtw.QWidget):
 
             self.qlistwidget_for_curves.insertItem(i_insert, list_item)
 
-            self.graph.add_line2D(i_insert, curve.get_full_name(), curve.get_xy(), update_figure=update_figure, **kwargs)
+            self.graph.add_line2D(i_insert, curve.get_full_name(), curve.get_xy(), update_figure=update_figure, line2D_kwargs=line2D_kwargs)
         else:
             raise ValueError("Invalid curve")
 
@@ -537,17 +537,17 @@ class CurveAnalyze(qtw.QWidget):
             self.signal_good_beep.emit()
 
     def _processing_dialog_return(self, processing_function_name):
-        to_insert = getattr(self, processing_function_name)()
+        to_insert, line2D_kwargs = getattr(self, processing_function_name)()
 
         if to_insert:
             # sort the dict by highest key value first
             for i, curve in sorted(to_insert.items()):
-                self._add_curve(i, curve, update_figure=False, color="k")
+                self._add_curve(i, curve, update_figure=False, line2D_kwargs=line2D_kwargs)
 
             self.signal_update_graph_request.emit()
 
     def _mean_and_median_analysis(self):
-        curves, = self.get_selected_curves(["curves"])
+        curves = self.get_selected_curves()
         if len(curves) < 2:
             raise ValueError(
                 "A minimum of 2 curves is needed for this analysis.")
@@ -573,10 +573,12 @@ class CurveAnalyze(qtw.QWidget):
         if settings.median_selected:
             to_insert[i_insert] = curve_median
 
-        return to_insert
+        line2D_kwargs = {"color": "k", "linestyle": "-"}
+        
+        return to_insert, line2D_kwargs
 
     def _outlier_detection(self):
-        curves, = self.get_selected_curves(["curves"], as_dict=True)
+        curves = self.get_selected_curves(as_dict=True)
         if len(curves) < 3:
             raise ValueError(
                 "A minimum of 3 curves is needed for this analysis.")
@@ -606,14 +608,32 @@ class CurveAnalyze(qtw.QWidget):
         to_insert[1] = curve_median
         to_insert[2] = lower_fence
 
-        return to_insert
+        line2D_kwargs = {"color": "k", "linestyle": "--"}
+
+        return to_insert, line2D_kwargs
 
 
     def _interpolate_curves(self):
-        self.signal_bad_beep.emit()
+        curves = self.get_selected_curves(as_dict=True)
+
+        to_insert = {}
+
+        for i_curve, curve in curves.items():
+                xy = signal_tools.interpolate_to_ppo(*curve.get_xy(), settings.precessing_interpolation_ppo)
+
+        new_curve = signal_tools.Curve(xy)
+        new_curve.set_name_base(curves[i_curve].get_name_base())
+        for suffix in curve.get_name_suffixes():
+            new_curve.add_name_suffix(suffix)
+        new_curve.add_name_suffix(f"interpolated to {settings.precessing_interpolation_ppo} ppo")
+        to_insert[i_curve + len(to_insert) + 1] = new_curve
+
+        line2D_kwargs = {"color": "k", "linestyle": "-"}
+
+        return to_insert, line2D_kwargs
 
     def _smoothen_curves(self):
-        curves, = self.get_selected_curves(["curves"], as_dict=True)
+        curves = self.get_selected_curves(as_dict=True)
 
         to_insert = {}
 
@@ -621,22 +641,22 @@ class CurveAnalyze(qtw.QWidget):
 
             if settings.smoothing_type == 0:
                 xy = signal_tools.smooth_curve_butterworth(*curve.get_xy(),
-                                                           ppo=settings.smoothing_ppo,
-                                                           resolution=settings.smoothing_resolution,
+                                                           bandwidth=settings.smoothing_bandwidth,
+                                                           resolution=settings.smoothing_resolution_ppo,
                                                            order=8,
                                                            )
 
             elif settings.smoothing_type == 1:
                 xy = signal_tools.smooth_curve_butterworth(*curve.get_xy(),
-                                                           ppo=settings.smoothing_ppo,
-                                                           resolution=settings.smoothing_resolution,
+                                                           bandwidth=settings.smoothing_bandwidth,
+                                                           resolution=settings.smoothing_resolution_ppo,
                                                            order=4,
                                                            )
 
             elif settings.smoothing_type == 2:
                 xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
-                                                        ppo=settings.smoothing_ppo,
-                                                        resolution=settings.smoothing_resolution,
+                                                        bandwidth=settings.smoothing_bandwidth,
+                                                        resolution=settings.smoothing_resolution_ppo,
                                                         )
 
             else:
@@ -647,10 +667,12 @@ class CurveAnalyze(qtw.QWidget):
             new_curve.set_name_base(curves[i_curve].get_name_base())
             for suffix in curve.get_name_suffixes():
                 new_curve.add_name_suffix(suffix)
-            new_curve.add_name_suffix(f"smoothed 1/{settings.smoothing_ppo}")
+            new_curve.add_name_suffix(f"smoothed 1/{settings.smoothing_bandwidth}")
             to_insert[i_curve + len(to_insert) + 1] = new_curve
 
-        return to_insert
+        line2D_kwargs = {"color": "k", "linestyle": "-"}
+
+        return to_insert, line2D_kwargs
 
     def _open_settings_dialog(self):
         settings_dialog = SettingsDialog()
@@ -718,16 +740,16 @@ class ProcessingDialog(qtw.QDialog):
                             )
         # user_form_1._user_input_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
 
-        user_form_1.add_row(pwi.IntSpinBox("smoothing_resolution",
+        user_form_1.add_row(pwi.IntSpinBox("smoothing_resolution_ppo",
                                            "Parts per octave resolution for the operation"),
                             "Resolution (ppo)",
                             )
-        user_form_1.add_row(pwi.IntSpinBox("smoothing_ppo",
-                                           "Width of the frequency bands in octaves."
-                                           "\nFor Gaussion, bandwidth is 2x the standard deviation."
-                                           "\nFor Butterworth, bandwidth is the distance between critical frequencies, e.g. -3dB points for a first order filter.",
+        user_form_1.add_row(pwi.IntSpinBox("smoothing_bandwidth",
+                                           "Width of the frequency band in 1/octave."
+                                           "\nFor Gaussion, bandwidth defines 2x the standard deviation of distribution."
+                                           "\nFor Butterworth, bandwidth is the distance between critical frequencies, i.e. -3dB points for a first order filter.",
                                            ),
-                            "Bandwidth (ppo)",
+                            "Bandwidth (1/octave)",
                             )
 
         # Outlier detection page
@@ -763,7 +785,7 @@ class ProcessingDialog(qtw.QDialog):
         self.user_forms_and_recipient_functions[i] = (
             user_form_2, "_interpolate_curves")
 
-        user_form_2.add_row(pwi.IntSpinBox("processing_interpolation",
+        user_form_2.add_row(pwi.IntSpinBox("processing_interpolation_ppo",
                                            None,
                                            ),
                             "Points per octave (ppo)",
@@ -864,7 +886,7 @@ class SettingsDialog(qtw.QDialog):
                           "Interpolate before export (ppo)",
                           )
 
-        user_form.add_row(pwi.IntSpinBox("interpolate_must_contain",
+        user_form.add_row(pwi.IntSpinBox("interpolate_must_contain_hz",
                                          "Frequency that will always be a point within interpolated frequency array."
                                          "\nDefault value: 1000",
                                          ),
@@ -953,17 +975,17 @@ if __name__ == "__main__":
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
     # mw._add_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [80, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],

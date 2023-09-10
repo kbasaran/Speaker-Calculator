@@ -67,8 +67,8 @@ class MatplotlibWidget(qtw.QWidget):
         self.canvas.draw()
 
     @qtc.Slot()
-    def add_line2D(self, i, label, data: tuple, update_figure=True, **kwargs):
-        line, = self.ax.semilogx(*data, label=label, **kwargs)
+    def add_line2D(self, i, label, data: tuple, update_figure=True, line2D_kwargs={}):
+        line, = self.ax.semilogx(*data, label=label, **line2D_kwargs)
         self.lines_in_order.insert(i, line)
 
         self.update_line_zorders()

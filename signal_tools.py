@@ -547,7 +547,8 @@ class Curve:
         if base := self._identification["base"]:
             full_name += base
         else:
-            raise ValueError("Curve has no base name")
+            x = self.get_xy()[0]
+            full_name += f"Curve with {len(x)} data points, {x[0]:.5g}Hz-{x[-1]:.5g}Hz"
         for suffix in self.get_name_suffixes():
             full_name += (joiner + str(suffix))
         return full_name
@@ -668,15 +669,15 @@ def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000, supers
     return freq_array
 
 
-def smooth_curve_gaussian(x, y, ppo=3, resolution=96, ndarray=False):
+def smooth_curve_gaussian(x, y, bandwidth=3, resolution=96, ndarray=False):
     x_intp, y_intp = interpolate_to_ppo(x, y, resolution, superset=True)
-    sigma = resolution / ppo  # one octave, divided by ppo
+    sigma = resolution / bandwidth  # one octave, divided by bandwidth
     y_filt = gaussian_filter(y_intp, sigma, mode="nearest")
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
 
-def smooth_curve_butterworth(x, y, ppo=3, resolution=96, order=8, ndarray=False, FS=None):
+def smooth_curve_butterworth(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
     if not FS:
         FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
     else:
@@ -685,13 +686,13 @@ def smooth_curve_butterworth(x, y, ppo=3, resolution=96, order=8, ndarray=False,
 
     y_filt = np.zeros(len(x_intp), dtype=float)
     for i, freq in enumerate(x_intp):
-        fn = max(min(x_intp), freq * 2**(-1 / 2 / ppo)), min(max(x_intp), freq * 2**(1 / 2 / ppo))
+        fn = max(min(x_intp), freq * 2**(-1 / 2 / bandwidth)), min(max(x_intp), freq * 2**(1 / 2 / bandwidth))
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
         sos = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
         _, filtering_array = sig.sosfreqz(sos, x_intp, fs=FS)
         filtering_array_abs = np.abs(filtering_array)
         filtered_array = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
-        # in above line instead of the division by the sum, division by "resolution * ppo"
+        # in above line instead of the division by the sum, division by "resolution * bandwidth"
         # should also have worked but has some offset in it..
         y_filt[i] = 10 * np.log10(np.sum(filtered_array))
 
