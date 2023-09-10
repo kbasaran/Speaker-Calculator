@@ -14,6 +14,7 @@ import signal_tools
 import personalized_widgets as pwi
 import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
+import matplotlib as mpl
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -65,6 +66,7 @@ class CurveAnalyze(qtw.QWidget):
     signal_update_graph_request = qtc.Signal()
     signal_reposition_curves = qtc.Signal(list)
     signal_flash_curve = qtc.Signal(int)
+    signal_graph_settings_changed = qtc.Signal()
     # signal_key_pressed = qtc.Signal(str)
 
     def __init__(self, settings):
@@ -113,8 +115,8 @@ class CurveAnalyze(qtw.QWidget):
              },
         )
         self.graph_buttons.user_values_storage(self._user_input_widgets)
-        self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
-        self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
+        # self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
+        # self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
         self._user_input_widgets["export_image_pushbutton"].setEnabled(False)
 
         self.qlistwidget_for_curves = qtw.QListWidget()
@@ -166,6 +168,7 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_reposition_curves.connect(self.graph.change_lines_order)
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
         self.signal_flash_curve.connect(self.graph.flash_curve)
+        self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
         # self.signal_key_pressed.connect(self._keyboard_key_pressed)
 
 
@@ -685,6 +688,7 @@ class CurveAnalyze(qtw.QWidget):
 
     def _settings_dialog_return(self):
         #### What to do if matplotlib style changes ####
+        self.signal_graph_settings_changed.emit()
         self.signal_update_graph_request.emit()
 
 class ProcessingDialog(qtw.QDialog):
@@ -846,7 +850,6 @@ class SettingsDialog(qtw.QDialog):
 
     def __init__(self):
         super().__init__()
-        import matplotlib
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
 
@@ -860,13 +863,23 @@ class SettingsDialog(qtw.QDialog):
         user_form.add_row(pwi.IntSpinBox("max_legend_size", "Limit the items that can be listed on the legend. Does not affect the shown curves in graph"),
                           "Maximum legend size in graph")
 
+        user_form.add_row(pwi.ComboBox("graph_grids", 
+                                       None,
+                                       [("Style default", "default"),
+                                        ("Major only", "major only"),
+                                        ("Major and minor", "major and minor"),
+                                        ],
+                                       ),
+                          "Graph grid view",
+                          )
+
         user_form.add_row(pwi.ComboBox("matplotlib_style", 
-                                       "Style for the canvas. To see options info, web search: 'matplotlib style sheets reference'",
-                                       [(style_name, None) for style_name in matplotlib.style.available],
+                                       "Style for the canvas. To see options, web search: 'matplotlib style sheets reference'",
+                                       [(style_name, style_name) for style_name in mpl.style.available],
                                        ),
                           "Matplotlib style",
                           )
-        user_form._user_input_widgets["matplotlib_style"].setEnabled(False)
+        # user_form._user_input_widgets["matplotlib_style"].setEnabled(False)
 
         user_form.add_row(pwi.IntSpinBox("import_ppo",
                                          "Interpolate the curve to here defined points per octave in import"
@@ -914,8 +927,21 @@ class SettingsDialog(qtw.QDialog):
             saved_setting = getattr(settings, key)
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
+
             elif key == "matplotlib_style":
-                widget.setCurrentIndex(matplotlib.style.available.index(saved_setting))
+                try:
+                    index_from_settings = mpl.style.available.index(saved_setting)
+                except IndexError:
+                    index_from_settings = 0
+                widget.setCurrentIndex(index_from_settings)
+
+            elif key == "graph_grids":
+                try:
+                    index_from_settings = [widget.itemData(i) for i in range(widget.count())].index(settings.graph_grids)
+                except IndexError:
+                    index_from_settings = 0
+                widget.setCurrentIndex(index_from_settings)
+
             else:
                 widget.setValue(saved_setting)
 
@@ -926,12 +952,24 @@ class SettingsDialog(qtw.QDialog):
             partial(self._save_and_close,  user_form._user_input_widgets, settings))
 
     def _save_and_close(self, user_input_widgets, settings):
-        import matplotlib
+        if user_input_widgets["matplotlib_style"].currentIndex() != mpl.style.available.index(settings.matplotlib_style):
+            message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
+                                          "Information",
+                                          "Application needs to be restarted to be able to use the new Matplotlib style.",
+                                          )
+            message_box.setStandardButtons(qtw.QMessageBox.Cancel | qtw.QMessageBox.Ok)
+            returned = message_box.exec()
+
+            if returned == qtw.QMessageBox.Cancel:
+                return
+
         for key, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update_attr(key, widget.isChecked())
             elif key == "matplotlib_style":
-               settings.update_attr(key, matplotlib.style.available[widget.currentIndex()])
+               settings.update_attr(key, widget.currentData())
+            elif key == "graph_grids":
+                settings.update_attr(key, widget.currentData())
             else:
                 settings.update_attr(key, widget.value())
         self.signal_settings_changed.emit()

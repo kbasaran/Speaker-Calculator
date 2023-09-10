@@ -47,6 +47,7 @@ class Settings:
     matplotlib_style: str = "bmh"
     processing_interpolation_ppo: int = 96
     interpolate_must_contain_hz: int = 1000
+    graph_grids: str = "major and minor"
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(

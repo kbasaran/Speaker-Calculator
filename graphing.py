@@ -45,10 +45,26 @@ class MatplotlibWidget(qtw.QWidget):
         layout.addWidget(self.canvas)
 
         self.ax = self.canvas.figure.subplots()
-        self.ax.grid(which='minor')
+            
         self.lines_in_order = []
 
         # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.Line2D.html
+
+    @qtc.Slot()
+    def set_grid_type(self):
+        self.ax.grid(visible=False, which="both", axis='both')
+
+        if self.app_settings.graph_grids == "default":
+            visible = plt.rcParams["axes.grid"]
+            axis = plt.rcParams["axes.grid.axis"]
+            which = plt.rcParams["axes.grid.which"]
+            self.ax.grid(visible=visible, which=which, axis=axis)
+
+        else:
+            if "major" in self.app_settings.graph_grids:
+                self.ax.grid(visible=True, which="major", axis='both')
+            if "minor" in self.app_settings.graph_grids:
+                self.ax.grid(visible=True, which="minor", axis='both')  
 
     @qtc.Slot()
     def update_figure(self, recalculate_limits=True, update_legend=True):
