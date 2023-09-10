@@ -115,8 +115,8 @@ class CurveAnalyze(qtw.QWidget):
              },
         )
         self.graph_buttons.user_values_storage(self._user_input_widgets)
-        # self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
-        # self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
+        self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
+        self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
         self._user_input_widgets["export_image_pushbutton"].setEnabled(False)
 
         self.qlistwidget_for_curves = qtw.QListWidget()
@@ -297,8 +297,7 @@ class CurveAnalyze(qtw.QWidget):
         Update the curve and the screen name. Does not store the index part of the screen name.
         """
         if isinstance(index, (list, np.ndarray)):
-            raise NotImplementedError(
-                "Can rename only one curve at a time")
+            self.signal_bad_beep.emit()
         elif isinstance(index, (int, np.int32, np.int64)):
             assert index > -1
             i_to_act_on = index
@@ -363,7 +362,7 @@ class CurveAnalyze(qtw.QWidget):
         elif indexes in (False, None):
             indexes_to_act_on = self.get_selected_curve_indexes()
 
-        self.graph.remove_line2D(indexes_to_act_on)
+        self.graph.remove_line2d(indexes_to_act_on)
         for i in reversed(indexes_to_act_on):
             self.qlistwidget_for_curves.takeItem(i)
             self.curves.pop(i)
@@ -442,30 +441,39 @@ class CurveAnalyze(qtw.QWidget):
             self.auto_importer.requestInterruption()
 
     def _reference_curve_status_toggle(self, checked:bool):
-        if checked == 1:
+        if checked == True:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
             if len(indexes_and_curves) == 1:
-                index, curve = indexes_and_curves.items()[0]
-                curve.add_name_prefix("reference")
+                index, curve = list(indexes_and_curves.items())[0]
+
+                curve.add_name_suffix("reference")
+                curve.set_reference(True)
                 reference_item = self.qlistwidget_for_curves.item(index)
                 reference_item.setText(curve.get_full_name())
-                self.graph.update_labels({index: curve.get_full_name()})
-                self.graph.toggle_reference_curve(curve)
-                self.reference_curve = curve
-                
+
+                self.graph.toggle_reference_curve((index, curve))
+
             else:
                 self.signal_bad_beep.emit()
                 self._user_input_widgets["set_reference_pushbutton"].setChecked(False)
 
-        else:
-            if ref_curve := self.reference_curve:
-                ref_curve.remove_name_suffix("reference")
-                reference_item.setText(self.reference_curve.get_full_name())  # aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa what if it moved in the meantime????????????????????????????????????????????
+        elif checked == False:
+            reference_curves = [(index, curve) for index, curve in enumerate(self.curves) if curve.is_reference()]
+            if len(reference_curves) == 1:
+                index, curve = reference_curves[0]
+            else:
+                raise ValueError("Multiple reference curves are in the list somehow..")
 
-            self.reference_curve = None
+            curve.remove_name_suffix("reference")
+            curve.set_reference(False)
+
+            reference_item = self.qlistwidget_for_curves.item(index)
+            reference_item.setText(curve.get_full_name())
+
             self.graph.toggle_reference_curve(None)
+        
 
-    def _add_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2D_kwargs={}):
+    def _add_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2d_kwargs={}):
         if curve.is_curve():
             i_max = len(self.curves)
             i_insert = i if i is not None else i_max
@@ -480,7 +488,7 @@ class CurveAnalyze(qtw.QWidget):
 
             self.qlistwidget_for_curves.insertItem(i_insert, list_item)
 
-            self.graph.add_line2D(i_insert, curve.get_full_name(), curve.get_xy(), update_figure=update_figure, line2D_kwargs=line2D_kwargs)
+            self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
         else:
             raise ValueError("Invalid curve")
 
@@ -525,7 +533,7 @@ class CurveAnalyze(qtw.QWidget):
 
     def send_visibility_states_to_graph(self):
         visibility_states = {i: curve.is_visible() for i, curve in enumerate(self.curves)}
-        self.graph.hide_show_line2D(visibility_states)
+        self.graph.hide_show_line2d(visibility_states)
 
     def _open_processing_dialog(self):
         if self.no_curve_selected():
@@ -540,12 +548,12 @@ class CurveAnalyze(qtw.QWidget):
             self.signal_good_beep.emit()
 
     def _processing_dialog_return(self, processing_function_name):
-        to_insert, line2D_kwargs = getattr(self, processing_function_name)()
+        to_insert, line2d_kwargs = getattr(self, processing_function_name)()
 
         if to_insert:
             # sort the dict by highest key value first
             for i, curve in sorted(to_insert.items()):
-                self._add_curve(i, curve, update_figure=False, line2D_kwargs=line2D_kwargs)
+                self._add_curve(i, curve, update_figure=False, line2d_kwargs=line2d_kwargs)
 
             self.signal_update_graph_request.emit()
 
@@ -576,9 +584,9 @@ class CurveAnalyze(qtw.QWidget):
         if settings.median_selected:
             to_insert[i_insert] = curve_median
 
-        line2D_kwargs = {"color": "k", "linestyle": "-"}
+        line2d_kwargs = {"color": "k", "linestyle": "-"}
         
-        return to_insert, line2D_kwargs
+        return to_insert, line2d_kwargs
 
     def _outlier_detection(self):
         curves = self.get_selected_curves(as_dict=True)
@@ -611,9 +619,9 @@ class CurveAnalyze(qtw.QWidget):
         to_insert[1] = curve_median
         to_insert[2] = lower_fence
 
-        line2D_kwargs = {"color": "k", "linestyle": "--"}
+        line2d_kwargs = {"color": "k", "linestyle": "--"}
 
-        return to_insert, line2D_kwargs
+        return to_insert, line2d_kwargs
 
 
     def _interpolate_curves(self):
@@ -631,9 +639,9 @@ class CurveAnalyze(qtw.QWidget):
         new_curve.add_name_suffix(f"interpolated to {settings.precessing_interpolation_ppo} ppo")
         to_insert[i_curve + len(to_insert) + 1] = new_curve
 
-        line2D_kwargs = {"color": "k", "linestyle": "-"}
+        line2d_kwargs = {"color": "k", "linestyle": "-"}
 
-        return to_insert, line2D_kwargs
+        return to_insert, line2d_kwargs
 
     def _smoothen_curves(self):
         curves = self.get_selected_curves(as_dict=True)
@@ -673,9 +681,9 @@ class CurveAnalyze(qtw.QWidget):
             new_curve.add_name_suffix(f"smoothed 1/{settings.smoothing_bandwidth}")
             to_insert[i_curve + len(to_insert) + 1] = new_curve
 
-        line2D_kwargs = {"color": "k", "linestyle": "-"}
+        line2d_kwargs = {"color": "k", "linestyle": "-"}
 
-        return to_insert, line2D_kwargs
+        return to_insert, line2d_kwargs
 
     def _open_settings_dialog(self):
         settings_dialog = SettingsDialog()
@@ -684,7 +692,8 @@ class CurveAnalyze(qtw.QWidget):
 
         return_value = settings_dialog.exec()
         if return_value:
-            self.signal_good_beep.emit()
+            pass
+            # self.signal_good_beep.emit()
 
     def _settings_dialog_return(self):
         #### What to do if matplotlib style changes ####

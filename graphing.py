@@ -48,7 +48,7 @@ class MatplotlibWidget(qtw.QWidget):
             
         self.lines_in_order = []
 
-        # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.Line2D.html
+        # https://matplotlib.org/stable/api/_as_gen/matplotlib._lines.line2d.html
 
     @qtc.Slot()
     def set_grid_type(self):
@@ -83,8 +83,8 @@ class MatplotlibWidget(qtw.QWidget):
         self.canvas.draw()
 
     @qtc.Slot()
-    def add_line2D(self, i, label, data: tuple, update_figure=True, line2D_kwargs={}):
-        line, = self.ax.semilogx(*data, label=label, **line2D_kwargs)
+    def add_line2d(self, i, label, data: tuple, update_figure=True, line2d_kwargs={}):
+        line, = self.ax.semilogx(*data, label=label, **line2d_kwargs)
         self.lines_in_order.insert(i, line)
 
         self.update_line_zorders()
@@ -92,7 +92,7 @@ class MatplotlibWidget(qtw.QWidget):
             self.update_figure()
 
     @qtc.Slot()
-    def remove_line2D(self, ix: list, update_figure=True):
+    def remove_line2d(self, ix: list, update_figure=True):
         for i in reversed(ix):
             line = self.lines_in_order.pop(i)
             line.remove()
@@ -102,23 +102,28 @@ class MatplotlibWidget(qtw.QWidget):
             self.update_figure()
 
     @qtc.Slot()
-    def toggle_reference_curve(self, ref_curve:tuple):
-        if ref_curve:
-            ref_x, ref_y = ref_curve.get_xy()
-            for line2d in self.lines_in_order:
-                x, y = line2d.get_xdata(), line2d.get_ydata()
-                # setattr(line2d, "pure_x", x)
-                setattr(line2d, "pure_y", y)
-                ref_y_intp = np.interp(x, ref_x, ref_y, left=np.nan, right=np.nan)
-                # line2d.set_xdata(getattr(line2d, "pure_x", ref_x))
-                line2d.set_ydata(y - ref_y_intp)
+    def toggle_reference_curve(self, ref_index_and_curve:tuple):
+        if ref_index_and_curve:
+            index, curve = ref_index_and_curve
+            ref_x, ref_y = curve.get_xy()
+            for i, line2d in enumerate(self.lines_in_order):
+                if i == index:
+                    self.hide_show_line2d({i: False})
+                    self.ax.legend().set_title("Reference: " + line2d.get_label())
+                else:
+                    x, y = line2d.get_xdata(), line2d.get_ydata()
+                    setattr(line2d, "pure_y", y)
+                    ref_y_intp = np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
+                    line2d.set_ydata(y - ref_y_intp)
             self.update_figure()
 
         else:
             for line2d in self.lines_in_order:
-                # line2d.set_xdata(getattr(line2d, "pure_x", []))
                 if pure_y := getattr(line2d, "pure_y", None) is not None:
                     line2d.set_ydata(pure_y)
+                # self.hide_show_line2d({i: True})
+                # how to unhide the previously hidden reference here???
+            self.ax.legend().set_title(None)
             self.update_figure()
 
     def show_legend_ordered(self):
@@ -162,7 +167,7 @@ class MatplotlibWidget(qtw.QWidget):
         self.update_figure(recalculate_limits=False, update_legend=False)
 
     @qtc.Slot()
-    def hide_show_line2D(self, visibility_states: dict, update_figure=True):
+    def hide_show_line2d(self, visibility_states: dict, update_figure=True):
         for i, visible in visibility_states.items():
             line = self.lines_in_order[i]
 
@@ -215,7 +220,7 @@ if __name__ == "__main__":
     x = 100 * 2**np.arange(stop=7, step=7 / 16)
     for i in range(1, 5):
         y = 45 + 10 * np.random.random(size=len(x))
-        mw.add_line2D(i, f"Random line {i}", (x, y))
+        mw.add_line2d(i, f"Random line {i}", (x, y))
 
     mw.show()
     app.exec()

@@ -374,6 +374,7 @@ class Curve:
     def __init__(self, initial_data):
         self._identification = {"prefix": "", "base": "", "suffixes": []}
         self._visible = True
+        self._reference = False
         if isinstance(initial_data, str):
             self._initial_data = initial_data.strip()
             if self.is_Klippel(self._initial_data):
@@ -393,6 +394,12 @@ class Curve:
 
     def is_Klippel(self, import_text):
         return (True if (import_text[:18] == "SourceDesc='dB-Lab") else False)
+
+    def set_reference(self, reference:bool):
+        self._reference = reference
+
+    def is_reference(self):
+        return self._reference
 
     def _extract_klippel_parameters(self, import_text):
         # Process the imported text
