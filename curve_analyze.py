@@ -129,6 +129,10 @@ class CurveAnalyze(qtw.QWidget):
         self.layout().addWidget(self.graph, 2)
         self.layout().addWidget(self.graph_buttons)
         self.layout().addWidget(self.qlistwidget_for_curves)
+        
+        #set size policies
+        self.graph.setSizePolicy(
+            qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)
 
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(
@@ -1022,7 +1026,7 @@ if __name__ == "__main__":
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [80, 90, 90]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [50, 50, 50]])))
     mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
     mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
     mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
@@ -1031,7 +1035,7 @@ if __name__ == "__main__":
     mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
     mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
     mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [10, 70, 60]])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
     mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
     # mw._add_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
