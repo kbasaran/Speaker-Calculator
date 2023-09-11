@@ -4,6 +4,7 @@ import numpy as np
 from operator import methodcaller
 from functools import partial
 import signal_tools
+from functools import lru_cache
 
 from PySide6 import QtCore as qtc
 from matplotlib.backends.qt_compat import QtWidgets as qtw
@@ -26,7 +27,7 @@ class MatplotlibWidget(qtw.QWidget):
         super().__init__()
         layout = qtw.QVBoxLayout(self)
         self.available_styles = list(plt.style.available)
-        self._reference_index = None
+        self._ref_index_and_curve = None
 
         desired_style = self.app_settings.matplotlib_style
         if desired_style in plt.style.available:
@@ -85,8 +86,8 @@ class MatplotlibWidget(qtw.QWidget):
 
     @qtc.Slot()
     def add_line2d(self, i, label, data: tuple, update_figure=True, line2d_kwargs={}):
-        if self._reference_index and i <= self._reference_index:
-            self._reference_index += 1
+        if self._ref_index_and_curve and i <= self._ref_index_and_curve:
+            self._ref_index_and_curve += 1
         line, = self.ax.semilogx(*data, label=label, **line2d_kwargs)
         self.lines_in_order.insert(i, line)
 
@@ -97,10 +98,10 @@ class MatplotlibWidget(qtw.QWidget):
     @qtc.Slot()
     def remove_line2d(self, ix: list, update_figure=True):
         for i in reversed(ix):
-            if self._reference_index and i == self._reference_index:
+            if self._ref_index_and_curve and i == self._ref_index_and_curve:
                 self.toggle_reference_curve(None)
-            elif self._reference_index and i < self._reference_index:
-                self._reference_index -= 1
+            elif self._ref_index_and_curve and i < self._ref_index_and_curve:
+                self._ref_index_and_curve -= 1
             line = self.lines_in_order.pop(i)
             line.remove()
 
@@ -108,33 +109,40 @@ class MatplotlibWidget(qtw.QWidget):
         if update_figure:
             self.update_figure()
 
+    @lru_cache
+    def reference_curve_interpolated(self, x):
+        ref_x, ref_y = self._ref_index_and_curve[1].get_xy()
+        np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
+
     @qtc.Slot()
     def toggle_reference_curve(self, ref_index_and_curve:tuple):
         if ref_index_and_curve:
-            index, curve = ref_index_and_curve
-            ref_x, ref_y = curve.get_xy()
+            self._ref_index_and_curve = ref_index_and_curve
+            index = ref_index_and_curve[0]
             for i, line2d in enumerate(self.lines_in_order):
                 if i == index:
                     self.hide_show_line2d({i: False})
-                    self.ax.legend().set_title("Reference: " + line2d.get_label())
                 else:
                     x, y = line2d.get_xdata(), line2d.get_ydata()
                     setattr(line2d, "pure_y", y)
-                    ref_y_intp = np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
+                    ref_y_intp = self.reference_curve_interpolated(x)
                     line2d.set_ydata(y - ref_y_intp)
-            self._reference_index = i
             self.update_figure()
 
         else:
+            ref_x, ref_y = self._ref_index_and_curve[1].get_xy()
             for i, line2d in enumerate(self.lines_in_order):
-                if not self._reference_index:
+                y = line2d.get_ydata()
+                if not self._ref_index_and_curve:
                     return
-                elif i == self._reference_index:
+                elif i == self._ref_index_and_curve[0]:
                     pass
-                elif pure_y := getattr(line2d, "pure_y", None) is not None:
-                    line2d.set_ydata(pure_y)
-            self.hide_show_line2d({self._reference_index: True})
-            self.ax.legend().set_title(None)
+                else:
+                    x = line2d.get_xdata()
+                    ref_y_intp = np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
+                    line2d.set_ydata(y + ref_y_intp)
+            self.hide_show_line2d({self._ref_index_and_curve[0]: True})
+            self._ref_index_and_curve = None
             self.update_figure()
 
     def show_legend_ordered(self):
@@ -144,13 +152,18 @@ class MatplotlibWidget(qtw.QWidget):
 
         self.ax.legend(handles, labels)
 
+        if self._ref_index_and_curve:
+            self.ax.legend().set_title("Relative to: " + self._ref_index_and_curve[1].get_full_name())
+        else:
+            self.ax.legend().set_title(None)
+
     def change_lines_order(self, new_positions: list):
         # each number in the new_positions is the index before location change. index in the list is the new location.
         lines_reordered = []
         for i_after, i_before in enumerate(new_positions):
             lines_reordered.append(self.lines_in_order[i_before])
-            if self._reference_index and i_before == self._reference_index:
-                self._reference_index = i_after  # keep the reference index correct with this
+            if self._ref_index_and_curve and i_before == self._ref_index_and_curve:
+                self._ref_index_and_curve = i_after  # keep the reference index correct with this
         self.lines_in_order = lines_reordered
 
         self.update_line_zorders()
