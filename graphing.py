@@ -87,8 +87,9 @@ class MatplotlibWidget(qtw.QWidget):
 
     @qtc.Slot()
     def add_line2d(self, i, label, data: tuple, update_figure=True, line2d_kwargs={}):
-        if self._ref_index_and_curve and i <= self._ref_index_and_curve:
-            self._ref_index_and_curve += 1
+        if self._ref_index_and_curve and i <= self._ref_index_and_curve[0]:
+            self._ref_index_and_curve[0] += 1
+
         line, = self.ax.semilogx(*data, label=label, **line2d_kwargs)
         self.lines_in_order.insert(i, line)
 
@@ -98,14 +99,16 @@ class MatplotlibWidget(qtw.QWidget):
 
     @qtc.Slot()
     def remove_line2d(self, ix: list, update_figure=True):
-        for i in reversed(ix):
-            if self._ref_index_and_curve and i == self._ref_index_and_curve:
+        if self._ref_index_and_curve:
+            if self._ref_index_and_curve[0] in ix:
                 self.toggle_reference_curve(None)
-            elif self._ref_index_and_curve and i < self._ref_index_and_curve:
-                self._ref_index_and_curve -= 1
+            else:
+                self._ref_index_and_curve[0] -= sum(i < self._ref_index_and_curve[0] for i in ix)  # summing booleans
+
+        for i in reversed(ix):    
             line = self.lines_in_order.pop(i)
             line.remove()
-
+        
         self.update_line_zorders()
         if update_figure:
             self.update_figure()
@@ -171,8 +174,8 @@ class MatplotlibWidget(qtw.QWidget):
         lines_reordered = []
         for i_after, i_before in enumerate(new_positions):
             lines_reordered.append(self.lines_in_order[i_before])
-            if self._ref_index_and_curve and i_before == self._ref_index_and_curve:
-                self._ref_index_and_curve = i_after  # keep the reference index correct with this
+            if self._ref_index_and_curve and i_before == self._ref_index_and_curve[0]:
+                self._ref_index_and_curve[0] = i_after  # keep the reference index correct with this
         self.lines_in_order = lines_reordered
 
         self.update_line_zorders()

@@ -467,7 +467,7 @@ class CurveAnalyze(qtw.QWidget):
                 reference_item.setText(curve.get_full_name())
 
                 # Update graph
-                self.graph.toggle_reference_curve((index, curve))
+                self.graph.toggle_reference_curve([index, curve])
 
             else:
                 # multiple selections
