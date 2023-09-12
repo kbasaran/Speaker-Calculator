@@ -781,7 +781,7 @@ def iqr_analysis(curves_xy: dict, outlier_fence_iqr):
         )
 
 
-def calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0)):
+def calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 1)):
 
     def floor_to_multiple(number, multiple, clearance_down):
         return multiple * np.floor((number - clearance_down) / multiple)
@@ -792,8 +792,8 @@ def calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0)):
     if y_arrays:
         y_points = np.concatenate([y_array for y_array in y_arrays])
         y_points = y_points[np.isfinite(y_points)]
-        y_min = floor_to_multiple(np.min(y_points), multiple, clearance_up_down[0])
-        y_max = ceil_to_multiple(np.max(y_points), multiple, clearance_up_down[1])
+        y_max = ceil_to_multiple(np.max(y_points), multiple, clearance_up_down[0])
+        y_min = floor_to_multiple(np.min(y_points), multiple, clearance_up_down[1])
         return y_min, y_max
     else:
         return None, None

@@ -1036,7 +1036,7 @@ if __name__ == "__main__":
     error_handler = pwi.ErrorHandler(app)
     sys.excepthook = error_handler.excepthook
     mw = CurveAnalyze(settings)
-    mw.setWindowTitle("Curve Analyze - {}".format(version))
+    mw.setWindowTitle("Means - {}".format(version))
 
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()

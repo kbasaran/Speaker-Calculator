@@ -73,8 +73,9 @@ class MatplotlibWidget(qtw.QWidget):
         
         if recalculate_limits:
             y_arrays = [line.get_ydata() for line in self.ax.get_lines()]
-            y_min_max = signal_tools.calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 0))
+            y_min_max = signal_tools.calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 1))
             self.ax.set_ylim(y_min_max)
+            print("limits updated", y_min_max)
 
         if update_legend:
             if self.ax.has_data() and self.app_settings.show_legend:
@@ -198,9 +199,9 @@ class MatplotlibWidget(qtw.QWidget):
         self.update_figure(recalculate_limits=False, update_legend=False)
 
         timer = qtc.QTimer()
-        timer.singleShot(1000, partial(self.remove_marking, line, (old_alpha, self.default_lw, old_zorder)))
+        timer.singleShot(1000, partial(self.stop_flash, line, (old_alpha, self.default_lw, old_zorder)))
 
-    def remove_marking(self, line, old_states):
+    def stop_flash(self, line, old_states):
         line.set_alpha(old_states[0])
         line.set_lw(old_states[1])
         line.set_zorder(old_states[2])
@@ -252,7 +253,7 @@ if __name__ == "__main__":
 
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
-        # there is a new recommendation with qApp but how to dod the sys.argv with that?
+        # there is a new recommendation with qApp but how to do the sys.argv with that?
 
     mw = MatplotlibWidget()
 
