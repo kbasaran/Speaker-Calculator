@@ -224,6 +224,10 @@ class CurveAnalyze(qtw.QWidget):
         else:
             return [self.curves[i] for i in selected_indexes]
 
+    def count_selected_curves(self) -> int:
+        selected_indexes = self.get_selected_curve_indexes()
+        return len(selected_indexes)
+
     def no_curve_selected(self)  -> bool:
         if self.qlistwidget_for_curves.selectedItems():
             return False
@@ -234,15 +238,20 @@ class CurveAnalyze(qtw.QWidget):
     def _move_curve_up(self, i_insert:int):
         selected_indexes_and_curves = self.get_selected_curves(as_dict=True)
 
-        new_indexes = list(range(len(self.curves)))
+        new_indexes = [*range(len(self.curves))]
         # each number in the list is the index before location change. index in the list is the new location.
         for i_within_selected, (i_before, curve) in enumerate(selected_indexes_and_curves.items()):
             # i_within_selected is the index within the selected curves
             # i_before is the index on the complete curves list
             i_after = i_insert + i_within_selected
 
+            # do the self.curves list (single source of truth)
+            curve = self.curves.pop(i_before)
+            self.curves.insert(i_after, curve)
+
             # do the QListWidget
             new_list_item = qtw.QListWidgetItem(curve.get_full_name())
+            print(curve.get_full_name())
             if not curve.is_visible():
                 font = new_list_item.font()
                 font.setWeight(qtg.QFont.Thin)
@@ -250,11 +259,6 @@ class CurveAnalyze(qtw.QWidget):
 
             self.qlistwidget_for_curves.insertItem(i_after, new_list_item)
             self.qlistwidget_for_curves.takeItem(i_before + 1)
-
-            # do the self.curves list (single source of truth)
-            curve = self.curves.pop(i_before)
-            curve.set_name_prefix(f"#{i_after:02d}")
-            self.curves.insert(i_after, curve)
 
             # do the changes dictionary to send to the graph
             new_indexes.insert(i_after, new_indexes.pop(i_before))
@@ -264,16 +268,16 @@ class CurveAnalyze(qtw.QWidget):
 
     def move_up_1(self):
         if self.no_curve_selected():
-            return
-        indexes = self.get_selected_curve_indexes()
-        i_insert = max(0, indexes[0] - 1)
+            self.signal_bad_beep.emit()
+        selected_indexes = self.get_selected_curve_indexes()
+        i_insert = max(0, selected_indexes[0] - 1)
         self._move_curve_up(i_insert)
-        if len(indexes) == 1:
+        if len(selected_indexes) == 1:
             self.qlistwidget_for_curves.setCurrentRow(i_insert)
 
     def move_to_top(self):
         if self.no_curve_selected():
-            return
+            self.signal_bad_beep.emit()
         self._move_curve_up(0)
         self.qlistwidget_for_curves.setCurrentRow(-1)
 
@@ -445,36 +449,51 @@ class CurveAnalyze(qtw.QWidget):
             self.auto_importer.requestInterruption()
 
     def _reference_curve_status_toggle(self, checked:bool):
+        """
+        Reference curve is marked in the Curve class instances with "_visible"
+        Also in the graph object, there is an attribute to store if there is a reference and if so which one it is.
+        """
         if checked == True:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
             if len(indexes_and_curves) == 1:
                 index, curve = list(indexes_and_curves.items())[0]
 
+                # mark it as reference
                 curve.add_name_suffix("reference")
                 curve.set_reference(True)
+
+                # Update the names in list
                 reference_item = self.qlistwidget_for_curves.item(index)
                 reference_item.setText(curve.get_full_name())
 
+                # Update graph
                 self.graph.toggle_reference_curve((index, curve))
 
             else:
+                # multiple selections
                 self.signal_bad_beep.emit()
                 self._user_input_widgets["set_reference_pushbutton"].setChecked(False)
 
         elif checked == False:
+            # find back the reference curve
             reference_curves = [(index, curve) for index, curve in enumerate(self.curves) if curve.is_reference()]
-            if len(reference_curves) == 1:
-                index, curve = reference_curves[0]
-            else:
+            if len(reference_curves) == 0:
+                return
+            elif len(reference_curves) > 1:
                 raise ValueError("Multiple reference curves are in the list somehow..")
+            else:
+                index, curve = reference_curves[0]
 
-            curve.remove_name_suffix("reference")
-            curve.set_reference(False)
-
-            reference_item = self.qlistwidget_for_curves.item(index)
-            reference_item.setText(curve.get_full_name())
-
-            self.graph.toggle_reference_curve(None)
+                # revert it
+                curve.remove_name_suffix("reference")
+                curve.set_reference(False)
+    
+                # Update the names in list
+                reference_item = self.qlistwidget_for_curves.item(index)
+                reference_item.setText(curve.get_full_name())
+    
+                # Update graph
+                self.graph.toggle_reference_curve(None)
         
 
     def _add_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2d_kwargs={}):

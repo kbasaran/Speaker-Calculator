@@ -110,52 +110,60 @@ class MatplotlibWidget(qtw.QWidget):
             self.update_figure()
 
     @lru_cache
-    def reference_curve_interpolated(self, x):
+    def reference_curve_interpolated(self, x:tuple):
         ref_x, ref_y = self._ref_index_and_curve[1].get_xy()
-        np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
+        return np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
+         
 
     @qtc.Slot()
     def toggle_reference_curve(self, ref_index_and_curve:tuple):
         if ref_index_and_curve:
             self._ref_index_and_curve = ref_index_and_curve
-            index = ref_index_and_curve[0]
-            for i, line2d in enumerate(self.lines_in_order):
-                if i == index:
-                    self.hide_show_line2d({i: False})
-                else:
-                    x, y = line2d.get_xdata(), line2d.get_ydata()
-                    setattr(line2d, "pure_y", y)
-                    ref_y_intp = self.reference_curve_interpolated(x)
-                    line2d.set_ydata(y - ref_y_intp)
+            for line2d in self.ax.get_lines():
+                x, y = line2d.get_xdata(), line2d.get_ydata()
+                ref_y_intp = self.reference_curve_interpolated(tuple(x))
+                line2d.set_ydata(y - ref_y_intp)
+
+            self.hide_show_line2d({self._ref_index_and_curve[0]: False})
+
             self.update_figure()
 
         else:
             ref_x, ref_y = self._ref_index_and_curve[1].get_xy()
-            for i, line2d in enumerate(self.lines_in_order):
-                y = line2d.get_ydata()
-                if not self._ref_index_and_curve:
-                    return
-                elif i == self._ref_index_and_curve[0]:
-                    pass
-                else:
-                    x = line2d.get_xdata()
-                    ref_y_intp = np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
-                    line2d.set_ydata(y + ref_y_intp)
+            for line2d in self.ax.get_lines():
+                x, y = line2d.get_xdata(), line2d.get_ydata()
+                ref_y_intp = self.reference_curve_interpolated(tuple(x))
+                line2d.set_ydata(y + ref_y_intp)
+                
             self.hide_show_line2d({self._ref_index_and_curve[0]: True})
+
             self._ref_index_and_curve = None
             self.update_figure()
 
     def show_legend_ordered(self):
-        visible_lines = [line for line in self.lines_in_order if line.get_alpha() in (None, 1)]
-        handles = visible_lines[:self.app_settings.max_legend_size]
+        if self.app_settings.max_legend_size > 0:
+            handles = []
+            iterator = iter(self.lines_in_order)
+            while len(handles) < self.app_settings.max_legend_size:
+                line = next(iterator, None)
+                if line is None:
+                    break
+                if line.get_alpha() in (None, 1):
+                    handles.append(line)
+        else:
+            handles = self.lines_in_order
+            
+        # visible_lines = [line for line in self.lines_in_order if line.get_alpha() in (None, 1)]
+        # handles = visible_lines[:self.app_settings.max_legend_size]
         labels = [line.get_label() for line in handles]
 
-        self.ax.legend(handles, labels)
-
         if self._ref_index_and_curve:
-            self.ax.legend().set_title("Relative to: " + self._ref_index_and_curve[1].get_full_name())
+            title = "Relative to: " + self._ref_index_and_curve[1].get_full_name()
+            title = title.removesuffix(" - reference")
         else:
-            self.ax.legend().set_title(None)
+            title = None
+
+        self.ax.legend(handles, labels, title=title)
 
     def change_lines_order(self, new_positions: list):
         # each number in the new_positions is the index before location change. index in the list is the new location.
@@ -183,15 +191,19 @@ class MatplotlibWidget(qtw.QWidget):
         old_alpha = line.get_alpha()
         if old_alpha:
             line.set_alpha(1)
+        old_zorder = line.get_zorder()
+        line.set_zorder(len(self.lines_in_order))
+
 
         self.update_figure(recalculate_limits=False, update_legend=False)
 
         timer = qtc.QTimer()
-        timer.singleShot(1000, partial(self.remove_marking, line, (old_alpha, self.default_lw)))
+        timer.singleShot(1000, partial(self.remove_marking, line, (old_alpha, self.default_lw, old_zorder)))
 
     def remove_marking(self, line, old_states):
         line.set_alpha(old_states[0])
         line.set_lw(old_states[1])
+        line.set_zorder(old_states[2])
         self.update_figure(recalculate_limits=False, update_legend=False)
 
     @qtc.Slot()
@@ -199,13 +211,13 @@ class MatplotlibWidget(qtw.QWidget):
         for i, visible in visibility_states.items():
             line = self.lines_in_order[i]
 
-            alpha = (1 if visible else 0.1)
+            alpha = 1 if visible else 0.1
             line.set_alpha(alpha)
 
-            label = line.get_label()
-            if visible and label[0] == "_":
-                line.set_label(label.removeprefix("_"))
-            if not visible and label[0] != "_":
+            if visible:
+                while (label := line.get_label())[0] == "_":
+                    line.set_label(label.removeprefix("_"))
+            if not visible and (label := line.get_label())[0] != "_":
                 line.set_label("_" + label)
 
         self.update_line_zorders()
