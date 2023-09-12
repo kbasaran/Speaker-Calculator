@@ -89,8 +89,8 @@ class FloatSpinBox(qtw.QDoubleSpinBox):
         super().__init__()
         if tooltip:
             self.setToolTip(tooltip)
-        self.step_type = qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
-        self.decimals = decimals
+        self.setStepType(qtw.QAbstractSpinBox.StepType.AdaptiveDecimalStepType)
+        self.setDecimals(decimals)
         if min_max:
             self.setRange(*min_max)
         if user_data_widgets is not None:
