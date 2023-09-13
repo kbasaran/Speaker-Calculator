@@ -684,7 +684,27 @@ def smooth_curve_gaussian(x, y, bandwidth=3, resolution=96, ndarray=False):
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
 
-def smooth_curve_butterworth(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
+def smooth_curve_butterworth(x, y, bandwidth=3, order=8, ndarray=False, FS=None):
+    if not FS:
+        FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
+    else:
+        pass
+
+    y_filt = np.zeros(len(x), dtype=float)
+    for i, freq in enumerate(x):
+        fn = max(min(x), freq * 2**(-1 / 2 / bandwidth)), min(max(x), freq * 2**(1 / 2 / bandwidth))
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
+        sos = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
+        _, filtering_array = sig.sosfreqz(sos, x, fs=FS)
+        filtering_array_abs = np.abs(filtering_array)
+        filtered_array = 10**(y/10) * filtering_array_abs / np.sum(filtering_array_abs)
+        # in above line instead of the division by the sum, division by "resolution * bandwidth"
+        # should also have worked but has some offset in it..
+        y_filt[i] = 10 * np.log10(np.sum(filtered_array))
+
+    return np.column_stack((x, y_filt)) if ndarray else x, y_filt
+
+def smooth_log_spaced_curve_butterworth_analog(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
     if not FS:
         FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
     else:
@@ -702,6 +722,30 @@ def smooth_curve_butterworth(x, y, bandwidth=3, resolution=96, order=8, ndarray=
         # in above line instead of the division by the sum, division by "resolution * bandwidth"
         # should also have worked but has some offset in it..
         y_filt[i] = 10 * np.log10(np.sum(filtered_array))
+    print(sum(y_filt))
+
+    return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
+
+
+def smooth_log_spaced_curve_butterworth_digital(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
+    if not FS:
+        FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
+    else:
+        pass
+    x_intp, y_intp = interpolate_to_ppo(x, y, resolution)
+
+    y_filt = np.zeros(len(x_intp), dtype=float)
+    for i, freq in enumerate(x_intp):
+        fn = max(min(x_intp), freq * 2**(-1 / 2 / bandwidth)), min(max(x_intp), freq * 2**(1 / 2 / bandwidth))
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
+        sos = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
+        _, filtering_array = sig.sosfreqz(sos, x_intp, fs=FS)
+        filtering_array_abs = np.abs(filtering_array)
+        filtered_array = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
+        # in above line instead of the division by the sum, division by "resolution * bandwidth"
+        # should also have worked but has some offset in it..
+        y_filt[i] = 10 * np.log10(np.sum(filtered_array))
+    print(sum(y_filt))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
@@ -758,7 +802,6 @@ def iqr_analysis(curves_xy: dict, outlier_fence_iqr):
     if not arrays_are_equal([x for x, y in curves_xy.values()]):
         raise NotImplementedError("Curves do not have the exact same frequency points."
                                   "\nConsider interpolating to a common frequency array first.")
-
     x_array = list(curves_xy.values())[0][0]
     y_arrays = np.column_stack([y for x, y in curves_xy.values()])
 

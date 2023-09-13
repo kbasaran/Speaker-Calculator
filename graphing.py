@@ -75,7 +75,6 @@ class MatplotlibWidget(qtw.QWidget):
             y_arrays = [line.get_ydata() for line in self.ax.get_lines()]
             y_min_max = signal_tools.calculate_graph_limits(y_arrays, multiple=5, clearance_up_down=(2, 1))
             self.ax.set_ylim(y_min_max)
-            print("limits updated", y_min_max)
 
         if update_legend:
             if self.ax.has_data() and self.app_settings.show_legend:
@@ -118,7 +117,6 @@ class MatplotlibWidget(qtw.QWidget):
         ref_x, ref_y = self._ref_index_and_curve[1].get_xy()
         return np.interp(np.log(x), np.log(ref_x), ref_y, left=np.nan, right=np.nan)
          
-
     @qtc.Slot()
     def toggle_reference_curve(self, ref_index_and_curve:tuple):
         if ref_index_and_curve:

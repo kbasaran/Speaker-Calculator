@@ -674,23 +674,23 @@ class CurveAnalyze(qtw.QWidget):
         for i_curve, curve in curves.items():
 
             if settings.smoothing_type == 0:
-                xy = signal_tools.smooth_curve_butterworth(*curve.get_xy(),
+                xy = signal_tools.smooth_log_spaced_curve_butterworth_analog(*curve.get_xy(),
                                                            bandwidth=settings.smoothing_bandwidth,
-                                                           resolution=settings.smoothing_resolution_ppo,
+                                                           # resolution=settings.smoothing_resolution_ppo,
                                                            order=8,
                                                            )
 
             elif settings.smoothing_type == 1:
-                xy = signal_tools.smooth_curve_butterworth(*curve.get_xy(),
+                xy = signal_tools.smooth_log_spaced_curve_butterworth_analog(*curve.get_xy(),
                                                            bandwidth=settings.smoothing_bandwidth,
-                                                           resolution=settings.smoothing_resolution_ppo,
+                                                           # resolution=settings.smoothing_resolution_ppo,
                                                            order=4,
                                                            )
 
             elif settings.smoothing_type == 2:
                 xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
                                                         bandwidth=settings.smoothing_bandwidth,
-                                                        resolution=settings.smoothing_resolution_ppo,
+                                                        # resolution=settings.smoothing_resolution_ppo,
                                                         )
 
             else:
@@ -788,6 +788,14 @@ class ProcessingDialog(qtw.QDialog):
                             "Bandwidth (1/octave)",
                             )
 
+        def set_availability_of_resolution_option(smoothing_type_index):
+            available = True if smoothing_type_index in (0, 1) else False
+            user_form_1._user_input_widgets["smoothing_resolution_ppo"].setEnabled(available)
+            
+        user_form_1._user_input_widgets["smoothing_type"].currentIndexChanged.connect(set_availability_of_resolution_option)
+
+
+
         # Outlier detection page
         user_form_2 = pwi.UserForm()
         # tab page is the UserForm widget
@@ -816,7 +824,7 @@ class ProcessingDialog(qtw.QDialog):
         # Interpolation page
         user_form_2 = pwi.UserForm()
         # tab page is the UserForm widget
-        self.tab_widget.addTab(user_form_2, "Smoothing")
+        self.tab_widget.addTab(user_form_2, "Interpolation")
         i = self.tab_widget.indexOf(user_form_2)
         self.user_forms_and_recipient_functions[i] = (
             user_form_2, "_interpolate_curves")
@@ -826,6 +834,7 @@ class ProcessingDialog(qtw.QDialog):
                                            ),
                             "Points per octave (ppo)",
                             )
+
 
         # Buttons for the dialog - common to self and not per tab
         button_group = pwi.PushButtonGroup({"run": "Run",
@@ -1045,21 +1054,21 @@ if __name__ == "__main__":
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [50, 50, 50]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
-    mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [50, 50, 50]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
-    # mw._add_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
-    #                                                   [80, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
-    #                                                   ])))
+    mw._add_curve(None, signal_tools.Curve(np.array([[1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
+                                                      [90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
+                                                      ])))
 
     # mw._add_curve(None, signal_tools.Curve(np.array([[0,512],
     #                                                   [0, 0],
