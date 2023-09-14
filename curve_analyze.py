@@ -454,6 +454,8 @@ class CurveAnalyze(qtw.QWidget):
         Also in the graph object, there is an attribute to store if there is a reference and if so which one it is.
         """
         if checked == True:
+            # Block precessing options
+            self._user_input_widgets["processing_pushbutton"].setEnabled(False)
             indexes_and_curves = self.get_selected_curves(as_dict=True)
             if len(indexes_and_curves) == 1:
                 index, curve = list(indexes_and_curves.items())[0]
@@ -494,6 +496,9 @@ class CurveAnalyze(qtw.QWidget):
     
                 # Update graph
                 self.graph.toggle_reference_curve(None)
+                
+                # Release processing options
+                self._user_input_widgets["processing_pushbutton"].setEnabled(True)
         
 
     def _add_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2d_kwargs={}):
@@ -1038,7 +1043,7 @@ if __name__ == "__main__":
     error_handler = pwi.ErrorHandler(app)
     sys.excepthook = error_handler.excepthook
     mw = CurveAnalyze(settings)
-    mw.setWindowTitle("Means - {}".format(version))
+    mw.setWindowTitle("Curves - {}".format(version))
 
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()

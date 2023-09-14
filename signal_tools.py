@@ -666,6 +666,8 @@ def generate_log_spaced_freq_list(freq_start, freq_end, ppo, must_include_freq=1
     makes sure all points fall within defined frequency range if superset is False.
     Otherwise 1 more point will be added to each end.
     """
+    if freq_start * freq_end * must_include_freq == 0:
+        raise ValueError("Cannot use 0 Hz as a valid frequency point for octave spacing.")
     if superset:
         numStart = np.floor(np.log2(freq_start/must_include_freq)*ppo)
         numEnd = np.ceil(np.log2(freq_end/must_include_freq)*ppo)
