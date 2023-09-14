@@ -456,9 +456,9 @@ class CurveAnalyze(qtw.QWidget):
         """
         if checked == True:
             # Block precessing options
-            self._user_input_widgets["processing_pushbutton"].setEnabled(False)
             indexes_and_curves = self.get_selected_curves(as_dict=True)
             if len(indexes_and_curves) == 1:
+                self._user_input_widgets["processing_pushbutton"].setEnabled(False)
                 index, curve = list(indexes_and_curves.items())[0]
 
                 # mark it as reference
@@ -481,7 +481,7 @@ class CurveAnalyze(qtw.QWidget):
             # find back the reference curve
             reference_curves = [(index, curve) for index, curve in enumerate(self.curves) if curve.is_reference()]
             if len(reference_curves) == 0:
-                return
+                pass
             elif len(reference_curves) > 1:
                 raise ValueError("Multiple reference curves are in the list somehow..")
             else:
@@ -498,8 +498,8 @@ class CurveAnalyze(qtw.QWidget):
                 # Update graph
                 self.graph.toggle_reference_curve(None)
                 
-                # Release processing options
-                self._user_input_widgets["processing_pushbutton"].setEnabled(True)
+            # Release processing options
+            self._user_input_widgets["processing_pushbutton"].setEnabled(True)
         
 
     def _add_single_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2d_kwargs={}):
