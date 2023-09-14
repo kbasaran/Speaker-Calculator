@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
-version = "XXXXXX"
+version = "XXX"
 
 def find_longest_match_in_name(names):
     """
@@ -124,15 +124,15 @@ class CurveAnalyze(qtw.QWidget):
             qtw.QAbstractItemView.ExtendedSelection)
         # self.qlistwidget_for_curves.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
 
-    def _place_widgets(self):
-        self.setLayout(qtw.QVBoxLayout())
-        self.layout().addWidget(self.graph, 2)
-        self.layout().addWidget(self.graph_buttons)
-        self.layout().addWidget(self.qlistwidget_for_curves)
-        
         #set size policies
         self.graph.setSizePolicy(
             qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)
+
+    def _place_widgets(self):
+        self.setLayout(qtw.QVBoxLayout())
+        self.layout().addWidget(self.graph, 3)
+        self.layout().addWidget(self.graph_buttons)
+        self.layout().addWidget(self.qlistwidget_for_curves,1)
 
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(
@@ -912,9 +912,10 @@ class SettingsDialog(qtw.QDialog):
                           "Graph grid view",
                           )
 
+        mpl_styles = [style_name for style_name in mpl.style.available if style_name[0] != "_"]
         user_form.add_row(pwi.ComboBox("matplotlib_style", 
                                        "Style for the canvas. To see options, web search: 'matplotlib style sheets reference'",
-                                       [(style_name, style_name) for style_name in mpl.style.available],
+                                       [(style_name, style_name) for style_name in mpl_styles],
                                        ),
                           "Matplotlib style",
                           )
@@ -969,7 +970,7 @@ class SettingsDialog(qtw.QDialog):
 
             elif key == "matplotlib_style":
                 try:
-                    index_from_settings = mpl.style.available.index(saved_setting)
+                    index_from_settings = mpl_styles.index(saved_setting)
                 except IndexError:
                     index_from_settings = 0
                 widget.setCurrentIndex(index_from_settings)
@@ -991,7 +992,8 @@ class SettingsDialog(qtw.QDialog):
             partial(self._save_and_close,  user_form._user_input_widgets, settings))
 
     def _save_and_close(self, user_input_widgets, settings):
-        if user_input_widgets["matplotlib_style"].currentIndex() != mpl.style.available.index(settings.matplotlib_style):
+        mpl_styles = [style_name for style_name in mpl.style.available if style_name[0] != "_"]
+        if user_input_widgets["matplotlib_style"].currentIndex() != mpl_styles.index(settings.matplotlib_style):
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
                                           "Application needs to be restarted to be able to use the new Matplotlib style.",
