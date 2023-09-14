@@ -164,7 +164,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["processing_pushbutton"].clicked.connect(
             self._open_processing_dialog)
         self._user_input_widgets["import_curve_pushbutton"].clicked.connect(
-            lambda: self._import_curve(self._read_clipboard())
+            lambda: self.import_single_curve(self._read_clipboard())
         )
         self._user_input_widgets["import_table_pushbutton"].clicked.connect(
             self._import_table)
@@ -337,7 +337,7 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.update_labels({i_to_act_on: curve.get_full_name()})
 
     @qtc.Slot(signal_tools.Curve)
-    def _import_curve(self, curve):
+    def import_single_curve(self, curve):
 
         try:
             if settings.import_ppo > 0:
@@ -350,7 +350,8 @@ class CurveAnalyze(qtw.QWidget):
                 curve.set_xy((x_intp, y_intp))
 
             if curve.is_curve():
-                self._add_curve(None, curve)
+                i_insert = self._add_single_curve(None, curve)
+                self.qlistwidget_for_curves.setCurrentRow(i_insert)
                 self.signal_good_beep.emit()
 
         except:
@@ -435,7 +436,7 @@ class CurveAnalyze(qtw.QWidget):
                         curve = signal_tools.Curve(
                             np.column_stack((data.columns, values)))
                         curve.set_name_base(name)
-                        self._add_curve(None, curve, update_figure=False)
+                        _ = self._add_single_curve(None, curve, update_figure=False)
 
                 self.signal_update_graph_request.emit()
                 self.signal_good_beep.emit()
@@ -443,7 +444,7 @@ class CurveAnalyze(qtw.QWidget):
     def _auto_importer_status_toggle(self, checked:bool):
         if checked == 1:
             self.auto_importer = AutoImporter()
-            self.auto_importer.signal_new_import.connect(self._import_curve)
+            self.auto_importer.signal_new_import.connect(self.import_single_curve)
             self.auto_importer.start()
         else:
             self.auto_importer.requestInterruption()
@@ -501,7 +502,7 @@ class CurveAnalyze(qtw.QWidget):
                 self._user_input_widgets["processing_pushbutton"].setEnabled(True)
         
 
-    def _add_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2d_kwargs={}):
+    def _add_single_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2d_kwargs={}):
         if curve.is_curve():
             i_max = len(self.curves)
             i_insert = i if i is not None else i_max
@@ -517,6 +518,8 @@ class CurveAnalyze(qtw.QWidget):
             self.qlistwidget_for_curves.insertItem(i_insert, list_item)
 
             self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
+            
+            return i_insert
         else:
             raise ValueError("Invalid curve")
 
@@ -581,7 +584,7 @@ class CurveAnalyze(qtw.QWidget):
         if to_insert:
             # sort the dict by highest key value first
             for i, curve in sorted(to_insert.items()):
-                self._add_curve(i, curve, update_figure=False, line2d_kwargs=line2d_kwargs)
+                _ = self._add_single_curve(i, curve, update_figure=False, line2d_kwargs=line2d_kwargs)
 
             self.signal_update_graph_request.emit()
 
@@ -1054,23 +1057,23 @@ if __name__ == "__main__":
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [50, 50, 50]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
-    # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [50, 50, 50]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
-    # mw._add_curve(None, signal_tools.Curve(np.array([[1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
     #                                                   ])))
 
-    # mw._add_curve(None, signal_tools.Curve(np.array([[0,512],
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[0,512],
     #                                                   [0, 0],
     #                                                   ])))
 
