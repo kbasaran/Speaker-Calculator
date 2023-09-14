@@ -674,23 +674,23 @@ class CurveAnalyze(qtw.QWidget):
         for i_curve, curve in curves.items():
 
             if settings.smoothing_type == 0:
-                xy = signal_tools.smooth_log_spaced_curve_butterworth_analog(*curve.get_xy(),
+                xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
                                                            bandwidth=settings.smoothing_bandwidth,
-                                                           # resolution=settings.smoothing_resolution_ppo,
+                                                            resolution=settings.smoothing_resolution_ppo,
                                                            order=8,
                                                            )
 
             elif settings.smoothing_type == 1:
-                xy = signal_tools.smooth_log_spaced_curve_butterworth_analog(*curve.get_xy(),
+                xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
                                                            bandwidth=settings.smoothing_bandwidth,
-                                                           # resolution=settings.smoothing_resolution_ppo,
+                                                            resolution=settings.smoothing_resolution_ppo,
                                                            order=4,
                                                            )
 
             elif settings.smoothing_type == 2:
                 xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
                                                         bandwidth=settings.smoothing_bandwidth,
-                                                        # resolution=settings.smoothing_resolution_ppo,
+                                                        resolution=settings.smoothing_resolution_ppo,
                                                         )
 
             else:
@@ -767,9 +767,9 @@ class ProcessingDialog(qtw.QDialog):
 
         user_form_1.add_row(pwi.ComboBox("smoothing_type",
                                          None,
-                                         [("Butterworth 8",),
-                                          ("Butterworth 4",),
-                                          ("Gaussian",),
+                                         [("Butterworth 8th order, log spaced",),
+                                          ("Butterworth 4th order, log spaced",),
+                                          ("Gaussian - without interpolation",),
                                           ]
                                          ),
                             "Type",
@@ -787,13 +787,6 @@ class ProcessingDialog(qtw.QDialog):
                                            ),
                             "Bandwidth (1/octave)",
                             )
-
-        def set_availability_of_resolution_option(smoothing_type_index):
-            available = True if smoothing_type_index in (0, 1) else False
-            user_form_1._user_input_widgets["smoothing_resolution_ppo"].setEnabled(available)
-            
-        user_form_1._user_input_widgets["smoothing_type"].currentIndexChanged.connect(set_availability_of_resolution_option)
-
 
 
         # Outlier detection page
@@ -1066,9 +1059,9 @@ if __name__ == "__main__":
     # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
     # mw._add_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
-    mw._add_curve(None, signal_tools.Curve(np.array([[1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
-                                                      [90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
-                                                      ])))
+    # mw._add_curve(None, signal_tools.Curve(np.array([[1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
+    #                                                   [90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
+    #                                                   ])))
 
     # mw._add_curve(None, signal_tools.Curve(np.array([[0,512],
     #                                                   [0, 0],

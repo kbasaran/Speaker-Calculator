@@ -659,7 +659,7 @@ def calculate_third_oct_power_from_pressure(p, FS):
     return third_oct_freqs, ac.signal.third_octaves(p, FS, frequencies=third_oct_freqs)[1]
 
 
-def generate_freq_list(freq_start, freq_end, ppo, must_include_freq=1000, superset=False):
+def generate_log_spaced_freq_list(freq_start, freq_end, ppo, must_include_freq=1000, superset=False):
     """
     Create a numpy array for frequencies to use in calculation.
     ppo means points per octave
@@ -683,10 +683,9 @@ def smooth_curve_gaussian(x, y, bandwidth=3, resolution=96, ndarray=False):
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
-
 def smooth_curve_butterworth(x, y, bandwidth=3, order=8, ndarray=False, FS=None):
     if not FS:
-        FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
+        FS = 48000 * 2**((x[-1] * 3) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
     else:
         pass
 
@@ -704,9 +703,9 @@ def smooth_curve_butterworth(x, y, bandwidth=3, order=8, ndarray=False, FS=None)
 
     return np.column_stack((x, y_filt)) if ndarray else x, y_filt
 
-def smooth_log_spaced_curve_butterworth_analog(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
+def smooth_log_spaced_curve_butterworth(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
     if not FS:
-        FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
+        FS = 48000 * 2**((x[-1] * 3) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
     else:
         pass
     x_intp, y_intp = interpolate_to_ppo(x, y, resolution)
@@ -722,40 +721,46 @@ def smooth_log_spaced_curve_butterworth_analog(x, y, bandwidth=3, resolution=96,
         # in above line instead of the division by the sum, division by "resolution * bandwidth"
         # should also have worked but has some offset in it..
         y_filt[i] = 10 * np.log10(np.sum(filtered_array))
-    print(sum(y_filt))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
-
-def smooth_log_spaced_curve_butterworth_digital(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
+def smooth_log_spaced_curve_butterworth_fast(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
     if not FS:
-        FS = 48000 * 2**((x[-1] * 1.5) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
+        FS = 48000 * 2**((x[-1] * 3) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
     else:
         pass
     x_intp, y_intp = interpolate_to_ppo(x, y, resolution)
 
     y_filt = np.zeros(len(x_intp), dtype=float)
-    for i, freq in enumerate(x_intp):
-        fn = max(min(x_intp), freq * 2**(-1 / 2 / bandwidth)), min(max(x_intp), freq * 2**(1 / 2 / bandwidth))
-        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
-        sos = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
-        _, filtering_array = sig.sosfreqz(sos, x_intp, fs=FS)
-        filtering_array_abs = np.abs(filtering_array)
-        filtered_array = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
-        # in above line instead of the division by the sum, division by "resolution * bandwidth"
-        # should also have worked but has some offset in it..
-        y_filt[i] = 10 * np.log10(np.sum(filtered_array))
-    print(sum(y_filt))
+    i_for_bandpass_calculation = int(len(y_filt) / 2)
+    freq_for_bandpass_calculation = x_intp[i_for_bandpass_calculation]
+    Wn = (freq_for_bandpass_calculation * 2**(-1/2/bandwidth), freq_for_bandpass_calculation * 2**(1/2/bandwidth))
+    sos = sig.butter(4, Wn, btype="bandpass", output="sos", fs=FS)
+    filter_response = np.abs(sig.sosfreqz(sos, x_intp, fs=FS)[1])
+    filter_response = filter_response
+
+    for i_filter_position in range(len(x_intp)):
+        offset = i_filter_position - i_for_bandpass_calculation
+
+        shifted_filter_response = np.zeros(len(x_intp))
+        i_write_start = max(0, offset)
+        i_write_end = min(len(x_intp), len(x_intp) + offset)
+        i_read_start = max(0, -offset)
+        i_read_end = min(len(x_intp), len(x_intp) - offset)
+
+        shifted_filter_response[i_write_start:i_write_end] = filter_response[i_read_start:i_read_end]
+        filtered_array = 10**(y_intp/10) * shifted_filter_response / np.sum(shifted_filter_response)
+        
+        y_filt[i_filter_position] = 10 * np.log10(np.sum(filtered_array))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
-
 
 def interpolate_to_ppo(x, y, ppo, must_include_freq=1000, superset=False):
     """
     Reduce a curve to lesser points
     """
     freq_start, freq_end = x[0], x[-1]
-    freqs = generate_freq_list(freq_start,
+    freqs = generate_log_spaced_freq_list(freq_start,
                                freq_end,
                                ppo,
                                must_include_freq=must_include_freq,
