@@ -531,6 +531,12 @@ class Curve:
         else:
             return getattr(self, "_x", None), getattr(self, "_y", None)
 
+    def get_x(self):
+        return getattr(self, "_x", None)
+
+    def get_y(self):
+        return getattr(self, "_y", None)
+
     def set_name_base(self, name):
         val = name if isinstance(name, str) else None
         self._identification["base"] = val
@@ -554,20 +560,19 @@ class Curve:
         suffixes = self._identification["suffixes"]
         self._identification["suffixes"] = [suffix for suffix in suffixes if suffix != name]
 
-    def get_name_base(self):
-        return self._identification["base"]
-
     def get_name_suffixes(self):
         suffixes = self._identification["suffixes"]
         return suffixes
 
-    def get_base_name_and_suffixes(self, joiner=" - "):
-        full_name = ""
-        if base := self._identification["base"]:
-            full_name += base
-        else:
+    def get_name_base(self):
+        self._identification["base"]
+        if self._identification["base"] in (None, ""):
             x = self.get_xy()[0]
-            full_name += f"Curve with {len(x)} data points, {x[0]:.5g}Hz-{x[-1]:.5g}Hz"
+            self._identification["base"] = f"Curve with {len(x)} data points, {x[0]:.5g}Hz-{x[-1]:.5g}Hz"
+        return self._identification["base"]
+
+    def get_base_name_and_suffixes(self, joiner=" - "):
+        full_name = self.get_name_base()
         for suffix in self.get_name_suffixes():
             full_name += (joiner + str(suffix))
         return full_name

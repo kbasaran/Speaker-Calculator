@@ -15,6 +15,7 @@ import personalized_widgets as pwi
 import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
 import matplotlib as mpl
+from tabulate import tabulate
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,7 @@ logging.basicConfig(level=logging.INFO)
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
 version = "XXX"
+
 
 def find_longest_match_in_name(names):
     """
@@ -107,7 +109,7 @@ class CurveAnalyze(qtw.QWidget):
              "processing": "Processing",
              "set_reference": "Set reference",
              "export_table": "Export table",
-              "export_image": "Export image",
+             "export_image": "Export image",
              "settings": "Settings",
              },
             {"import_curve": "Import 2D curve from clipboard",
@@ -124,7 +126,7 @@ class CurveAnalyze(qtw.QWidget):
             qtw.QAbstractItemView.ExtendedSelection)
         # self.qlistwidget_for_curves.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
 
-        #set size policies
+        # set size policies
         self.graph.setSizePolicy(
             qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)
 
@@ -132,7 +134,7 @@ class CurveAnalyze(qtw.QWidget):
         self.setLayout(qtw.QVBoxLayout())
         self.layout().addWidget(self.graph, 3)
         self.layout().addWidget(self.graph_buttons)
-        self.layout().addWidget(self.qlistwidget_for_curves,1)
+        self.layout().addWidget(self.qlistwidget_for_curves, 1)
 
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(
@@ -173,7 +175,6 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_flash_curve.connect(self.graph.flash_curve)
         self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
 
-
     def _export_table(self):
         if self.no_curve_selected():
             return
@@ -189,7 +190,7 @@ class CurveAnalyze(qtw.QWidget):
                 *curve.get_xy(),
                 settings.export_ppo,
                 settings.interpolate_must_contain_hz,
-                )
+            )
             if signal_tools.arrays_are_equal((x_intp, curve.get_xy()[0])):
                 xy_export = np.transpose(curve.get_xy(ndarray=True))
             else:
@@ -211,10 +212,11 @@ class CurveAnalyze(qtw.QWidget):
 
     def get_selected_curve_indexes(self) -> list:
         selected_list_items = self.qlistwidget_for_curves.selectedItems()
-        indexes = [self.qlistwidget_for_curves.row(list_item) for list_item in selected_list_items]
+        indexes = [self.qlistwidget_for_curves.row(
+            list_item) for list_item in selected_list_items]
         return indexes
 
-    def get_selected_curves(self, as_dict:bool=False) -> (list, dict):
+    def get_selected_curves(self, as_dict: bool = False) -> (list, dict):
         selected_indexes = self.get_selected_curve_indexes()
 
         if as_dict:
@@ -226,14 +228,14 @@ class CurveAnalyze(qtw.QWidget):
         selected_indexes = self.get_selected_curve_indexes()
         return len(selected_indexes)
 
-    def no_curve_selected(self)  -> bool:
+    def no_curve_selected(self) -> bool:
         if self.qlistwidget_for_curves.selectedItems():
             return False
         else:
             self.signal_bad_beep.emit()
             return True
 
-    def _move_curve_up(self, i_insert:int):
+    def _move_curve_up(self, i_insert: int):
         selected_indexes_and_curves = self.get_selected_curves(as_dict=True)
 
         new_indexes = [*range(len(self.curves))]
@@ -285,8 +287,10 @@ class CurveAnalyze(qtw.QWidget):
         else:
             for i, curve in enumerate(self.curves):
                 curve.set_name_prefix(f"#{i:02d}")
-                self.qlistwidget_for_curves.item(i).setText(curve.get_full_name())
-            returned = self.graph.update_labels({i: curve.get_full_name() for i, curve in enumerate(self.curves)})
+                self.qlistwidget_for_curves.item(
+                    i).setText(curve.get_full_name())
+            returned = self.graph.update_labels(
+                {i: curve.get_full_name() for i, curve in enumerate(self.curves)})
             if not returned:
                 self.signal_good_beep.emit()
 
@@ -298,7 +302,7 @@ class CurveAnalyze(qtw.QWidget):
             if not returned:
                 self.signal_good_beep.emit()
 
-    def _rename_curve(self, index:int=None, new_name:str=None):
+    def _rename_curve(self, index: int = None, new_name: str = None):
         """
         Update the curve and the screen name. Does not store the index part of the screen name.
         """
@@ -335,7 +339,7 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.update_labels({i_to_act_on: curve.get_full_name()})
 
     @qtc.Slot(signal_tools.Curve)
-    def import_single_curve(self, curve:signal_tools.Curve=None):
+    def import_single_curve(self, curve: signal_tools.Curve = None):
         if curve in (None, False):
             curve = self._read_clipboard()
         try:
@@ -345,7 +349,7 @@ class CurveAnalyze(qtw.QWidget):
                     x, y,
                     settings.import_ppo,
                     settings.interpolate_must_contain_hz,
-                    )
+                )
                 curve.set_xy((x_intp, y_intp))
 
             if curve.is_curve():
@@ -356,7 +360,7 @@ class CurveAnalyze(qtw.QWidget):
         except:
             self.signal_bad_beep.emit()
 
-    def remove_curves(self, indexes:list=None):
+    def remove_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
             if len(indexes) == 0:  # received empty list
                 self.signal_bad_beep.emit()
@@ -435,20 +439,22 @@ class CurveAnalyze(qtw.QWidget):
                         curve = signal_tools.Curve(
                             np.column_stack((data.columns, values)))
                         curve.set_name_base(name)
-                        _ = self._add_single_curve(None, curve, update_figure=False)
+                        _ = self._add_single_curve(
+                            None, curve, update_figure=False)
 
                 self.signal_update_graph_request.emit()
                 self.signal_good_beep.emit()
 
-    def _auto_importer_status_toggle(self, checked:bool):
+    def _auto_importer_status_toggle(self, checked: bool):
         if checked == 1:
             self.auto_importer = AutoImporter()
-            self.auto_importer.signal_new_import.connect(self.import_single_curve)
+            self.auto_importer.signal_new_import.connect(
+                self.import_single_curve)
             self.auto_importer.start()
         else:
             self.auto_importer.requestInterruption()
 
-    def _reference_curve_status_toggle(self, checked:bool):
+    def _reference_curve_status_toggle(self, checked: bool):
         """
         Reference curve is marked in the Curve class instances with "_visible"
         Also in the graph object, there is an attribute to store if there is a reference and if so which one it is.
@@ -457,7 +463,8 @@ class CurveAnalyze(qtw.QWidget):
             # Block precessing options
             indexes_and_curves = self.get_selected_curves(as_dict=True)
             if len(indexes_and_curves) == 1:
-                self._user_input_widgets["processing_pushbutton"].setEnabled(False)
+                self._user_input_widgets["processing_pushbutton"].setEnabled(
+                    False)
                 index, curve = list(indexes_and_curves.items())[0]
 
                 # mark it as reference
@@ -474,34 +481,36 @@ class CurveAnalyze(qtw.QWidget):
             else:
                 # multiple selections
                 self.signal_bad_beep.emit()
-                self._user_input_widgets["set_reference_pushbutton"].setChecked(False)
+                self._user_input_widgets["set_reference_pushbutton"].setChecked(
+                    False)
 
         elif checked == False:
             # find back the reference curve
-            reference_curves = [(index, curve) for index, curve in enumerate(self.curves) if curve.is_reference()]
+            reference_curves = [(index, curve) for index, curve in enumerate(
+                self.curves) if curve.is_reference()]
             if len(reference_curves) == 0:
                 pass
             elif len(reference_curves) > 1:
-                raise ValueError("Multiple reference curves are in the list somehow..")
+                raise ValueError(
+                    "Multiple reference curves are in the list somehow..")
             else:
                 index, curve = reference_curves[0]
 
                 # revert it
                 curve.remove_name_suffix("reference")
                 curve.set_reference(False)
-    
+
                 # Update the names in list
                 reference_item = self.qlistwidget_for_curves.item(index)
                 reference_item.setText(curve.get_full_name())
-    
+
                 # Update graph
                 self.graph.toggle_reference_curve(None)
-                
+
             # Release processing options
             self._user_input_widgets["processing_pushbutton"].setEnabled(True)
-        
 
-    def _add_single_curve(self, i:int, curve:signal_tools.Curve, update_figure:bool=True, line2d_kwargs={}):
+    def _add_single_curve(self, i: int, curve: signal_tools.Curve, update_figure: bool = True, line2d_kwargs={}):
         if curve.is_curve():
             i_max = len(self.curves)
             i_insert = i if i is not None else i_max
@@ -516,13 +525,14 @@ class CurveAnalyze(qtw.QWidget):
 
             self.qlistwidget_for_curves.insertItem(i_insert, list_item)
 
-            self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
-            
+            self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(
+            ), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
+
             return i_insert
         else:
             raise ValueError("Invalid curve")
 
-    def _hide_curves(self, indexes:list=None):
+    def _hide_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
             indexes_and_curves = {i: self.curves[i] for i in indexes}
         elif self.no_curve_selected():
@@ -539,7 +549,7 @@ class CurveAnalyze(qtw.QWidget):
 
         self.send_visibility_states_to_graph()
 
-    def _show_curves(self, indexes:list=None):
+    def _show_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
             indexes_and_curves = {i: self.curves[i] for i in indexes}
         elif self.no_curve_selected():
@@ -557,35 +567,42 @@ class CurveAnalyze(qtw.QWidget):
 
         self.send_visibility_states_to_graph()
 
-    def _flash_curve(self, item:qtw.QListWidgetItem):
+    def _flash_curve(self, item: qtw.QListWidgetItem):
         index = self.qlistwidget_for_curves.row(item)
         self.signal_flash_curve.emit(index)
 
     def send_visibility_states_to_graph(self):
-        visibility_states = {i: curve.is_visible() for i, curve in enumerate(self.curves)}
+        visibility_states = {i: curve.is_visible()
+                             for i, curve in enumerate(self.curves)}
         self.graph.hide_show_line2d(visibility_states)
 
     def _open_processing_dialog(self):
         if self.no_curve_selected():
             return
+
         processing_dialog = ProcessingDialog(
             self.get_selected_curves())
         processing_dialog.signal_processing_request.connect(
             self._processing_dialog_return)
 
-        return_value = processing_dialog.exec()
-        if return_value:
-            self.signal_good_beep.emit()
+        processing_dialog.exec()
+
 
     def _processing_dialog_return(self, processing_function_name):
-        to_insert, line2d_kwargs = getattr(self, processing_function_name)()
+        results = getattr(self, processing_function_name)()
 
-        if to_insert:
+        if "to_insert" in results.keys():
             # sort the dict by highest key value first
-            for i, curve in sorted(to_insert.items()):
-                _ = self._add_single_curve(i, curve, update_figure=False, line2d_kwargs=line2d_kwargs)
-
+            for i, curve in sorted(results["to_insert"].items()):
+                _ = self._add_single_curve(
+                    i, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
             self.signal_update_graph_request.emit()
+            self.signal_good_beep.emit()
+
+        if "result_text" in results.keys():
+            result_text_box = ResultTextBox(results["title"], results["result_text"])
+            result_text_box.exec()
+
 
     def _mean_and_median_analysis(self):
         curves = self.get_selected_curves()
@@ -594,11 +611,11 @@ class CurveAnalyze(qtw.QWidget):
                 "A minimum of 2 curves is needed for this analysis.")
         curve_mean, curve_median = signal_tools.mean_and_median_of_curves(
             [curve.get_xy() for curve in curves]
-            )
+        )
 
         representative_base_name = find_longest_match_in_name(
             [curve.get_base_name_and_suffixes() for curve in curves]
-            )
+        )
 
         for curve in (curve_mean, curve_median):
             curve.set_name_base(representative_base_name)
@@ -615,8 +632,8 @@ class CurveAnalyze(qtw.QWidget):
             to_insert[i_insert] = curve_median
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
-        
-        return to_insert, line2d_kwargs
+
+        return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
 
     def _outlier_detection(self):
         curves = self.get_selected_curves(as_dict=True)
@@ -627,11 +644,11 @@ class CurveAnalyze(qtw.QWidget):
         lower_fence, curve_median, upper_fence, outlier_indexes = signal_tools.iqr_analysis(
             {i: curve.get_xy() for i, curve in curves.items()},
             settings.outlier_fence_iqr,
-            )
+        )
 
         representative_base_name = find_longest_match_in_name(
             [curve.get_base_name_and_suffixes() for curve in curves.values()]
-            )
+        )
 
         for curve in (lower_fence, upper_fence, curve_median):
             curve.set_name_base(representative_base_name)
@@ -642,11 +659,11 @@ class CurveAnalyze(qtw.QWidget):
         if settings.outlier_action == 0 and outlier_indexes:  # Hide
             self._hide_curves(indexes=outlier_indexes)
             for curve in (lower_fence, upper_fence, curve_median):
-                curve.add_name_suffix("before hiding")
+                curve.add_name_suffix("including hidden outliers")
         elif settings.outlier_action == 1 and outlier_indexes:  # Remove
             self.remove_curves(indexes=outlier_indexes)
             for curve in (lower_fence, upper_fence, curve_median):
-                curve.add_name_suffix("before removals")
+                curve.add_name_suffix("including removed outliers")
 
         to_insert = {}
         to_insert[0] = upper_fence
@@ -655,8 +672,53 @@ class CurveAnalyze(qtw.QWidget):
 
         line2d_kwargs = {"color": "k", "linestyle": "--"}
 
-        return to_insert, line2d_kwargs
+        return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
 
+    def _show_best_fits(self):
+        curves = self.get_selected_curves(as_dict=True)
+        if len(curves) != 1:
+            warning = qtw.QMessageBox(qtw.QMessageBox.Warning,
+                                      "Multiple curves found in selection",
+                                      "For this operation you need to choose a single curve from the list.",
+                                      qtw.QMessageBox.Ok,
+                                      )
+            warning.exec()
+            return {}
+        
+        else:
+            i_ref_curve, ref_curve = list(curves.items())[0]
+            ref_freqs, ref_curve_interpolated = signal_tools.interpolate_to_ppo(
+                *ref_curve.get_xy(), settings.best_fit_calculation_resolution_ppo)
+            other_curves = {i: self.curves[i] for i in range(
+                len(self.curves)) if i != i_ref_curve}
+            differences_to_ref = {curve.get_full_name(): \
+                                  np.abs(np.interp(np.log(ref_freqs), np.log(curve.get_x()), curve.get_y(), left=np.nan, right=np.nan) - ref_curve_interpolated)\
+                                      for curve in other_curves.values()}
+
+            df = pd.DataFrame.from_dict(differences_to_ref,
+                                        orient='index',
+                                        columns=ref_freqs,
+                                        dtype=float,
+                                        )
+
+            # Apply weighing
+            critical_columns = [column for column in df.columns if column >= settings.best_fit_critical_range_start_freq and column < settings.best_fit_critical_range_end_freq]
+            if critical_columns:
+                weighing_normalizer = (len(df.columns) + len(critical_columns) * (settings.best_fit_critical_range_weight - 1)) / len(df.columns)
+                weighing_critical = settings.best_fit_critical_range_weight / weighing_normalizer
+                df[critical_columns].apply(lambda x: x * weighing_critical)
+                df = df / weighing_normalizer
+            else:
+                logging.warning("Critical frequency range falls completely out of reference curve frequency range")
+
+            df.loc[:, "mean"] = df.mean(axis=1, skipna=True)
+            df.sort_values(by=["mean"], ascending=True, inplace=True)
+            result_text = f"Reference curve name: {ref_curve.get_full_name()}"
+            result_text += f"\nAmount of frequency points: {len(ref_freqs)}"
+            result_text += "\n\n"
+            result_text += tabulate(df[["mean"]], headers=("Item name", "Weighted error"))
+
+        return {"title": "Best fits", "result_text": result_text}
 
     def _interpolate_curves(self):
         curves = self.get_selected_curves(as_dict=True)
@@ -664,18 +726,20 @@ class CurveAnalyze(qtw.QWidget):
         to_insert = {}
 
         for i_curve, curve in curves.items():
-                xy = signal_tools.interpolate_to_ppo(*curve.get_xy(), settings.precessing_interpolation_ppo)
+            xy = signal_tools.interpolate_to_ppo(
+                *curve.get_xy(), settings.processing_interpolation_ppo)
 
-        new_curve = signal_tools.Curve(xy)
-        new_curve.set_name_base(curves[i_curve].get_name_base())
-        for suffix in curve.get_name_suffixes():
-            new_curve.add_name_suffix(suffix)
-        new_curve.add_name_suffix(f"interpolated to {settings.precessing_interpolation_ppo} ppo")
-        to_insert[i_curve + len(to_insert) + 1] = new_curve
+            new_curve = signal_tools.Curve(xy)
+            new_curve.set_name_base(curves[i_curve].get_name_base())
+            for suffix in curve.get_name_suffixes():
+                new_curve.add_name_suffix(suffix)
+            new_curve.add_name_suffix(
+                f"interpolated to {settings.processing_interpolation_ppo} ppo")
+            to_insert[i_curve + len(to_insert) + 1] = new_curve
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
-        return to_insert, line2d_kwargs
+        return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
 
     def _smoothen_curves(self):
         curves = self.get_selected_curves(as_dict=True)
@@ -686,23 +750,22 @@ class CurveAnalyze(qtw.QWidget):
 
             if settings.smoothing_type == 0:
                 xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
-                                                           bandwidth=settings.smoothing_bandwidth,
-                                                            resolution=settings.smoothing_resolution_ppo,
-                                                           order=8,
-                                                           )
+                                                                           bandwidth=settings.smoothing_bandwidth,
+                                                                           resolution=settings.smoothing_resolution_ppo,
+                                                                           order=8,
+                                                                           )
 
             elif settings.smoothing_type == 1:
                 xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
-                                                           bandwidth=settings.smoothing_bandwidth,
-                                                            resolution=settings.smoothing_resolution_ppo,
-                                                           order=4,
-                                                           )
+                                                                           bandwidth=settings.smoothing_bandwidth,
+                                                                           resolution=settings.smoothing_resolution_ppo,
+                                                                           order=4,
+                                                                           )
 
             elif settings.smoothing_type == 2:
                 xy = signal_tools.smooth_curve_rectangular_no_interpolation(*curve.get_xy(),
-                                                           bandwidth=settings.smoothing_bandwidth,
-                                                           )
-
+                                                                            bandwidth=settings.smoothing_bandwidth,
+                                                                            )
 
             elif settings.smoothing_type == 3:
                 xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
@@ -718,12 +781,13 @@ class CurveAnalyze(qtw.QWidget):
             new_curve.set_name_base(curves[i_curve].get_name_base())
             for suffix in curve.get_name_suffixes():
                 new_curve.add_name_suffix(suffix)
-            new_curve.add_name_suffix(f"smoothed 1/{settings.smoothing_bandwidth}")
+            new_curve.add_name_suffix(
+                f"smoothed 1/{settings.smoothing_bandwidth}")
             to_insert[i_curve + len(to_insert) + 1] = new_curve
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
-        return to_insert, line2d_kwargs
+        return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
 
     def _open_settings_dialog(self):
         settings_dialog = SettingsDialog()
@@ -739,6 +803,38 @@ class CurveAnalyze(qtw.QWidget):
         #### What to do if matplotlib style changes ####
         self.signal_graph_settings_changed.emit()
         self.signal_update_graph_request.emit()
+
+class ResultTextBox(qtw.QDialog):
+    global settings
+
+    def __init__(self, title, result_text):
+        super().__init__()
+        self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
+
+        layout = qtw.QVBoxLayout(self)
+        self.setWindowTitle(title)
+        self.setMinimumSize(900, 600)
+        text_box = qtw.QTextEdit()
+        text_box.setReadOnly(True)
+        text_box.setText(result_text)
+
+        font = text_box.font()
+        font.setFamily("Monospace")
+        text_box.setFont(font)
+
+        layout.addWidget(text_box)
+
+        # Buttons
+        button_group = pwi.PushButtonGroup({"ok": "OK",
+                                            },
+                                           {},
+                                           )
+        button_group.buttons()["ok_pushbutton"].setDefault(True)
+        layout.addWidget(button_group)
+        
+        # Connections
+        button_group.buttons()["ok_pushbutton"].clicked.connect(
+            self.accept)
 
 class ProcessingDialog(qtw.QDialog):
     global settings
@@ -763,13 +859,13 @@ class ProcessingDialog(qtw.QDialog):
             user_form_0, "_mean_and_median_analysis")
 
         user_form_0.add_row(pwi.CheckBox("mean_selected",
-                                         "Mean value per frequency point.",
+                                         "Returns a curve showing the mean value of level in dB, per frequency point.",
                                          ),
                             "Calculate mean",
                             )
 
         user_form_0.add_row(pwi.CheckBox("median_selected",
-                                         "Median value per frequency point. Less sensitive to outliers.",
+                                         "Returns a curve showing the median value per frequency point.",
                                          ),
                             "Calculate median",
                             )
@@ -808,10 +904,11 @@ class ProcessingDialog(qtw.QDialog):
 
         def set_availability_of_resolution_option(smoothing_type_index):
             available = True if smoothing_type_index in (0, 1, 3) else False
-            user_form_1._user_input_widgets["smoothing_resolution_ppo"].setEnabled(available)
-            
-        user_form_1._user_input_widgets["smoothing_type"].currentIndexChanged.connect(set_availability_of_resolution_option)
+            user_form_1._user_input_widgets["smoothing_resolution_ppo"].setEnabled(
+                available)
 
+        user_form_1._user_input_widgets["smoothing_type"].currentIndexChanged.connect(
+            set_availability_of_resolution_option)
 
         # Outlier detection page
         user_form_2 = pwi.UserForm()
@@ -839,19 +936,47 @@ class ProcessingDialog(qtw.QDialog):
                             )
 
         # Interpolation page
-        user_form_2 = pwi.UserForm()
+        user_form_3 = pwi.UserForm()
         # tab page is the UserForm widget
-        self.tab_widget.addTab(user_form_2, "Interpolation")
-        i = self.tab_widget.indexOf(user_form_2)
+        self.tab_widget.addTab(user_form_3, "Interpolation")
+        i = self.tab_widget.indexOf(user_form_3)
         self.user_forms_and_recipient_functions[i] = (
-            user_form_2, "_interpolate_curves")
+            user_form_3, "_interpolate_curves")
 
-        user_form_2.add_row(pwi.IntSpinBox("processing_interpolation_ppo",
+        user_form_3.add_row(pwi.IntSpinBox("processing_interpolation_ppo",
                                            None,
                                            ),
-                            "Points per octave (ppo)",
+                            "Points per octave",
                             )
 
+        # Show best fits
+        user_form_4 = pwi.UserForm()
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_4, "Best fit to current")
+        i = self.tab_widget.indexOf(user_form_4)
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_4, "_show_best_fits")
+
+        user_form_4.add_row(pwi.IntSpinBox("best_fit_calculation_resolution_ppo",
+                                           "How many calculation points per octave to use for the calculation"
+                                           " of the differences between the reference curve and the candidates."),
+                            "Resolution (ppo)",
+                            )
+
+        user_form_4.add_row(pwi.IntSpinBox("best_fit_critical_range_start_freq",
+                                           "Start frequency for range where weighing will be applied."),
+                            "Critical range start (Hz)",
+                            )
+
+        user_form_4.add_row(pwi.IntSpinBox("best_fit_critical_range_end_freq",
+                                           "End frequency for range where weighing will be applied."),
+                            "Critical range end (Hz)",
+                            )
+
+        user_form_4.add_row(pwi.IntSpinBox("best_fit_critical_range_weight",
+                                           "Amount of weighing"),
+                            "Critical range weight",
+                            )
 
         # Buttons for the dialog - common to self and not per tab
         button_group = pwi.PushButtonGroup({"run": "Run",
@@ -883,7 +1008,8 @@ class ProcessingDialog(qtw.QDialog):
 
     def _save_and_close(self):
         active_tab_index = self.tab_widget.currentIndex()
-        user_form, processing_function_name = self.user_forms_and_recipient_functions[active_tab_index]
+        user_form, processing_function_name = self.user_forms_and_recipient_functions[
+            active_tab_index]
         settings.update_attr("processing_selected_tab",
                              self.tab_widget.currentIndex())
 
@@ -921,7 +1047,17 @@ class SettingsDialog(qtw.QDialog):
         user_form.add_row(pwi.IntSpinBox("max_legend_size", "Limit the items that can be listed on the legend. Does not affect the shown curves in graph"),
                           "Maximum legend size in graph")
 
-        user_form.add_row(pwi.ComboBox("graph_grids", 
+        mpl_styles = [
+            style_name for style_name in mpl.style.available if style_name[0] != "_"]
+        user_form.add_row(pwi.ComboBox("matplotlib_style",
+                                       "Style for the canvas. To see options, web search: 'matplotlib style sheets reference'",
+                                       [(style_name, style_name)
+                                        for style_name in mpl_styles],
+                                       ),
+                          "Matplotlib style",
+                          )
+
+        user_form.add_row(pwi.ComboBox("graph_grids",
                                        None,
                                        [("Style default", "default"),
                                         ("Major only", "major only"),
@@ -931,14 +1067,7 @@ class SettingsDialog(qtw.QDialog):
                           "Graph grid view",
                           )
 
-        mpl_styles = [style_name for style_name in mpl.style.available if style_name[0] != "_"]
-        user_form.add_row(pwi.ComboBox("matplotlib_style", 
-                                       "Style for the canvas. To see options, web search: 'matplotlib style sheets reference'",
-                                       [(style_name, style_name) for style_name in mpl_styles],
-                                       ),
-                          "Matplotlib style",
-                          )
-        # user_form._user_input_widgets["matplotlib_style"].setEnabled(False)
+        user_form.add_row(pwi.SunkenLine())
 
         user_form.add_row(pwi.IntSpinBox("import_ppo",
                                          "Interpolate the curve to here defined points per octave in import"
@@ -964,6 +1093,8 @@ class SettingsDialog(qtw.QDialog):
                                          ),
                           "Interpolate must contain frequency (Hz)",
                           )
+
+        user_form.add_row(pwi.SunkenLine())
 
         user_form.add_row(pwi.FloatSpinBox("A_beep",
                                            "Amplitude of the beep. Not in dB. 0 is off, 1 is maximum amplitude",
@@ -996,7 +1127,8 @@ class SettingsDialog(qtw.QDialog):
 
             elif key == "graph_grids":
                 try:
-                    index_from_settings = [widget.itemData(i) for i in range(widget.count())].index(settings.graph_grids)
+                    index_from_settings = [widget.itemData(i) for i in range(
+                        widget.count())].index(settings.graph_grids)
                 except IndexError:
                     index_from_settings = 0
                 widget.setCurrentIndex(index_from_settings)
@@ -1011,13 +1143,15 @@ class SettingsDialog(qtw.QDialog):
             partial(self._save_and_close,  user_form._user_input_widgets, settings))
 
     def _save_and_close(self, user_input_widgets, settings):
-        mpl_styles = [style_name for style_name in mpl.style.available if style_name[0] != "_"]
+        mpl_styles = [
+            style_name for style_name in mpl.style.available if style_name[0] != "_"]
         if user_input_widgets["matplotlib_style"].currentIndex() != mpl_styles.index(settings.matplotlib_style):
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
                                           "Application needs to be restarted to be able to use the new Matplotlib style.",
                                           )
-            message_box.setStandardButtons(qtw.QMessageBox.Cancel | qtw.QMessageBox.Ok)
+            message_box.setStandardButtons(
+                qtw.QMessageBox.Cancel | qtw.QMessageBox.Ok)
             returned = message_box.exec()
 
             if returned == qtw.QMessageBox.Cancel:
@@ -1027,7 +1161,7 @@ class SettingsDialog(qtw.QDialog):
             if isinstance(widget, qtw.QCheckBox):
                 settings.update_attr(key, widget.isChecked())
             elif key == "matplotlib_style":
-               settings.update_attr(key, widget.currentData())
+                settings.update_attr(key, widget.currentData())
             elif key == "graph_grids":
                 settings.update_attr(key, widget.currentData())
             else:
@@ -1075,17 +1209,28 @@ def main():
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [50, 50, 50]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
-    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [50, 50, 50]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [70, 85, 70]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [75, 70, 80]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [60, 75, 90]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [90, 70, 65]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [85, 80, 80]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [70, 70, 80]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [60, 70, 90]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [90, 70, 60]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [20, 70, 60]])))
+    mw._add_single_curve(None, signal_tools.Curve(
+        np.array([[125, 250, 500], [90, 70, 160]])))
 
     # mw._add_single_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [55, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],

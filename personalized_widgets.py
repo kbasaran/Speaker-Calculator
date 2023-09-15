@@ -48,6 +48,10 @@ class Settings:
     processing_interpolation_ppo: int = 96
     interpolate_must_contain_hz: int = 1000
     graph_grids: str = "major and minor"
+    best_fit_calculation_resolution_ppo: int = 24
+    best_fit_critical_range_start_freq: int = 200
+    best_fit_critical_range_end_freq: int = 5000
+    best_fit_critical_range_weight: int = 5
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(
