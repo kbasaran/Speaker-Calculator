@@ -1075,17 +1075,17 @@ def main():
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [50, 50, 50]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [50, 50, 50]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 85, 80]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [75, 70, 80]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 75, 90]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 65]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [85, 80, 80]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [70, 70, 80]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [60, 70, 90]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 60]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
+    mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
     # mw._add_single_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [55, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],

@@ -66,7 +66,7 @@ class MatplotlibWidget(qtw.QWidget):
             if "major" in self.app_settings.graph_grids:
                 self.ax.grid(visible=True, which="major", axis='both')
             if "minor" in self.app_settings.graph_grids:
-                self.ax.grid(visible=True, which="minor", axis='both')  
+                self.ax.grid(visible=True, which="minor", axis='both')
 
     @qtc.Slot()
     def update_figure(self, recalculate_limits=True, update_legend=True):
@@ -131,16 +131,17 @@ class MatplotlibWidget(qtw.QWidget):
             self.update_figure()
 
         else:
-            ref_x, ref_y = self._ref_index_and_curve[1].get_xy()
             for line2d in self.ax.get_lines():
                 x, y = line2d.get_xdata(), line2d.get_ydata()
                 ref_y_intp = self.reference_curve_interpolated(tuple(x))
                 line2d.set_ydata(y + ref_y_intp)
-                
+
             self.hide_show_line2d({self._ref_index_and_curve[0]: True})
 
             self._ref_index_and_curve = None
             self.update_figure()
+
+        self.reference_curve_interpolated.cache_clear()
 
     def show_legend_ordered(self):
         if self.app_settings.max_legend_size > 0:

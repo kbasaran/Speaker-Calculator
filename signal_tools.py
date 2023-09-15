@@ -689,6 +689,7 @@ def generate_log_spaced_freq_list(freq_start, freq_end, ppo, must_include_freq=1
     freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
+
 def smooth_curve_rectangular_no_interpolation(x, y, bandwidth=3, ndarray=False):
     y_filt = np.zeros(len(x), dtype=float)
     y_power = 10**(y / 10)
@@ -709,6 +710,7 @@ def smooth_curve_gaussian(x, y, bandwidth=3, resolution=96, ndarray=False):
     y_filt = gaussian_filter(y_intp, sigma, mode="nearest")
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
+
 
 def smooth_curve_butterworth(x, y, bandwidth=3, order=8, ndarray=False, FS=None):
     if not FS:
@@ -733,6 +735,7 @@ def smooth_curve_butterworth(x, y, bandwidth=3, order=8, ndarray=False, FS=None)
 
     return np.column_stack((x, y_filt)) if ndarray else x, y_filt
 
+
 def smooth_log_spaced_curve_butterworth(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
     if not FS:
         FS = 48000 * 2**((x[-1] * 3) // 48000)  # no input frequencies above 2/3 of Nyquist freq.
@@ -756,6 +759,7 @@ def smooth_log_spaced_curve_butterworth(x, y, bandwidth=3, resolution=96, order=
             y_filt[i] = 10 * np.log10(np.sum(filtered_array_of_power))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
+
 
 def smooth_log_spaced_curve_butterworth_fast(x, y, bandwidth=3, resolution=96, order=8, ndarray=False, FS=None):
     if not FS:
@@ -787,6 +791,7 @@ def smooth_log_spaced_curve_butterworth_fast(x, y, bandwidth=3, resolution=96, o
         y_filt[i_filter_position] = 10 * np.log10(np.sum(filtered_array_of_power))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
+
 
 def interpolate_to_ppo(x, y, ppo, must_include_freq=1000, superset=False):
     """
