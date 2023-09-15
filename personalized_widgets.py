@@ -379,7 +379,7 @@ class SoundEngine(qtc.QObject):
     def release_all(self):
         self.stream.stop(ignore_errors=True)
 
-class ErrorHandler:
+class ErrorHandlerDeveloper:
     def __init__(self, app):
         self.app = app
     
@@ -390,6 +390,29 @@ class ErrorHandler:
                                       error_msg +
                                       "\nYour application may now be in an unstable state."
                                       "\n\nThis event may be logged unless ignore is chosen.",
+                                      )
+        message_box.addButton(qtw.QMessageBox.Ignore)
+        close_button = message_box.addButton(qtw.QMessageBox.Close)
+    
+        message_box.setEscapeButton(qtw.QMessageBox.Ignore)
+        message_box.setDefaultButton(qtw.QMessageBox.Close)
+    
+        close_button.clicked.connect(logging.warning(error_msg))
+    
+        message_box.exec()
+
+class ErrorHandlerUser:
+    def __init__(self, app):
+        self.app = app
+    
+    def excepthook(self, etype, value, tb):
+        error_info = traceback.format_exception(etype, value, tb)
+        error_msg = error_info[-2] + "\n\n" + error_info[-1]
+        message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
+                                      "Error    :(",
+                                      error_msg +
+                                      "\n\nYour application may now be in an unstable state."
+                                      "\nThis event may be logged unless ignore is chosen.",
                                       )
         message_box.addButton(qtw.QMessageBox.Ignore)
         close_button = message_box.addButton(qtw.QMessageBox.Close)

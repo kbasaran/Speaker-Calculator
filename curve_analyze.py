@@ -60,6 +60,7 @@ def find_longest_match_in_name(names):
 
 
 class CurveAnalyze(qtw.QWidget):
+    global settings
 
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
@@ -69,9 +70,8 @@ class CurveAnalyze(qtw.QWidget):
     signal_graph_settings_changed = qtc.Signal()
     # signal_key_pressed = qtc.Signal(str)
 
-    def __init__(self, settings):
+    def __init__(self):
         super().__init__()
-        self.app_settings = settings
         self._create_core_objects()
         self._create_widgets()
         self._place_widgets()
@@ -91,7 +91,7 @@ class CurveAnalyze(qtw.QWidget):
         self.reference_curve = None
 
     def _create_widgets(self):
-        self.graph = MatplotlibWidget(self.app_settings)
+        self.graph = MatplotlibWidget(settings)
         self.graph_buttons = pwi.PushButtonGroup(
             {"import_curve": "Import curve",
              "import_table": "Import table",
@@ -164,8 +164,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["processing_pushbutton"].clicked.connect(
             self._open_processing_dialog)
         self._user_input_widgets["import_curve_pushbutton"].clicked.connect(
-            lambda: self.import_single_curve(self._read_clipboard())
-        )
+            self.import_single_curve)
         self._user_input_widgets["import_table_pushbutton"].clicked.connect(
             self._import_table)
         self.signal_update_graph_request.connect(self.graph.update_figure)
@@ -173,7 +172,6 @@ class CurveAnalyze(qtw.QWidget):
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
         self.signal_flash_curve.connect(self.graph.flash_curve)
         self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
-        # self.signal_key_pressed.connect(self._keyboard_key_pressed)
 
 
     def _export_table(self):
@@ -337,8 +335,9 @@ class CurveAnalyze(qtw.QWidget):
         self.graph.update_labels({i_to_act_on: curve.get_full_name()})
 
     @qtc.Slot(signal_tools.Curve)
-    def import_single_curve(self, curve):
-
+    def import_single_curve(self, curve:signal_tools.Curve=None):
+        if curve in (None, False):
+            curve = self._read_clipboard()
         try:
             if settings.import_ppo > 0:
                 x, y = curve.get_xy()
@@ -379,7 +378,7 @@ class CurveAnalyze(qtw.QWidget):
     def _import_table(self):
 
         file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
-                                               dir=self.app_settings.last_used_folder,
+                                               dir=settings.last_used_folder,
                                                filter='dBExtract XY_data (*.txt)',
                                                )[0]
         if file:
@@ -390,7 +389,7 @@ class CurveAnalyze(qtw.QWidget):
         else:
             return
 
-        self.app_settings.update_attr(
+        settings.update_attr(
             "last_used_folder", os.path.dirname(file))
 
         with open(file, mode="rt") as extract_file:
@@ -640,10 +639,14 @@ class CurveAnalyze(qtw.QWidget):
         upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR")
         curve_median.add_name_suffix("median")
 
-        if settings.outlier_action == 0:  # Hide
+        if settings.outlier_action == 0 and outlier_indexes:  # Hide
             self._hide_curves(indexes=outlier_indexes)
-        elif settings.outlier_action == 1:  # Remove
+            for curve in (lower_fence, upper_fence, curve_median):
+                curve.add_name_suffix("before hiding")
+        elif settings.outlier_action == 1 and outlier_indexes:  # Remove
             self.remove_curves(indexes=outlier_indexes)
+            for curve in (lower_fence, upper_fence, curve_median):
+                curve.add_name_suffix("before removals")
 
         to_insert = {}
         to_insert[0] = upper_fence
@@ -696,6 +699,12 @@ class CurveAnalyze(qtw.QWidget):
                                                            )
 
             elif settings.smoothing_type == 2:
+                xy = signal_tools.smooth_curve_rectangular_no_interpolation(*curve.get_xy(),
+                                                           bandwidth=settings.smoothing_bandwidth,
+                                                           )
+
+
+            elif settings.smoothing_type == 3:
                 xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
                                                         bandwidth=settings.smoothing_bandwidth,
                                                         resolution=settings.smoothing_resolution_ppo,
@@ -775,9 +784,10 @@ class ProcessingDialog(qtw.QDialog):
 
         user_form_1.add_row(pwi.ComboBox("smoothing_type",
                                          None,
-                                         [("Butterworth 8th order, log spaced",),
-                                          ("Butterworth 4th order, log spaced",),
-                                          ("Gaussian - without interpolation",),
+                                         [("Butterworth 8th, log spaced",),
+                                          ("Butterworth 4th, log spaced",),
+                                          ("Rectangular, w/o interpolation",),
+                                          ("Gaussian, log spaced",),
                                           ]
                                          ),
                             "Type",
@@ -795,6 +805,12 @@ class ProcessingDialog(qtw.QDialog):
                                            ),
                             "Bandwidth (1/octave)",
                             )
+
+        def set_availability_of_resolution_option(smoothing_type_index):
+            available = True if smoothing_type_index in (0, 1, 3) else False
+            user_form_1._user_input_widgets["smoothing_resolution_ppo"].setEnabled(available)
+            
+        user_form_1._user_input_widgets["smoothing_type"].currentIndexChanged.connect(set_availability_of_resolution_option)
 
 
         # Outlier detection page
@@ -1021,6 +1037,7 @@ class SettingsDialog(qtw.QDialog):
 
 
 class AutoImporter(qtc.QThread):
+    global settings
     signal_new_import = qtc.Signal(signal_tools.Curve)
 
     def __init__(self):
@@ -1038,17 +1055,18 @@ class AutoImporter(qtc.QThread):
                 logging.warning(e)
 
 
-if __name__ == "__main__":
+def main():
+    global settings
 
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
     settings = pwi.Settings()
-    error_handler = pwi.ErrorHandler(app)
+    error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
-    mw = CurveAnalyze(settings)
-    mw.setWindowTitle("Curves - {}".format(version))
+    mw = CurveAnalyze()
+    mw.setWindowTitle("Linecraft - {}".format(version))
 
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
@@ -1069,13 +1087,13 @@ if __name__ == "__main__":
     # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [20, 70, 60]])))
     # mw._add_single_curve(None, signal_tools.Curve(np.array([[100, 200, 400], [90, 70, 160]])))
 
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
-    #                                                   [90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
-    #                                                   ])))
-
-    # mw._add_single_curve(None, signal_tools.Curve(np.array([[0,512],
-    #                                                   [0, 0],
+    # mw._add_single_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
+    #                                                   [55, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
     #                                                   ])))
 
     mw.show()
     app.exec()
+
+
+if __name__ == "__main__":
+    main()

@@ -521,7 +521,7 @@ def parse_args(settings):
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+def main():
     settings = pwi.Settings()
     args = parse_args(settings)
 
@@ -550,3 +550,7 @@ if __name__ == "__main__":
         windows.append(new_window())
 
     app.exec()
+
+
+if __name__ == "__main__":
+    main()

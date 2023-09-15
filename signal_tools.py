@@ -6,6 +6,7 @@ import logging
 from scipy import interpolate as intp
 from scipy.ndimage import gaussian_filter
 from scipy import signal as sig
+import time
 
 
 class TestSignal():
@@ -369,7 +370,7 @@ class Curve:
     """
     Item holding a 2D line and information with it such as:
         a dictionary called identification, that holds name, prefix, suffix
-    """
+    """  
 
     def __init__(self, initial_data):
         self._identification = {"prefix": "", "base": "", "suffixes": []}
@@ -384,6 +385,13 @@ class Curve:
         else:
             self._initial_data = initial_data
             self.set_xy(initial_data)
+
+    def _check_if_sorted_and_valid(self, flat_array):
+        is_sorted = lambda a: np.all(a[:-1] <= a[1:])
+        if not is_sorted(np.array(flat_array)):
+            raise LookupError("Frequency points are not sorted")
+        if flat_array[0] <= 0:
+            raise KeyError("Negatives or zeros are not accepted as frequency points.")
 
     def is_curve(self):
         xy = self.get_xy(ndarray=True)
@@ -457,10 +465,12 @@ class Curve:
     def set_xy(self, xy):
         if isinstance(xy, np.ndarray):
             if xy.shape[0] == 2:
+                self._check_if_sorted_and_valid(xy[0, :])
                 setattr(self, "_x", xy[0, :])
                 setattr(self, "_y", xy[1, :])
                 setattr(self, "_xy", xy)
             elif xy.shape[1] == 2:
+                self._check_if_sorted_and_valid(xy[:, 0])
                 setattr(self, "_x", xy[:, 0])
                 setattr(self, "_y", xy[:, 1])
                 setattr(self, "_xy", np.transpose(xy))
@@ -468,6 +478,7 @@ class Curve:
                 raise ValueError("xy is not an array with two columns or 2 rows")
 
         elif isinstance(xy, tuple) and len(xy[0]) == len(xy[1]):
+            self._check_if_sorted_and_valid(np.array(xy[0]))
             setattr(self, "_x", np.array(xy[0]))
             setattr(self, "_y", np.array(xy[1]))
             setattr(self, "_xy", np.row_stack([self._x, self._y]))
@@ -503,6 +514,7 @@ class Curve:
                 parts = [line.split("\t") for line in lines[i_start:i_stop]]
                 x = [float(part[0]) for part in parts]
                 y = [float(part[1]) for part in parts]
+                self._check_if_sorted_and_valid(x)
                 setattr(self, "_x", np.array(x))
                 setattr(self, "_y", np.array(y))
                 setattr(self, "_xy", np.row_stack([self._x, self._y]))
@@ -677,10 +689,23 @@ def generate_log_spaced_freq_list(freq_start, freq_end, ppo, must_include_freq=1
     freq_array = must_include_freq*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
     return freq_array
 
+def smooth_curve_rectangular_no_interpolation(x, y, bandwidth=3, ndarray=False):
+    y_filt = np.zeros(len(x), dtype=float)
+    y_power = 10**(y / 10)
+    for i, freq in enumerate(x):
+        f_critical = freq * 2**(-1 / 2 / bandwidth), freq * 2**(1 / 2 / bandwidth)
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
+        i_start = np.searchsorted(x, f_critical[0])
+        i_end = np.searchsorted(x, f_critical[1], side="right")
+        y_average_power = np.mean(y_power[i_start:i_end])
+        y_filt[i] = 10 * np.log10(y_average_power)
+
+    return np.column_stack((x, y_filt)) if ndarray else x, y_filt
+
 
 def smooth_curve_gaussian(x, y, bandwidth=3, resolution=96, ndarray=False):
-    x_intp, y_intp = interpolate_to_ppo(x, y, resolution, superset=True)
-    sigma = resolution / bandwidth  # one octave, divided by bandwidth
+    x_intp, y_intp = interpolate_to_ppo(x, y, resolution, superset=False)
+    sigma = resolution / bandwidth / 2  # one octave, divided by bandwidth
     y_filt = gaussian_filter(y_intp, sigma, mode="nearest")
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
@@ -693,15 +718,18 @@ def smooth_curve_butterworth(x, y, bandwidth=3, order=8, ndarray=False, FS=None)
 
     y_filt = np.zeros(len(x), dtype=float)
     for i, freq in enumerate(x):
-        fn = max(min(x), freq * 2**(-1 / 2 / bandwidth)), min(max(x), freq * 2**(1 / 2 / bandwidth))
-        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
-        sos = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
-        _, filtering_array = sig.sosfreqz(sos, x, fs=FS)
-        filtering_array_abs = np.abs(filtering_array)
-        filtered_array = 10**(y/10) * filtering_array_abs / np.sum(filtering_array_abs)
-        # in above line instead of the division by the sum, division by "resolution * bandwidth"
-        # should also have worked but has some offset in it..
-        y_filt[i] = 10 * np.log10(np.sum(filtered_array))
+        f_critical = freq * 2**(-1 / 2 / bandwidth), x[-1], freq * 2**(1 / 2 / bandwidth)
+        if f_critical[0] < x[0] or f_critical[1] > x[-1]:
+            y_filt[i] = np.nan
+        else:
+            # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
+            sos = sig.butter(order, f_critical, btype="bandpass", output="sos", fs=FS)
+            _, filtering_array = sig.sosfreqz(sos, x, fs=FS)
+            filtering_array_abs = np.abs(filtering_array)
+            filtered_array_of_power = 10**(y/10) * filtering_array_abs / np.sum(filtering_array_abs)
+            # in above line instead of the division by the sum, division by "resolution * bandwidth"
+            # should also have worked but has some offset in it..
+            y_filt[i] = 10 * np.log10(np.sum(filtered_array_of_power))
 
     return np.column_stack((x, y_filt)) if ndarray else x, y_filt
 
@@ -714,15 +742,18 @@ def smooth_log_spaced_curve_butterworth(x, y, bandwidth=3, resolution=96, order=
 
     y_filt = np.zeros(len(x_intp), dtype=float)
     for i, freq in enumerate(x_intp):
-        fn = max(min(x_intp), freq * 2**(-1 / 2 / bandwidth)), min(max(x_intp), freq * 2**(1 / 2 / bandwidth))
-        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
-        sos = sig.butter(order, fn, btype="bandpass", output="sos", fs=FS)
-        _, filtering_array = sig.sosfreqz(sos, x_intp, fs=FS)
-        filtering_array_abs = np.abs(filtering_array)
-        filtered_array = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
-        # in above line instead of the division by the sum, division by "resolution * bandwidth"
-        # should also have worked but has some offset in it..
-        y_filt[i] = 10 * np.log10(np.sum(filtered_array))
+        f_critical = freq * 2**(-1 / 2 / bandwidth), freq * 2**(1 / 2 / bandwidth)
+        if f_critical[0] < x_intp[0] or f_critical[1] > x_intp[-1]:
+            y_filt[i] = np.nan
+        else:
+            # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html#scipy.signal.butter
+            sos = sig.butter(order, f_critical, btype="bandpass", output="sos", fs=FS)
+            _, filtering_array = sig.sosfreqz(sos, x_intp, fs=FS)
+            filtering_array_abs = np.abs(filtering_array)
+            filtered_array_of_power = 10**(y_intp/10) * filtering_array_abs / np.sum(filtering_array_abs)
+            # in above line instead of the division by the sum, division by "resolution * bandwidth"
+            # should also have worked but has some offset in it..
+            y_filt[i] = 10 * np.log10(np.sum(filtered_array_of_power))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
@@ -736,8 +767,8 @@ def smooth_log_spaced_curve_butterworth_fast(x, y, bandwidth=3, resolution=96, o
     y_filt = np.zeros(len(x_intp), dtype=float)
     i_for_bandpass_calculation = int(len(y_filt) / 2)
     freq_for_bandpass_calculation = x_intp[i_for_bandpass_calculation]
-    Wn = (freq_for_bandpass_calculation * 2**(-1/2/bandwidth), freq_for_bandpass_calculation * 2**(1/2/bandwidth))
-    sos = sig.butter(4, Wn, btype="bandpass", output="sos", fs=FS)
+    f_critical = (freq_for_bandpass_calculation * 2**(-1/2/bandwidth), freq_for_bandpass_calculation * 2**(1/2/bandwidth))
+    sos = sig.butter(order, f_critical, btype="bandpass", output="sos", fs=FS)
     filter_response = np.abs(sig.sosfreqz(sos, x_intp, fs=FS)[1])
     filter_response = filter_response
 
@@ -751,9 +782,9 @@ def smooth_log_spaced_curve_butterworth_fast(x, y, bandwidth=3, resolution=96, o
         i_read_end = min(len(x_intp), len(x_intp) - offset)
 
         shifted_filter_response[i_write_start:i_write_end] = filter_response[i_read_start:i_read_end]
-        filtered_array = 10**(y_intp/10) * shifted_filter_response / np.sum(shifted_filter_response)
+        filtered_array_of_power = 10**(y_intp/10) * shifted_filter_response / np.sum(shifted_filter_response)
         
-        y_filt[i_filter_position] = 10 * np.log10(np.sum(filtered_array))
+        y_filt[i_filter_position] = 10 * np.log10(np.sum(filtered_array_of_power))
 
     return np.column_stack((x_intp, y_filt)) if ndarray else x_intp, y_filt
 
