@@ -587,9 +587,9 @@ class CurveAnalyze(qtw.QWidget):
 
         processing_dialog.exec()
 
-
     def _processing_dialog_return(self, processing_function_name):
         results = getattr(self, processing_function_name)()
+        to_beep = False
 
         if "to_insert" in results.keys():
             # sort the dict by highest key value first
@@ -597,12 +597,15 @@ class CurveAnalyze(qtw.QWidget):
                 _ = self._add_single_curve(
                     i, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
             self.signal_update_graph_request.emit()
-            self.signal_good_beep.emit()
+            to_beep = True
 
         if "result_text" in results.keys():
-            result_text_box = ResultTextBox(results["title"], results["result_text"])
-            result_text_box.exec()
-
+            result_text_box = ResultTextBox(results["title"], results["result_text"], parent=self)
+            result_text_box.show()
+            to_beep = True
+            
+        if to_beep:
+            self.signal_good_beep.emit()
 
     def _mean_and_median_analysis(self):
         curves = self.get_selected_curves()
@@ -805,11 +808,9 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_update_graph_request.emit()
 
 class ResultTextBox(qtw.QDialog):
-    global settings
-
-    def __init__(self, title, result_text):
-        super().__init__()
-        self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
+    def __init__(self, title, result_text, parent=None):
+        super().__init__(parent=parent)
+        self.setWindowModality(qtc.Qt.WindowModality.NonModal)
 
         layout = qtw.QVBoxLayout(self)
         self.setWindowTitle(title)
@@ -835,6 +836,7 @@ class ResultTextBox(qtw.QDialog):
         # Connections
         button_group.buttons()["ok_pushbutton"].clicked.connect(
             self.accept)
+        
 
 class ProcessingDialog(qtw.QDialog):
     global settings
