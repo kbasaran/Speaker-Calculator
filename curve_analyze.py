@@ -16,6 +16,7 @@ import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
 import matplotlib as mpl
 from tabulate import tabulate
+from io import StringIO
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -70,6 +71,7 @@ class CurveAnalyze(qtw.QWidget):
     signal_reposition_curves = qtc.Signal(list)
     signal_flash_curve = qtc.Signal(int)
     signal_graph_settings_changed = qtc.Signal()
+    signal_successful_table_import = qtc.Signal()
     # signal_key_pressed = qtc.Signal(str)
 
     def __init__(self):
@@ -393,9 +395,11 @@ class CurveAnalyze(qtw.QWidget):
         import_table_dialog = ImportDialog()
         import_table_dialog.signal_import_table_request.connect(
             self._import_table_requested)
+        self.signal_successful_table_import.connect(import_table_dialog.reject)
         import_table_dialog.show()
 
     def _import_table_requested(self, source, import_settings):
+        # get the input
         if source == "file":
             file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
                                                    dir=settings.last_used_folder,
@@ -403,23 +407,95 @@ class CurveAnalyze(qtw.QWidget):
                                                    )[0]
             if file:
                 try:
-                    os.path.isfile(file)
+                    if not os.path.isfile(file):
+                        raise TypeError("Not a file")
+                    else:
+                        # Looks good
+                        import_file = file
                 except:
-                    raise FileNotFoundError()
+                    raise FileNotFoundError
             else:
                 return
     
-            settings.update_attr(
-                "last_used_folder", os.path.dirname(file))
+            settings.update_attr("last_used_folder", os.path.dirname(import_file))
     
-            with open(file, mode="rt") as extract_file:
-                imported_raw = extract_file.read()
+            # with open(file, mode="rt") as extract_file:
+            #     import_file = extract_file
 
         elif source == "clipboard":
-            imported_raw = pyperclip.paste()
+            import_file = StringIO(pyperclip.paste())
 
+        # setup how to read it
+        if import_settings["no_header"] == 0:
+            skiprows = None
+            header = None
+        else:
+            skiprows = [*range(import_settings["no_header"] - 1)] if import_settings["no_header"] > 1 else None
+            header = 0
         
-        print(import_settings)
+        if import_settings["no_index"] == 0:
+            index_col = None
+        else:
+            index_col = import_settings["no_index"] - 1
+
+        # read it
+        try:
+            df = pd.read_csv(import_file,
+                               delimiter=import_settings["delimiter"],
+                               decimal=import_settings["decimal_separator"],
+                               skiprows=skiprows,
+                               header=header,
+                               index_col=index_col,
+                               # skip_blank_lines=True,
+                               # encoding='unicode_escape',
+                               skipinitialspace=True,  # since we only have numbers
+                               )
+        except IndexError:
+            raise IndexError("Check your import settings and if all your rows and columns have the same length in the imported text.")
+            return
+
+
+
+        # Transpose if frequencies are in indexes
+        if import_settings["layout_type"] == 1:
+            df = df.transpose()
+
+        # validate headers
+        try:
+            signal_tools.check_if_sorted_and_valid(df.columns)
+            df.columns = df.columns.astype(float)
+        except ValueError as e:
+            raise e
+            return
+        if len(df.columns) < 2:
+            raise ValueError("Curve needs to have more than one frequency point."
+                             f"Frequency points: {df.columns}")
+            return
+        if len(df.index) < 1:
+            raise ValueError("Import does not have any curves to put on graph.")
+            return
+        
+        # validate datatype
+        try:
+            df = df.astype(float)
+        except ValueError:
+            raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
+            return
+        
+        print()
+        print("columns: ", df.columns)
+        print("indexes: ", df.index)
+        print("info: ", df.info)
+
+        # Put it on the graph
+        for name, values in df.iterrows():
+            curve = signal_tools.Curve(np.column_stack((df.columns, values)))
+            curve.set_name_base(name)
+            _ = self._add_single_curve(None, curve, update_figure=False)
+
+        self.signal_update_graph_request.emit()
+        self.signal_successful_table_import.emit()
+        self.signal_good_beep.emit()        
 
 
     def _import_table_old(self):
@@ -1097,30 +1173,36 @@ class ImportDialog(qtw.QDialog):
         user_form = pwi.UserForm()
         layout.addWidget(user_form)
 
-        user_form.add_row(pwi.IntSpinBox("import_table_no_line_headers",
-                                         "Which line in the imported data contains the headers of the table."
-                                         "\nHeaders correspond to column names in a spreadsheet."),
-                          "Line number for headers",
-                          )
-
-        user_form.add_row(pwi.IntSpinBox("import_table_no_columns",
-                                         "Which column in the imported data contains the indexes."
-                                         "\nIndexes correspond to row names in a spreadsheet."),
-                          "Column number for indexes",
-                          )
-
         user_form.add_row(pwi.ComboBox("import_table_layout_type",
                                        "Choose how the data is laid out in the raw imported data.",
-                                       [("Columns are frequencies, indexes are items",),
-                                        ("Columns are items, indexes are frequencies",),
+                                       [("Headers are frequencies, indexes are names", 0),
+                                        ("Indexes are frequencies, headers are names", 1),
                                         ],
                                        ),
                           "Layout type",
                           )
 
+        user_form.add_row(pwi.IntSpinBox("import_table_no_line_headers",
+                                         "Which line in the imported data contains the headers of the table."
+                                         "\nHeaders correspond to column names in a spreadsheet; "
+                                         "'1' means column A, '2' means column B and so on."
+                                         "\n'0' means there is no header column in the import data."),
+                          "Line number of headers",
+                          )
+
+        user_form.add_row(pwi.IntSpinBox("import_table_no_columns",
+                                         "Which column in the imported data are the indexes."
+                                         "\nIndexes correspond to row names in a spreadsheet."
+                                         "\n'0' means there is no index column in the import data."),
+                          "Column number of indexes",
+                          )
+
+
+
         user_form.add_row(pwi.ComboBox("import_table_delimiter",
-                                       "Delimiter character that separetes the data per column.",
+                                       "Delimiter character that separates the data into columns.",
                                        [(", (comma)", ","),
+                                        ("; (semi-colon)", ";"),
                                         ("Tab", "\t"),
                                         ("Space", " "),
                                         ],
@@ -1129,7 +1211,8 @@ class ImportDialog(qtw.QDialog):
                           )
 
         user_form.add_row(pwi.ComboBox("import_table_decimal_separator",
-                                       "Decimal separator. '.' as default.",
+                                       "Decimal separator. '.' as default."
+                                       "Europe should use ',' officially but scientific community sticks to '.' as far as I understand.",
                                        [(". (dot)", "."),
                                         (", (comma)", ","),
                                         ],
@@ -1171,11 +1254,11 @@ class ImportDialog(qtw.QDialog):
 
 
     def _import_requested(self, source, user_form: pwi.UserForm):
-        self._save_form_values_to_settings(user_form)
+        # Pass to easier names
         form_values = user_form.get_form_values()
 
-        i_header = None if form_values["import_table_no_line_headers"] == 0 else form_values["import_table_no_line_headers"] - 1
-        i_index =  None if form_values["import_table_no_columns"] == 0 else form_values["import_table_no_columns"] - 1
+        no_header = form_values["import_table_no_line_headers"]
+        no_index =  form_values["import_table_no_columns"]
         
         layout_type_current_index = form_values["import_table_layout_type"]["current_index"]
         layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]
@@ -1186,12 +1269,22 @@ class ImportDialog(qtw.QDialog):
         decimal_separator_current_index = form_values["import_table_decimal_separator"]["current_index"]
         decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]
         
+        
         # Do validations
         if decimal_separator == delimiter:
             raise ValueError("Cannot have the same character for delimiter and decimal separator.")
+        elif layout_type == 0 and no_header == 0:
+            raise ValueError("Header line cannot be zero. Since you have selected"
+                             " headers as frequencies, there needs to be a line for headers.")
+        elif layout_type == 1 and no_index == 0:
+            raise ValueError("Index column cannot be zero. Since you have selected"
+                             " indexes as frequencies, there needs to be a column for indexes.")
+        else:
+            # Validations passed. Save settings.
+            self._save_form_values_to_settings(user_form)
         
         user_settings = {}
-        for key in ["i_header", "i_index", "layout_type", "delimiter", "decimal_separator"]:
+        for key in ["no_header", "no_index", "layout_type", "delimiter", "decimal_separator"]:
             user_settings[key] = locals().get(key)
         
         self.signal_import_table_request.emit(source, user_settings)
@@ -1366,7 +1459,7 @@ def main():
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
 
     settings = pwi.Settings()
-    error_handler = pwi.ErrorHandlerUser(app)
+    error_handler = pwi.ErrorHandlerDeveloper(app)
     sys.excepthook = error_handler.excepthook
     mw = CurveAnalyze()
     mw.setWindowTitle("Linecraft Qt - {}".format(version))

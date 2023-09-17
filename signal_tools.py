@@ -376,6 +376,7 @@ class Curve:
         self._identification = {"prefix": "", "base": "", "suffixes": []}
         self._visible = True
         self._reference = False
+        self._check_if_sorted_and_valid = check_if_sorted_and_valid
         if isinstance(initial_data, str):
             self._initial_data = initial_data.strip()
             if self.is_Klippel(self._initial_data):
@@ -385,13 +386,6 @@ class Curve:
         else:
             self._initial_data = initial_data
             self.set_xy(initial_data)
-
-    def _check_if_sorted_and_valid(self, flat_array):
-        is_sorted = lambda a: np.all(a[:-1] <= a[1:])
-        if not is_sorted(np.array(flat_array)):
-            raise LookupError("Frequency points are not sorted")
-        if flat_array[0] <= 0:
-            raise KeyError("Negatives or zeros are not accepted as frequency points.")
 
     def is_curve(self):
         xy = self.get_xy(ndarray=True)
@@ -590,6 +584,17 @@ class Curve:
 
     def is_visible(self):
         return self._visible
+
+
+def check_if_sorted_and_valid(flat_array):
+    # check if array of numbers
+    array = np.array(flat_array, dtype=float)
+
+    is_sorted = lambda a: np.all(a[:-1] < a[1:])
+    if not is_sorted(array):
+        raise ValueError("Frequency points are not sorted")
+    if array[0] <= 0:
+        raise ValueError("Negatives or zeros are not accepted as frequency points.")
 
 def discover_fs_from_time_signature(curve):
     if not any(["[ms]" in string for string in curve.klippel_attrs["unresolved_parts"]]):
