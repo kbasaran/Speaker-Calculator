@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 version = "XXX"
 
 
-def find_longest_match_in_name(names):
+def find_longest_match_in_name(names: list) -> str:
     """
     https://stackoverflow.com/questions/58585052/find-most-common-substring-in-a-list-of-strings
     https://www.adamsmith.haus/python/docs/difflib.SequenceMatcher.get_matching_blocks
@@ -38,7 +38,7 @@ def find_longest_match_in_name(names):
     Returns
     -------
     max_occurring_substring : str
-        The piece of string that accurs most commonly in the beginning of names.
+        The piece of string that accurs most commonly in the received list of names.
 
     """
     substring_counts = {}
@@ -95,10 +95,11 @@ class CurveAnalyze(qtw.QWidget):
     def _create_widgets(self):
         self.graph = MatplotlibWidget(settings)
         self.graph_buttons = pwi.PushButtonGroup(
-            {"import_curve": "Import curve",
-             "import_table": "Import table",
-             "auto_import": "Auto import",
-             "reset_indexes": "Reset indexes",
+            {
+            "import_curve": "Import curve",
+            "import_table": "Import table",
+            "auto_import": "Auto import",
+            "reset_indexes": "Reset indexes",
              "reset_colors": "Reset colors",
              "remove": "Remove",
              "rename": "Rename",
@@ -106,20 +107,25 @@ class CurveAnalyze(qtw.QWidget):
              "move_to_top": "Move to top",
              "hide": "Hide",
              "show": "Show",
-             "processing": "Processing",
              "set_reference": "Set reference",
+             "processing": "Processing",
              "export_table": "Export table",
-             "export_image": "Export image",
+             # "export_image": "Export image",
              "settings": "Settings",
+             "load": "Load",
+             "save": "Save",
              },
             {"import_curve": "Import 2D curve from clipboard",
              "auto_import": "Attempt an import whenever new data is found on the clipboard.",
              },
         )
         self.graph_buttons.user_values_storage(self._user_input_widgets)
+        self.graph_buttons.user_values_storage(self._user_input_widgets)
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
-        self._user_input_widgets["export_image_pushbutton"].setEnabled(False)
+        self._user_input_widgets["load_pushbutton"].setEnabled(False)
+        self._user_input_widgets["save_pushbutton"].setEnabled(False)
+        # self._user_input_widgets["export_image_pushbutton"].setEnabled(False)
 
         self.qlistwidget_for_curves = qtw.QListWidget()
         self.qlistwidget_for_curves.setSelectionMode(
@@ -132,6 +138,7 @@ class CurveAnalyze(qtw.QWidget):
 
     def _place_widgets(self):
         self.setLayout(qtw.QVBoxLayout())
+        # self.layout().setSpacing(0)
         self.layout().addWidget(self.graph, 3)
         self.layout().addWidget(self.graph_buttons)
         self.layout().addWidget(self.qlistwidget_for_curves, 1)
@@ -155,8 +162,8 @@ class CurveAnalyze(qtw.QWidget):
             self._show_curves)
         self._user_input_widgets["export_table_pushbutton"].clicked.connect(
             self._export_table)
-        self._user_input_widgets["export_image_pushbutton"].clicked.connect(
-            self._export_image)
+        # self._user_input_widgets["export_image_pushbutton"].clicked.connect(
+        #     self._export_image)
         self._user_input_widgets["auto_import_pushbutton"].toggled.connect(
             self._auto_importer_status_toggle)
         self._user_input_widgets["set_reference_pushbutton"].toggled.connect(
@@ -168,7 +175,11 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["import_curve_pushbutton"].clicked.connect(
             self.import_single_curve)
         self._user_input_widgets["import_table_pushbutton"].clicked.connect(
-            self._import_table)
+            self._import_table_clicked)
+        self._user_input_widgets["load_pushbutton"].clicked.connect(
+            self._load_clicked)
+        self._user_input_widgets["save_pushbutton"].clicked.connect(
+            self._save_clicked)        
         self.signal_update_graph_request.connect(self.graph.update_figure)
         self.signal_reposition_curves.connect(self.graph.change_lines_order)
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
@@ -176,6 +187,7 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
 
     def _export_table(self):
+        """Export selected curves to clipboard as a table."""
         if self.no_curve_selected():
             return
         if len(self.qlistwidget_for_curves.selectedItems()) > 1:
@@ -199,10 +211,8 @@ class CurveAnalyze(qtw.QWidget):
         pd.DataFrame(xy_export).to_clipboard(
             excel=True, index=False, header=False)
 
-    def _export_image(self):
-        raise NotImplementedError("Not ready yet")
-
     def _read_clipboard(self):
+        """Read a signal_tools.Curve object from clipboard."""
         data = pyperclip.paste()
         new_curve = signal_tools.Curve(data)
         if new_curve.is_curve():
@@ -379,7 +389,40 @@ class CurveAnalyze(qtw.QWidget):
             self.qlistwidget_for_curves.takeItem(i)
             self.curves.pop(i)
 
-    def _import_table(self):
+    def _import_table_clicked(self):
+        import_table_dialog = ImportDialog()
+        import_table_dialog.signal_import_table_request.connect(
+            self._import_table_requested)
+        import_table_dialog.show()
+
+    def _import_table_requested(self, source, import_settings):
+        if source == "file":
+            file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
+                                                   dir=settings.last_used_folder,
+                                                   filter='dBExtract XY_data (*.txt)',
+                                                   )[0]
+            if file:
+                try:
+                    os.path.isfile(file)
+                except:
+                    raise FileNotFoundError()
+            else:
+                return
+    
+            settings.update_attr(
+                "last_used_folder", os.path.dirname(file))
+    
+            with open(file, mode="rt") as extract_file:
+                imported_raw = extract_file.read()
+
+        elif source == "clipboard":
+            imported_raw = pyperclip.paste()
+
+        
+        print(import_settings)
+
+
+    def _import_table_old(self):
 
         file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
                                                dir=settings.last_used_folder,
@@ -623,8 +666,8 @@ class CurveAnalyze(qtw.QWidget):
         for curve in (curve_mean, curve_median):
             curve.set_name_base(representative_base_name)
 
-        curve_mean.add_name_suffix("mean")
-        curve_median.add_name_suffix("median")
+        curve_mean.add_name_suffix("mean per frequency point")
+        curve_median.add_name_suffix("mean per frequency point")
 
         i_insert = 0
         to_insert = {}
@@ -659,19 +702,19 @@ class CurveAnalyze(qtw.QWidget):
         upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR")
         curve_median.add_name_suffix("median")
 
-        if settings.outlier_action == 0 and outlier_indexes:  # Hide
+        if settings.outlier_action == 1 and outlier_indexes:  # Hide
             self._hide_curves(indexes=outlier_indexes)
             for curve in (lower_fence, upper_fence, curve_median):
-                curve.add_name_suffix("including hidden outliers")
-        elif settings.outlier_action == 1 and outlier_indexes:  # Remove
+                curve.add_name_suffix("calculated before hiding outliers")
+        elif settings.outlier_action == 2 and outlier_indexes:  # Remove
             self.remove_curves(indexes=outlier_indexes)
             for curve in (lower_fence, upper_fence, curve_median):
-                curve.add_name_suffix("including removed outliers")
+                curve.add_name_suffix("calculated before removing outliers")
 
         to_insert = {}
         to_insert[0] = upper_fence
-        to_insert[1] = curve_median
-        to_insert[2] = lower_fence
+        # to_insert[1] = curve_median
+        to_insert[1] = lower_fence
 
         line2d_kwargs = {"color": "k", "linestyle": "--"}
 
@@ -712,14 +755,14 @@ class CurveAnalyze(qtw.QWidget):
                 df[critical_columns].apply(lambda x: x * weighing_critical)
                 df = df / weighing_normalizer
             else:
-                logging.warning("Critical frequency range falls completely out of reference curve frequency range")
+                logging.warning("Critical frequency range does not contain any of the frequency points used in best fit")
 
             df.loc[:, "mean"] = df.mean(axis=1, skipna=True)
             df.sort_values(by=["mean"], ascending=True, inplace=True)
-            result_text = f"Reference curve name: {ref_curve.get_full_name()}"
+            result_text = f"Reference curve name: '{ref_curve.get_full_name()}'"
             result_text += f"\nAmount of frequency points: {len(ref_freqs)}"
             result_text += "\n\n"
-            result_text += tabulate(df[["mean"]], headers=("Item name", "Weighted error"))
+            result_text += tabulate(df[["mean"]], headers=("Item name", "Weighted average error"))
 
         return {"title": "Best fits", "result_text": result_text}
 
@@ -807,10 +850,17 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_graph_settings_changed.emit()
         self.signal_update_graph_request.emit()
 
+    def _load_clicked(self):
+        pass
+
+    def _save_clicked(self):
+        pass
+
+
 class ResultTextBox(qtw.QDialog):
     def __init__(self, title, result_text, parent=None):
         super().__init__(parent=parent)
-        self.setWindowModality(qtc.Qt.WindowModality.NonModal)
+        # self.setWindowModality(qtc.Qt.WindowModality.NonModal)
 
         layout = qtw.QVBoxLayout(self)
         self.setWindowTitle(title)
@@ -836,7 +886,7 @@ class ResultTextBox(qtw.QDialog):
         # Connections
         button_group.buttons()["ok_pushbutton"].clicked.connect(
             self.accept)
-        
+
 
 class ProcessingDialog(qtw.QDialog):
     global settings
@@ -845,6 +895,7 @@ class ProcessingDialog(qtw.QDialog):
     def __init__(self, curves):
         super().__init__()
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
+        self.setWindowTitle("Processing Menu")
         layout = qtw.QVBoxLayout(self)
         self.tab_widget = qtw.QTabWidget()
         layout.addWidget(self.tab_widget)
@@ -929,8 +980,8 @@ class ProcessingDialog(qtw.QDialog):
 
         user_form_2.add_row(pwi.ComboBox("outlier_action",
                                          "Action to carry out on curves that fall partly or fully outside the fence.",
-                                         [("Hide",),
-                                          # ("Hide and rename",),
+                                         [("None",),
+                                          ("Hide",),
                                           ("Remove",),
                                           ]
                                          ),
@@ -976,7 +1027,9 @@ class ProcessingDialog(qtw.QDialog):
                             )
 
         user_form_4.add_row(pwi.IntSpinBox("best_fit_critical_range_weight",
-                                           "Amount of weighing"),
+                                           "Multiplier to increase the weighting of the selected frequency range."
+                                           "Setting to 1 means there will be no weighting."
+                                           "Setting to 0 means the range will not be considered in the calculation"),
                             "Critical range weight",
                             )
 
@@ -1028,6 +1081,120 @@ class ProcessingDialog(qtw.QDialog):
         self.repaint()
         self.signal_processing_request.emit(processing_function_name)
         self.accept()
+
+
+class ImportDialog(qtw.QDialog):
+    global settings
+    signal_import_table_request = qtc.Signal(str, dict)
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        # self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
+        layout = qtw.QVBoxLayout(self)
+        self.setWindowTitle("Import table with curve(s)")
+
+        # Form
+        user_form = pwi.UserForm()
+        layout.addWidget(user_form)
+
+        user_form.add_row(pwi.IntSpinBox("import_table_no_line_headers",
+                                         "Which line in the imported data contains the headers of the table."
+                                         "\nHeaders correspond to column names in a spreadsheet."),
+                          "Line number for headers",
+                          )
+
+        user_form.add_row(pwi.IntSpinBox("import_table_no_columns",
+                                         "Which column in the imported data contains the indexes."
+                                         "\nIndexes correspond to row names in a spreadsheet."),
+                          "Column number for indexes",
+                          )
+
+        user_form.add_row(pwi.ComboBox("import_table_layout_type",
+                                       "Choose how the data is laid out in the raw imported data.",
+                                       [("Columns are frequencies, indexes are items",),
+                                        ("Columns are items, indexes are frequencies",),
+                                        ],
+                                       ),
+                          "Layout type",
+                          )
+
+        user_form.add_row(pwi.ComboBox("import_table_delimiter",
+                                       "Delimiter character that separetes the data per column.",
+                                       [(", (comma)", ","),
+                                        ("Tab", "\t"),
+                                        ("Space", " "),
+                                        ],
+                                       ),
+                          "Delimiter",
+                          )
+
+        user_form.add_row(pwi.ComboBox("import_table_decimal_separator",
+                                       "Decimal separator. '.' as default.",
+                                       [(". (dot)", "."),
+                                        (", (comma)", ","),
+                                        ],
+                                       ),
+                          "Decimal separator",
+                          )
+
+        # Buttons
+        button_group = pwi.PushButtonGroup({"open_file": "Open file..",
+                                            "read_clipboard": "Read clipboard",
+                                            "close": "Close",
+                                            },
+                                           {},
+                                           )
+        button_group.buttons()["open_file_pushbutton"].setDefault(True)
+        layout.addWidget(button_group)
+
+        # read values from settings
+        values_new = {}
+        for key, widget in user_form._user_input_widgets.items():
+            if isinstance(widget, qtw.QComboBox):
+                values_new[key] = {"current_index": getattr(settings, key)}
+            else:
+                values_new[key] = getattr(settings, key)
+        user_form.update_form_values(values_new)
+
+        # Connections
+        button_group.buttons()["close_pushbutton"].clicked.connect(self.reject)
+        button_group.buttons()["open_file_pushbutton"].clicked.connect(partial(self._import_requested, "file", user_form))
+        button_group.buttons()["read_clipboard_pushbutton"].clicked.connect(partial(self._import_requested, "clipboard", user_form))
+
+    def _save_form_values_to_settings(self, user_form: pwi.UserForm):
+        values = user_form.get_form_values()
+        for widget_name, value in values.items():
+            if isinstance(value, dict) and "current_index" in value.keys():
+                settings.update_attr(widget_name, value["current_index"])
+            else:
+                settings.update_attr(widget_name, value)
+
+
+    def _import_requested(self, source, user_form: pwi.UserForm):
+        self._save_form_values_to_settings(user_form)
+        form_values = user_form.get_form_values()
+
+        i_header = None if form_values["import_table_no_line_headers"] == 0 else form_values["import_table_no_line_headers"] - 1
+        i_index =  None if form_values["import_table_no_columns"] == 0 else form_values["import_table_no_columns"] - 1
+        
+        layout_type_current_index = form_values["import_table_layout_type"]["current_index"]
+        layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]
+
+        delimiter_current_index = form_values["import_table_delimiter"]["current_index"]
+        delimiter = form_values["import_table_delimiter"]["items"][delimiter_current_index][1]
+
+        decimal_separator_current_index = form_values["import_table_decimal_separator"]["current_index"]
+        decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]
+        
+        # Do validations
+        if decimal_separator == delimiter:
+            raise ValueError("Cannot have the same character for delimiter and decimal separator.")
+        
+        user_settings = {}
+        for key in ["i_header", "i_index", "layout_type", "delimiter", "decimal_separator"]:
+            user_settings[key] = locals().get(key)
+        
+        self.signal_import_table_request.emit(source, user_settings)
 
 
 class SettingsDialog(qtw.QDialog):
@@ -1115,19 +1282,19 @@ class SettingsDialog(qtw.QDialog):
         layout.addWidget(button_group)
 
         # read values from settings
-        for key, widget in user_form._user_input_widgets.items():
-            saved_setting = getattr(settings, key)
+        for widget_name, widget in user_form._user_input_widgets.items():
+            saved_setting = getattr(settings, widget_name)
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
 
-            elif key == "matplotlib_style":
+            elif widget_name == "matplotlib_style":
                 try:
                     index_from_settings = mpl_styles.index(saved_setting)
                 except IndexError:
                     index_from_settings = 0
                 widget.setCurrentIndex(index_from_settings)
 
-            elif key == "graph_grids":
+            elif widget_name == "graph_grids":
                 try:
                     index_from_settings = [widget.itemData(i) for i in range(
                         widget.count())].index(settings.graph_grids)
@@ -1159,15 +1326,15 @@ class SettingsDialog(qtw.QDialog):
             if returned == qtw.QMessageBox.Cancel:
                 return
 
-        for key, widget in user_input_widgets.items():
+        for widget_name, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
-                settings.update_attr(key, widget.isChecked())
-            elif key == "matplotlib_style":
-                settings.update_attr(key, widget.currentData())
-            elif key == "graph_grids":
-                settings.update_attr(key, widget.currentData())
+                settings.update_attr(widget_name, widget.isChecked())
+            elif widget_name == "matplotlib_style":
+                settings.update_attr(widget_name, widget.currentData())
+            elif widget_name == "graph_grids":
+                settings.update_attr(widget_name, widget.currentData())
             else:
-                settings.update_attr(key, widget.value())
+                settings.update_attr(widget_name, widget.value())
         self.signal_settings_changed.emit()
         self.accept()
 
@@ -1202,7 +1369,7 @@ def main():
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
     mw = CurveAnalyze()
-    mw.setWindowTitle("Linecraft - {}".format(version))
+    mw.setWindowTitle("Linecraft Qt - {}".format(version))
 
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()

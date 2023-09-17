@@ -52,6 +52,12 @@ class Settings:
     best_fit_critical_range_start_freq: int = 200
     best_fit_critical_range_end_freq: int = 5000
     best_fit_critical_range_weight: int = 5
+    import_table_no_line_headers: int = 2
+    import_table_no_columns: int = 1
+    import_table_layout_type: int = 0
+    import_table_delimiter: int = 0
+    import_table_decimal_separator: int = 0
+
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(
@@ -158,7 +164,7 @@ class SunkenLine(qtw.QFrame):
 
 
 class Title(qtw.QLabel):
-    def __init__(self, text):
+    def __init__(self, text:str):
         super().__init__()
         self.setText(text)
         self.setStyleSheet("font-weight: bold")
@@ -272,10 +278,11 @@ class UserForm(qtw.QWidget):
 
                 if isinstance(obj, qtw.QComboBox):
                     assert isinstance(value_new, dict)
-                    obj.clear()
-                    # assert all([key in value_new.keys() for key in ["items", "current_index"]])
-                    for item in value_new["items"]:
-                        obj.addItem(*item)
+                    if "items" in value_new.keys():
+                        obj.clear()
+                        # assert all([key in value_new.keys() for key in ["items", "current_index"]])
+                        for item in value_new.get("items", []):
+                            obj.addItem(*item)
                     obj.setCurrentIndex(value_new["current_index"])
 
                 elif isinstance(obj, qtw.QLineEdit):
