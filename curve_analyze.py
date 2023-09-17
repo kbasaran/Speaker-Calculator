@@ -153,7 +153,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["reset_colors_pushbutton"].clicked.connect(
             self._reset_colors_of_curves)
         self._user_input_widgets["rename_pushbutton"].clicked.connect(
-            self._rename_curve)
+            self._rename_curve_clicked)
         self._user_input_widgets["move_up_pushbutton"].clicked.connect(
             self.move_up_1)
         self._user_input_widgets["move_to_top_pushbutton"].clicked.connect(
@@ -314,41 +314,52 @@ class CurveAnalyze(qtw.QWidget):
             if not returned:
                 self.signal_good_beep.emit()
 
-    def _rename_curve(self, index: int = None, new_name: str = None):
+
+    def _rename_curve_clicked(self):
         """
         Update the curve and the screen name. Does not store the index part of the screen name.
         """
-        if isinstance(index, (list, np.ndarray)):
+        new_names = {}
+        
+        if self.no_curve_selected():
             self.signal_bad_beep.emit()
-        elif isinstance(index, (int, np.int32, np.int64)):
-            assert index > -1
-            i_to_act_on = index
-            list_item = self.qlistwidget_for_curves.item(i_to_act_on)
-            curve = self.curves[i_to_act_on]
-            text = new_name
-        else:
-            if self.no_curve_selected():
+            return
+
+        elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
+            indexes_and_curves = self.get_selected_curves(as_dict=True)
+            text, ok = qtw.QInputDialog.getText(self,
+                                                "Add suffix to multiple names",
+                                                "Add suffix:", qtw.QLineEdit.Normal,
+                                                "",
+                                                )
+            if not ok or text == '':
                 return
-            elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
-                raise NotImplementedError(
-                    "Can rename only one curve at a time")
-            else:
-                list_item = self.qlistwidget_for_curves.currentItem()
-                i_to_act_on = self.qlistwidget_for_curves.currentRow()
-                curve = self.curves[i_to_act_on]
 
-                text, ok = qtw.QInputDialog.getText(self,
-                                                    "Change curve name",
-                                                    "New name:", qtw.QLineEdit.Normal,
-                                                    curve.get_base_name_and_suffixes(),
-                                                    )
-                if not ok or text == '':
-                    self.signal_bad_beep.emit()
+            for index, curve in indexes_and_curves.items():
+                curve.add_name_suffix(text)
+                list_item = self.qlistwidget_for_curves.item(index)
+                list_item.setText(curve.get_full_name())
+                new_names[index] = curve.get_full_name()
 
-        curve.clear_name_suffixes()
-        curve.set_name_base(text)
-        list_item.setText(curve.get_full_name())
-        self.graph.update_labels({i_to_act_on: curve.get_full_name()})
+        else:
+            index = self.qlistwidget_for_curves.currentRow()
+            curve = self.curves[index]
+
+            text, ok = qtw.QInputDialog.getText(self,
+                                                "Change curve name",
+                                                "New name:", qtw.QLineEdit.Normal,
+                                                curve.get_base_name_and_suffixes(),
+                                                )
+            if not ok or text == '':
+                return
+
+            curve.clear_name_suffixes()
+            curve.set_name_base(text)
+            list_item = self.qlistwidget_for_curves.item(index)
+            list_item.setText(curve.get_full_name())
+            new_names[index] = curve.get_full_name()
+        
+        self.graph.update_labels(new_names)
 
     @qtc.Slot(signal_tools.Curve)
     def import_single_curve(self, curve: signal_tools.Curve = None):

@@ -89,7 +89,14 @@ class MatplotlibWidget(qtw.QWidget):
         if self._ref_index_and_curve and i <= self._ref_index_and_curve[0]:
             self._ref_index_and_curve[0] += 1
 
-        line, = self.ax.semilogx(*data, label=label, **line2d_kwargs)
+        # Modify curve before pasting if graph has a reference curve
+        x_in, y_in = data
+        if self._ref_index_and_curve:
+            ref_y_intp = self.reference_curve_interpolated(tuple(x_in))
+            y_in = y_in - ref_y_intp
+
+        # Paste the curve into graph
+        line, = self.ax.semilogx(x_in, y_in, label=label, **line2d_kwargs)
         self.lines_in_order.insert(i, line)
 
         self.update_line_zorders()
@@ -110,7 +117,7 @@ class MatplotlibWidget(qtw.QWidget):
         
         self.update_line_zorders()
         if update_figure:
-            self.update_figure()
+            self.update_figure(recalculate_limits=False)
 
     @lru_cache
     def reference_curve_interpolated(self, x:tuple):
