@@ -23,6 +23,3 @@ Separate target winding height from calculated winding height. Show calculated o
 N_winding should reduce 1 per layer
 "analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
 
-
-Curve analysis------------
-

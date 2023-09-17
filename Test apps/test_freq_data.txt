@@ -1,4 +1,0 @@
-XY_data
-DUTs, 100, 200
-Kerem, 85, 99
-Ali, 77, 66
