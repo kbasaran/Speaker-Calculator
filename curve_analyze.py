@@ -407,20 +407,16 @@ class CurveAnalyze(qtw.QWidget):
                                                    )[0]
             if file:
                 try:
-                    if not os.path.isfile(file):
-                        raise TypeError("Not a file")
-                    else:
-                        # Looks good
+                    if os.path.isfile(file):
                         import_file = file
+                    else:
+                        raise Exception
                 except:
                     raise FileNotFoundError
             else:
                 return
     
             settings.update_attr("last_used_folder", os.path.dirname(import_file))
-    
-            # with open(file, mode="rt") as extract_file:
-            #     import_file = extract_file
 
         elif source == "clipboard":
             import_file = StringIO(pyperclip.paste())
@@ -455,7 +451,6 @@ class CurveAnalyze(qtw.QWidget):
             return
 
 
-
         # Transpose if frequencies are in indexes
         if import_settings["layout_type"] == 1:
             df = df.transpose()
@@ -467,6 +462,8 @@ class CurveAnalyze(qtw.QWidget):
         except ValueError as e:
             raise e
             return
+
+        # Validate size
         if len(df.columns) < 2:
             raise ValueError("Curve needs to have more than one frequency point."
                              f"Frequency points: {df.columns}")
@@ -482,12 +479,9 @@ class CurveAnalyze(qtw.QWidget):
             raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
             return
         
-        print()
-        print("columns: ", df.columns)
-        print("indexes: ", df.index)
-        print("info: ", df.info)
+        logging.info(df.info)
 
-        # Put it on the graph
+        # Put on the graph
         for name, values in df.iterrows():
             curve = signal_tools.Curve(np.column_stack((df.columns, values)))
             curve.set_name_base(name)
@@ -1307,7 +1301,7 @@ class SettingsDialog(qtw.QDialog):
                           "Show legend")
 
         user_form.add_row(pwi.IntSpinBox("max_legend_size", "Limit the items that can be listed on the legend. Does not affect the shown curves in graph"),
-                          "Maximum legend size in graph")
+                          "Nmax for graph legend")
 
         mpl_styles = [
             style_name for style_name in mpl.style.available if style_name[0] != "_"]
@@ -1471,28 +1465,28 @@ def main():
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [50, 50, 50]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [70, 85, 70]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [75, 70, 80]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [60, 75, 90]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [90, 70, 65]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [85, 80, 80]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [70, 70, 80]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [60, 70, 90]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [90, 70, 60]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [20, 70, 60]])))
-    mw._add_single_curve(None, signal_tools.Curve(
-        np.array([[125, 250, 500], [90, 70, 160]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [50, 50, 50]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [70, 85, 70]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [75, 70, 80]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [60, 75, 90]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [90, 70, 65]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [85, 80, 80]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [70, 70, 80]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [60, 70, 90]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [90, 70, 60]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [20, 70, 60]])))
+    # mw._add_single_curve(None, signal_tools.Curve(
+    #     np.array([[125, 250, 500], [90, 70, 160]])))
 
     # mw._add_single_curve(None, signal_tools.Curve(np.array([[0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     #                                                   [55, 90, 80, 90, 80, 90, 100, 100, 100, 80, 90],
