@@ -6,17 +6,31 @@ import json
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
-# from PySide6 import QtGui as qtg
+from PySide6 import QtGui as qtg
 
-from graphing import MatplotlibWidget
-import personalized_widgets as pwi
+from generictools.graphing_widget import MatplotlibWidget
+import generictools.personalized_widgets as pwi
 
 import logging
-logging.basicConfig(level=logging.INFO)
+from pathlib import Path
 
 # https://realpython.com/python-super/#an-overview-of-pythons-super-function
 # super(super_of_which_class?=this class, in_which_object?=self)
 # The parameterless call to super() is recommended and sufficient for most use cases
+
+
+app_definitions = {"app_name": "Speaker Stuff Calculator",
+                   "version": "0.2.0",
+                   # "version": "Test build " + today.strftime("%Y.%m.%d"),
+                   "description": "Loudspeaker design and calculations",
+                   "copyright": "Copyright (C) 2023 Kerem Basaran",
+                   "icon_path": str(Path("./logo/icon.ico")),
+                   "author": "Kerem Basaran",
+                   "author_short": "kbasaran",
+                   "email": "kbasaran@gmail.com",
+                   "website": "https://github.com/kbasaran",
+                   }
+
 
 class LeftHandForm(pwi.UserForm):
     signal_save_clicked = qtc.Signal()
@@ -360,7 +374,7 @@ class MainWindow(qtw.QMainWindow):
 
     def _create_widgets(self):
         self._lh_form = LeftHandForm()
-        self.graph = MatplotlibWidget()
+        self.graph = MatplotlibWidget(settings)
         self.graph_data_choice = pwi.ChoiceButtonGroup("_graph_buttons",
 
                                                    {0: "SPL",
@@ -447,13 +461,13 @@ class MainWindow(qtw.QMainWindow):
         try:
             file = path_unverified[0]
             if file:
+                file = (file + ".lc" if file[-4:] != ".ssf" else file)
                 assert os.path.isdir(os.path.dirname(file))
-                self.global_settings.update_attr(
-                    "last_used_folder", os.path.dirname(file))
             else:
                 return  # nothing was selected, pick file canceled
         except:
-            raise NotADirectoryError
+            raise NotADirectoryError(file)
+        self.global_settings.update_attr("last_used_folder", os.path.dirname(file))
 
         json_string = json.dumps(
             self._lh_form.get_form_values(), indent=4)
@@ -475,8 +489,7 @@ class MainWindow(qtw.QMainWindow):
         try:
             os.path.isfile(file)
         except:
-            raise FileNotFoundError()
-            return
+            raise FileNotFoundError(file)
 
         self.global_settings.update_attr(
             "last_used_folder", os.path.dirname(file))
@@ -503,7 +516,7 @@ def error_handler(etype, value, tb):
     message_box.setEscapeButton(qtw.QMessageBox.Ignore)
     message_box.setDefaultButton(qtw.QMessageBox.Close)
 
-    close_button.clicked.connect(logging.warning(error_msg))
+    close_button.clicked.connect(logger.warning(error_msg))
 
     message_box.exec()
 
@@ -515,35 +528,56 @@ def parse_args(settings):
                                      description="Main module for application.",
                                      epilog="Kerem Basaran - 2023",
                                      )
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), action="store",
                         help="Path to a '*.ssf' file. This will open with preset values.")
+
+    parser.add_argument('-d', '--debuglevel', nargs="?", default="warning", action="store",
+                        help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
 
 
 def main():
+    global settings, logger
+
     settings = pwi.Settings()
     args = parse_args(settings)
 
+    # ---- Setup logging
+    log_level = getattr(logging, args.debuglevel.upper(), logging.WARNING)
+    home_folder = os.path.expanduser("~")
+    log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
+    logging.basicConfig(filename=log_filename, level=log_level, force=True)
+    logger = logging.getLogger()
+    logger.info(f"Setting log level to: {log_level}")
+
+    # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
-        # there is a new recommendation with qApp but how to dod the sys.argv with that?
+        # there is a new recommendation with qApp but how to do the sys.argv with that?
+        # app.setQuitOnLastWindowClosed(True)  # is this necessary??
+        app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
+    # ---- Create sound engine
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
     sound_engine_thread.start(qtc.QThread.HighPriority)
-    # app.aboutToQuit.connect(sound_engine.release_all)  # is this necessary??
-    sys.excepthook = error_handler
+
+    # ---- Catch exceptions and handle with pop-up widget
+    error_handler = pwi.ErrorHandlerUser(app)
+    sys.excepthook = error_handler.excepthook
 
     def new_window(**kwargs):
         mw = MainWindow(settings, sound_engine, **kwargs)
         mw.signal_new_window.connect(lambda kwargs: new_window(**kwargs))
+        mw.setWindowTitle(app_definitions["app_name"])
         mw.show()
         return mw
 
     windows = []
     if args.infile:
+        logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
         mw.status_bar().show_message(f"Opened file '{args.infile.name}'")
     else:
