@@ -404,7 +404,7 @@ class MainWindow(qtw.QMainWindow):
         self._add_status_bar()
         self._make_connections()
         if user_form_dict:
-            self._lh_form.update_form_values(user_form_dict)
+            self.lh_form.update_form_values(user_form_dict)
         elif open_user_file:
             self.load_preset_file(open_user_file)
 
@@ -426,7 +426,11 @@ class MainWindow(qtw.QMainWindow):
         about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
-        self._lh_form = LeftHandForm()
+        
+        # ---- Left hand form
+        self.lh_form = LeftHandForm()
+        
+        # ---- Graph
         self.graph = MatplotlibWidget(settings)
         self.graph_data_choice = pwi.ChoiceButtonGroup("_graph_buttons",
 
@@ -448,6 +452,7 @@ class MainWindow(qtw.QMainWindow):
                                                     6: "/",
                                                     },
 
+        # ---- Graph buttons
                                                    )
         self._graph_buttons = pwi.PushButtonGroup({"update_results": "Update results",
                                               "export_curve": "Export curve",
@@ -463,12 +468,25 @@ class MainWindow(qtw.QMainWindow):
                                               },
                                              )
 
+        # Text boxes
         self.results_textbox = qtw.QPlainTextEdit()
         self.notes_textbox = qtw.QPlainTextEdit()        
         self.textboxes_layout = qtw.QHBoxLayout()
-        self.textboxes_layout.addWidget(self.results_textbox)
-        self.textboxes_layout.addWidget(self.notes_textbox)
+        
+        results_section = qtw.QWidget()
+        results_section_layout = qtw.QVBoxLayout(results_section)
+        # results_section_layout.addWidget(pwi.Title("Results"))
+        results_section_layout.addWidget(self.results_textbox)
+        
+        notes_section = qtw.QWidget()
+        notes_section_layout = qtw.QVBoxLayout(notes_section)
+        # notes_section_layout.addWidget(pwi.Title("Notes"))
+        notes_section_layout.addWidget(self.notes_textbox)
+        
+        self.textboxes_layout.addWidget(results_section)
+        self.textboxes_layout.addWidget(notes_section)
 
+        # ---- Right hand side
         self._rh_widget = qtw.QWidget()
 
     def _place_widgets(self):
@@ -476,8 +494,8 @@ class MainWindow(qtw.QMainWindow):
         self._center_layout = qtw.QHBoxLayout(self._center_widget)
         self.setCentralWidget(self._center_widget)
 
-        self._center_layout.addWidget(self._lh_form)
-        self._lh_form.setSizePolicy(
+        self._center_layout.addWidget(self.lh_form)
+        self.lh_form.setSizePolicy(
             qtw.QSizePolicy.Fixed, qtw.QSizePolicy.Fixed)
 
         self._center_layout.addWidget(self._rh_widget)
@@ -492,8 +510,8 @@ class MainWindow(qtw.QMainWindow):
         self._rh_layout.addLayout(self.textboxes_layout, 2)
 
     def _make_connections(self):
-        self._lh_form.signal_good_beep.connect(self.signal_good_beep)
-        self._lh_form.signal_bad_beep.connect(self.signal_bad_beep)
+        self.lh_form.signal_good_beep.connect(self.signal_good_beep)
+        self.lh_form.signal_bad_beep.connect(self.signal_bad_beep)
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
@@ -518,7 +536,7 @@ class MainWindow(qtw.QMainWindow):
         self.global_settings.update_attr("last_used_folder", os.path.dirname(file))
 
         json_string = json.dumps(
-            self._lh_form.get_form_values(), indent=4)
+            self.lh_form.get_form_values(), indent=4)
         with open(file, "wt") as f:
             f.write(json_string)
         self.signal_good_beep.emit()
@@ -543,12 +561,12 @@ class MainWindow(qtw.QMainWindow):
         self.global_settings.update_attr(
             "last_used_folder", os.path.dirname(file))
         with open(file, "rt") as f:
-            self._lh_form.update_form_values(json.load(f))
+            self.lh_form.update_form_values(json.load(f))
         self.signal_good_beep.emit()
 
     def duplicate_window(self):
         self.signal_new_window.emit(
-            {"user_form_dict": self._lh_form.get_form_values()})
+            {"user_form_dict": self.lh_form.get_form_values()})
 
     def open_settings_dialog(self):
         settings_dialog = SettingsDialog(parent=self)
