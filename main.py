@@ -1,8 +1,7 @@
 import os
 import sys
-import traceback
-import numpy as np
 import json
+from dataclasses import dataclass, fields
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
@@ -13,6 +12,10 @@ import generictools.personalized_widgets as pwi
 
 import logging
 from pathlib import Path
+import matplotlib as mpl
+import pyperclip  # must install xclip on Linux together with this!!
+from functools import partial
+
 
 # https://realpython.com/python-super/#an-overview-of-pythons-super-function
 # super(super_of_which_class?=this class, in_which_object?=self)
@@ -31,28 +34,72 @@ app_definitions = {"app_name": "Speaker Stuff Calculator",
                    "website": "https://github.com/kbasaran",
                    }
 
+@dataclass
+class Settings:
+    app_name: str = app_definitions["app_name"]
+    author: str = app_definitions["author"]
+    author_short: str = app_definitions["author_short"]
+    version: str = app_definitions["version"]
+    GAMMA: float = 1.401  # adiabatic index of air
+    P0: int = 101325
+    RHO: float = 1.1839  # 25 degrees celcius
+    Kair: float = 101325. * RHO
+    c_air: float = (P0 * GAMMA / RHO)**0.5
+    vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
+    f_min: int = 10
+    f_max: int = 3000
+    A_beep: int = 0.25
+    last_used_folder: str = os.path.expanduser('~')
+    show_legend: bool = True
+    max_legend_size: int = 10
+    matplotlib_style: str = "bmh"
+    graph_grids: str = "default"
+
+
+    def __post_init__(self):
+        settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
+        self.settings_sys = qtc.QSettings(
+            self.author_short, settings_storage_title)
+        self.read_all_from_system()
+
+    def update_attr(self, attr_name, new_val):
+        assert type(getattr(self, attr_name)) == type(new_val)
+        setattr(self, attr_name, new_val)
+        self.settings_sys.setValue(attr_name, getattr(self, attr_name))
+
+    def write_all_to_system(self):
+        for field in fields(self):
+            self.settings_sys.setValue(field.name, getattr(self, field.name))
+
+    def read_all_from_system(self):
+        for field in fields(self):
+            setattr(self, field.name, self.settings_sys.value(
+                field.name, field.default, type=type(field.default)))
+
+    def as_dict(self):
+        settings = {}
+        for field in fields(self):
+            settings[field] = getattr(self, field.name)
+        return settings
+
+    def __repr__(self):
+        return str(self.as_dict())
+
 
 class LeftHandForm(pwi.UserForm):
     signal_save_clicked = qtc.Signal()
     signal_load_clicked = qtc.Signal()
     signal_new_clicked = qtc.Signal()
-    signal_beep_clicked = qtc.Signal()  # no need to write args in this like float, float???
+    signal_good_beep = qtc.Signal()
+    signal_bad_beep = qtc.Signal()
 
     def __init__(self):
         super().__init__()
-
         self._populate_form()
-        self._make_connections()
 
     def _populate_form(self):
 
-        self.add_row(pwi.PushButtonGroup({"load": "Load", "save": "Save", "new": "New", "beep": "Beeep"},
-                                      {"load": "Load parameters from a file",
-                                       "save": "Save parameters to a file",
-                                       "new": "Create another instance of the application, carrying all existing parameters",
-                                       "beep": "just beep",
-                                       }))
-
+        # ---- General specs
         self.add_row(pwi.Title("General speaker specifications"))
 
         self.add_row(pwi.FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
@@ -85,7 +132,7 @@ class LeftHandForm(pwi.UserForm):
                       description="Sd (cm²)"
                       )
 
-        # ----------------------------------------------------
+        # ---- Motor specs
         self.add_row(pwi.SunkenLine())
 
         self.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
@@ -97,14 +144,14 @@ class LeftHandForm(pwi.UserForm):
         self._user_input_widgets["motor_spec_type"].setStyleSheet(
             "font-weight: bold")
 
-        # Make a stacked widget for different motor definition parameters
+        # ---- Make a stacked widget for different motor definition parameters
         self.motor_definition_stacked = qtw.QStackedWidget()
         self._user_input_widgets["motor_spec_type"].currentIndexChanged.connect(
             self.motor_definition_stacked.setCurrentIndex)
 
         self.add_row(self.motor_definition_stacked)
 
-        # Make the first page of stacked widget for "Define Coil Dimensions and Average B"
+        # ---- Make the first page of stacked widget for "Define Coil Dimensions and Average B"
         motor_definition_p1 = pwi.SubForm()
         self.motor_definition_stacked.addWidget(motor_definition_p1)
 
@@ -189,7 +236,7 @@ class LeftHandForm(pwi.UserForm):
                       into_form=motor_definition_p2,
                       )
 
-        # Make the third page of stacked widget for "Define Bl, Rdc, Mms"
+        # ---- Make the third page of stacked widget for "Define Bl, Rdc, Mms"
         motor_definition_p3 = pwi.SubForm()
         self.motor_definition_stacked.addWidget(motor_definition_p3)
 
@@ -216,7 +263,7 @@ class LeftHandForm(pwi.UserForm):
                       into_form=motor_definition_p3,
                       )
 
-        # ----------------------------------------------------
+        # ---- Mechanical specs
         self.add_row(pwi.SunkenLine())
 
         self.add_row(pwi.Title("Motor mechanical specifications"))
@@ -245,7 +292,7 @@ class LeftHandForm(pwi.UserForm):
                       description="Former bottom ext. (mm)",
                       )
 
-        # ----------------------------------------------------
+        # ---- Closed box specs
         self.add_row(pwi.SunkenLine())
 
         self.add_row(pwi.Title("Closed box specifications"))
@@ -262,7 +309,7 @@ class LeftHandForm(pwi.UserForm):
                       description="Qa - box absorption",
                       )
 
-        # ----------------------------------------------------
+        # ---- Secoend degree of freedom
         self.add_row(pwi.SunkenLine())
 
         self.add_row(pwi.Title("Second degree of freedom"))
@@ -284,7 +331,7 @@ class LeftHandForm(pwi.UserForm):
                       description="Damping coefficient (kg/s)",
                       )
 
-        # ----------------------------------------------------
+        # ---- Electrical input
         self.add_row(pwi.SunkenLine())
 
         self.add_row(pwi.Title("Electrical Input"))
@@ -317,7 +364,7 @@ class LeftHandForm(pwi.UserForm):
                       description="Nominal impedance",
                       )
 
-        # ----------------------------------------------------
+        # ---- System type
         self.add_row(pwi.SunkenLine())
 
         self.add_row(pwi.Title("System type"))
@@ -339,27 +386,19 @@ class LeftHandForm(pwi.UserForm):
                                         )
                       )
 
-    def _make_connections(self):
-        def raise_error():
-            raise FileExistsError
-        self._user_input_widgets["load_pushbutton"].clicked.connect(
-            self.signal_load_clicked)
-        self._user_input_widgets["save_pushbutton"].clicked.connect(
-            self.signal_save_clicked)
-        self._user_input_widgets["new_pushbutton"].clicked.connect(
-            self.signal_new_clicked)
-        self._user_input_widgets["beep_pushbutton"].clicked.connect(
-            self.signal_beep_clicked)
-
 
 class MainWindow(qtw.QMainWindow):
     signal_new_window = qtc.Signal(dict)  # new_window with kwargs as dict
-    signal_beep = qtc.Signal(float, float)
+    signal_good_beep = qtc.Signal()
+    signal_bad_beep = qtc.Signal()
+    signal_user_settings_changed = qtc.Signal()
 
     def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
+        self.setWindowTitle(app_definitions["app_name"])
         self.global_settings = settings
         self._create_core_objects()
+        self._create_menu_bar()
         self._create_widgets()
         self._place_widgets()
         self._add_status_bar()
@@ -371,6 +410,20 @@ class MainWindow(qtw.QMainWindow):
 
     def _create_core_objects(self):
         pass
+
+    def _create_menu_bar(self):
+        menu_bar = self.menuBar()
+        
+        file_menu = menu_bar.addMenu("File")
+        new_window_action = file_menu.addAction("New window", self.duplicate_window)
+        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_state_from_it)
+        save_action = file_menu.addAction("Save state..", self.save_state_to_file)
+
+        edit_menu = menu_bar.addMenu("Edit")
+        settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
+
+        help_menu = menu_bar.addMenu("Help")
+        about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
         self._lh_form = LeftHandForm()
@@ -438,20 +491,15 @@ class MainWindow(qtw.QMainWindow):
         self._rh_layout.addWidget(self._graph_buttons)
         self._rh_layout.addLayout(self.textboxes_layout, 2)
 
-
     def _make_connections(self):
-
-        self._lh_form.signal_beep_clicked.connect(sound_engine.good_beep)
-        self._lh_form.signal_save_clicked.connect(self.save_preset_to_pick_file)
-        self._lh_form.signal_load_clicked.connect(self.load_preset_with_pick_file)
-        self._lh_form.signal_new_clicked.connect(self.duplicate_window)
-
+        self._lh_form.signal_good_beep.connect(self.signal_good_beep)
+        self._lh_form.signal_bad_beep.connect(self.signal_bad_beep)
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
         self.statusBar().showMessage("Test", 2000)
 
-    def save_preset_to_pick_file(self):
+    def save_state_to_file(self):
 
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
                                                           dir=self.global_settings.last_used_folder,
@@ -461,7 +509,7 @@ class MainWindow(qtw.QMainWindow):
         try:
             file = path_unverified[0]
             if file:
-                file = (file + ".lc" if file[-4:] != ".ssf" else file)
+                file = (file + ".ssf" if file[-4:] != ".ssf" else file)
                 assert os.path.isdir(os.path.dirname(file))
             else:
                 return  # nothing was selected, pick file canceled
@@ -473,8 +521,9 @@ class MainWindow(qtw.QMainWindow):
             self._lh_form.get_form_values(), indent=4)
         with open(file, "wt") as f:
             f.write(json_string)
+        self.signal_good_beep.emit()
 
-    def load_preset_with_pick_file(self):
+    def pick_a_file_and_load_state_from_it(self):
         file = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
                                                dir=self.global_settings.last_used_folder,
                                                filter='Speaker stuff files (*.ssf)',
@@ -495,59 +544,229 @@ class MainWindow(qtw.QMainWindow):
             "last_used_folder", os.path.dirname(file))
         with open(file, "rt") as f:
             self._lh_form.update_form_values(json.load(f))
+        self.signal_good_beep.emit()
 
     def duplicate_window(self):
         self.signal_new_window.emit(
             {"user_form_dict": self._lh_form.get_form_values()})
 
+    def open_settings_dialog(self):
+        settings_dialog = SettingsDialog(parent=self)
+        settings_dialog.signal_settings_changed.connect(
+            self._settings_dialog_return)
 
-def error_handler(etype, value, tb):
-    global app
-    error_msg = ''.join(traceback.format_exception(etype, value, tb))
-    message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
-                                  "Error",
-                                  error_msg +
-                                  "\nYour application may now be in an unstable state."
-                                  "\n\nThis event will be logged unless ignored.",
-                                  )
-    message_box.addButton(qtw.QMessageBox.Ignore)
-    close_button = message_box.addButton(qtw.QMessageBox.Close)
+        return_value = settings_dialog.exec()
+        # What does it return normally?
+        if return_value:
+            pass
 
-    message_box.setEscapeButton(qtw.QMessageBox.Ignore)
-    message_box.setDefaultButton(qtw.QMessageBox.Close)
+    def _settings_dialog_return(self):
+        self.signal_user_settings_changed.emit()
+        self.graph.update_figure(recalculate_limits=False)
+        self.signal_good_beep.emit()
 
-    close_button.clicked.connect(logger.warning(error_msg))
+    def open_about_menu(self):
+        result_text = "\n".join([
+        "Linecraft - Frequency response display and statistics tool",
+        f"Version: {app_definitions['version']}",
+        "",
+        f"Copyright (C) 2023 - {app_definitions['author']}",
+        f"{app_definitions['website']}",
+        f"{app_definitions['email']}",
+        "",
+        "This program is free software: you can redistribute it and/or modify",
+        "it under the terms of the GNU General Public License as published by",
+        "the Free Software Foundation, either version 3 of the License, or",
+        "(at your option) any later version.",
+        "",
+        "This program is distributed in the hope that it will be useful,",
+        "but WITHOUT ANY WARRANTY; without even the implied warranty of",
+        "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
+        "GNU General Public License for more details.",
+        "",
+        "You should have received a copy of the GNU General Public License",
+        "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
+        "",
+        "This software uses Qt for Python under the GPLv3 license.",
+        "https://www.qt.io/",
+        "",
+        "See 'requirements.txt' for an extensive list of Python libraries used.",
+        ])
+        text_box = pwi.ResultTextBox("About", result_text, monospace=False)
+        text_box.exec()
 
-    message_box.exec()
+    def _not_implemented_popup(self):
+        message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
+                                      "Feature not Implemented",
+                                      )
+        message_box.setStandardButtons(qtw.QMessageBox.Ok)
+        message_box.exec()
+
+class SettingsDialog(qtw.QDialog):
+    global settings
+    signal_settings_changed = qtc.Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
+        layout = qtw.QVBoxLayout(self)
+
+        # ---- Form
+        user_form = pwi.UserForm()
+        layout.addWidget(user_form)
+
+        user_form.add_row(pwi.CheckBox("show_legend", "Show legend on the graph"),
+                          "Show legend")
+
+        user_form.add_row(pwi.IntSpinBox("max_legend_size", "Limit the items that can be listed on the legend. Does not affect the shown curves in graph"),
+                          "Nmax for graph legend")
+
+        mpl_styles = [
+            style_name for style_name in mpl.style.available if style_name[0] != "_"]
+        user_form.add_row(pwi.ComboBox("matplotlib_style",
+                                       "Style for the canvas. To see options, web search: 'matplotlib style sheets reference'",
+                                       [(style_name, style_name)
+                                        for style_name in mpl_styles],
+                                       ),
+                          "Matplotlib style",
+                          )
+
+        user_form.add_row(pwi.ComboBox("graph_grids",
+                                       None,
+                                       [("Style default", "default"),
+                                        ("Major only", "major only"),
+                                        ("Major and minor", "major and minor"),
+                                        ],
+                                       ),
+                          "Graph grid view",
+                          )
+
+
+        user_form.add_row(pwi.SunkenLine())
+
+        user_form.add_row(pwi.FloatSpinBox("A_beep",
+                                           "Amplitude of the beep. Not in dB. 0 is off, 1 is maximum amplitude",
+                                           min_max=(0, 1),
+                                           ),
+                          "Beep amplitude",
+                          )
+
+        # ---- Buttons
+        button_group = pwi.PushButtonGroup({"save": "Save",
+                                            "cancel": "Cancel",
+                                            },
+                                           {},
+                                           )
+        button_group.buttons()["save_pushbutton"].setDefault(True)
+        layout.addWidget(button_group)
+
+        # ---- read values from settings
+        for widget_name, widget in user_form._user_input_widgets.items():
+            saved_setting = getattr(settings, widget_name)
+            if isinstance(widget, qtw.QCheckBox):
+                widget.setChecked(saved_setting)
+
+            elif widget_name == "matplotlib_style":
+                try:
+                    index_from_settings = mpl_styles.index(saved_setting)
+                except IndexError:
+                    index_from_settings = 0
+                widget.setCurrentIndex(index_from_settings)
+
+            elif widget_name == "graph_grids":
+                try:
+                    index_from_settings = [widget.itemData(i) for i in range(
+                        widget.count())].index(settings.graph_grids)
+                except IndexError:
+                    index_from_settings = 0
+                widget.setCurrentIndex(index_from_settings)
+
+            else:
+                widget.setValue(saved_setting)
+
+        # Connections
+        button_group.buttons()["cancel_pushbutton"].clicked.connect(
+            self.reject)
+        button_group.buttons()["save_pushbutton"].clicked.connect(
+            partial(self._save_and_close,  user_form._user_input_widgets, settings))
+
+    def _save_and_close(self, user_input_widgets, settings):
+        mpl_styles = [
+            style_name for style_name in mpl.style.available if style_name[0] != "_"]
+        if user_input_widgets["matplotlib_style"].currentIndex() != mpl_styles.index(settings.matplotlib_style):
+            message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
+                                          "Information",
+                                          "Application needs to be restarted to be able to use the new Matplotlib style.",
+                                          )
+            message_box.setStandardButtons(
+                qtw.QMessageBox.Cancel | qtw.QMessageBox.Ok)
+            returned = message_box.exec()
+
+            if returned == qtw.QMessageBox.Cancel:
+                return
+
+        for widget_name, widget in user_input_widgets.items():
+            if isinstance(widget, qtw.QCheckBox):
+                settings.update_attr(widget_name, widget.isChecked())
+            elif widget_name == "matplotlib_style":
+                settings.update_attr(widget_name, widget.currentData())
+            elif widget_name == "graph_grids":
+                settings.update_attr(widget_name, widget.currentData())
+            else:
+                settings.update_attr(widget_name, widget.value())
+        self.signal_settings_changed.emit()
+        self.accept()
 
 
 def parse_args(settings):
     import argparse
 
-    parser = argparse.ArgumentParser(prog=f"Speaker stuff calculator version {settings.version}",
-                                     description="Main module for application.",
-                                     epilog="Kerem Basaran - 2023",
+    description = (
+        f"{app_definitions['app_name']} - {app_definitions['copyright']}"
+        "\nThis program comes with ABSOLUTELY NO WARRANTY"
+        "\nThis is free software, and you are welcome to redistribute it"
+        "\nunder certain conditions. See LICENSE file for more details."
+    )
+
+    parser = argparse.ArgumentParser(prog="python main.py",
+                                     description=description,
+                                     epilog={app_definitions['website']},
                                      )
+    
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), action="store",
                         help="Path to a '*.ssf' file. This will open with preset values.")
-
     parser.add_argument('-d', '--debuglevel', nargs="?", default="warning", action="store",
                         help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
 
 
-def main():
-    global settings, logger
+def create_sound_engine(app):
+    sound_engine = pwi.SoundEngine(settings)
+    sound_engine_thread = qtc.QThread()
+    sound_engine.moveToThread(sound_engine_thread)
+    sound_engine_thread.start(qtc.QThread.HighPriority)
+    
+    # ---- Connect
+    app.aboutToQuit.connect(sound_engine.release_all)
+    app.aboutToQuit.connect(sound_engine_thread.exit)
+    
+    return sound_engine, sound_engine_thread
 
-    settings = pwi.Settings()
-    args = parse_args(settings)
+
+def main():
+    global settings, app_definition, logger, create_sound_engine, Settings
+
+    settings = Settings(app_definitions["app_name"])
+    args = parse_args(app_definitions)
 
     # ---- Setup logging
     log_level = getattr(logging, args.debuglevel.upper(), logging.WARNING)
     home_folder = os.path.expanduser("~")
     log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
+    # had to force this
+    # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
     logger.info(f"Setting log level to: {log_level}")
 
@@ -558,30 +777,30 @@ def main():
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
         app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
-    # ---- Create sound engine
-    sound_engine = pwi.SoundEngine(settings)
-    sound_engine_thread = qtc.QThread()
-    sound_engine.moveToThread(sound_engine_thread)
-    sound_engine_thread.start(qtc.QThread.HighPriority)
-
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
+    
+    # ---- Create sound engine
+    sound_engine, sound_engine_thread = create_sound_engine(app)
 
+    # ---- Create main window
+    windows = []  # if you don't store them they get garbage collected once new_window terminates
     def new_window(**kwargs):
         mw = MainWindow(settings, sound_engine, **kwargs)
+        windows.append(mw)
         mw.signal_new_window.connect(lambda kwargs: new_window(**kwargs))
-        mw.setWindowTitle(app_definitions["app_name"])
+        mw.signal_bad_beep.connect(sound_engine.bad_beep)
+        mw.signal_good_beep.connect(sound_engine.good_beep)
         mw.show()
         return mw
 
-    windows = []
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
         mw.status_bar().show_message(f"Opened file '{args.infile.name}'")
     else:
-        windows.append(new_window())
+        new_window()
 
     app.exec()
 
