@@ -144,14 +144,14 @@ class LeftHandForm(pwi.UserForm):
         self._user_input_widgets["motor_spec_type"].setStyleSheet(
             "font-weight: bold")
 
-        # ---- Make a stacked widget for different motor definition parameters
+        # ---- Stacked widget for motor definitions
         self.motor_definition_stacked = qtw.QStackedWidget()
         self._user_input_widgets["motor_spec_type"].currentIndexChanged.connect(
             self.motor_definition_stacked.setCurrentIndex)
 
         self.add_row(self.motor_definition_stacked)
 
-        # ---- Make the first page of stacked widget for "Define Coil Dimensions and Average B"
+        # ---- First page: "Define Coil Dimensions and Average B"
         motor_definition_p1 = pwi.SubForm()
         self.motor_definition_stacked.addWidget(motor_definition_p1)
 
@@ -211,7 +211,7 @@ class LeftHandForm(pwi.UserForm):
                       into_form=motor_definition_p1,
                       )
 
-        # Make the second page of stacked widget for "Define Bl, Rdc, Mmd"
+        # ---- Second page: "Define Bl, Rdc, Mmd"
         motor_definition_p2 = pwi.SubForm()
         self.motor_definition_stacked.addWidget(motor_definition_p2)
 
@@ -236,7 +236,7 @@ class LeftHandForm(pwi.UserForm):
                       into_form=motor_definition_p2,
                       )
 
-        # ---- Make the third page of stacked widget for "Define Bl, Rdc, Mms"
+        # ---- Third page: "Define Bl, Rdc, Mms"
         motor_definition_p3 = pwi.SubForm()
         self.motor_definition_stacked.addWidget(motor_definition_p3)
 
@@ -309,7 +309,7 @@ class LeftHandForm(pwi.UserForm):
                       description="Qa - box absorption",
                       )
 
-        # ---- Secoend degree of freedom
+        # ---- Second degree of freedom
         self.add_row(pwi.SunkenLine())
 
         self.add_row(pwi.Title("Second degree of freedom"))
@@ -368,26 +368,29 @@ class LeftHandForm(pwi.UserForm):
         self.add_row(pwi.SunkenLine())
 
         self.add_row(pwi.Title("System type"))
-
-        self.add_row(pwi.ChoiceButtonGroup("box_type",
+        
+        box_type_choice_buttons = pwi.ChoiceButtonGroup("box_type",
                                         {0: "Free-air", 1: "Closed box"},
                                         {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
                                             1: "Speaker rear side coupled to a lossy sealed box.",
                                          },
                                         vertical=False,
-                                        ),
-                      )
+                                        )
+        box_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
+        self.add_row(box_type_choice_buttons)
 
-        self.add_row(pwi.ChoiceButtonGroup("dof",
+        dof_choice_buttons = pwi.ChoiceButtonGroup("dof",
                                         {0: "1 dof", 1: "2 dof"},
                                         {0: "1 degree of freedom - only the loudspeaker moving mass has mobility.",
                                             1: "2 degrees of freedom - loudspeaker moving mass is attached to a second lump mass that has mobility."},
                                         vertical=False,
                                         )
-                      )
+        dof_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
+        self.add_row(dof_choice_buttons)
 
 
 class MainWindow(qtw.QMainWindow):
+    global settings
     signal_new_window = qtc.Signal(dict)  # new_window with kwargs as dict
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
@@ -396,12 +399,11 @@ class MainWindow(qtw.QMainWindow):
     def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
         self.setWindowTitle(app_definitions["app_name"])
-        self.global_settings = settings
         self._create_core_objects()
         self._create_menu_bar()
         self._create_widgets()
         self._place_widgets()
-        self._add_status_bar()
+        # self._add_status_bar()
         self._make_connections()
         if user_form_dict:
             self.lh_form.update_form_values(user_form_dict)
@@ -426,9 +428,11 @@ class MainWindow(qtw.QMainWindow):
         about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
-        
         # ---- Left hand form
         self.lh_form = LeftHandForm()
+
+
+        # self.lh_form.layout().setVerticalSpacing(2)
         
         # ---- Graph
         self.graph = MatplotlibWidget(settings)
@@ -467,20 +471,25 @@ class MainWindow(qtw.QMainWindow):
                                               "remove_curve": "Open remove curves menu",
                                               },
                                              )
+        
+        for button in self._graph_buttons.buttons().values():
+            font_pixel_size = button.font().pixelSize()
+            button.setMinimumHeight(42)
 
         # Text boxes
         self.results_textbox = qtw.QPlainTextEdit()
         self.notes_textbox = qtw.QPlainTextEdit()        
         self.textboxes_layout = qtw.QHBoxLayout()
+        # self.textboxes_layout.setContentsMargins(-1, 0, -1, 0)
         
         results_section = qtw.QWidget()
         results_section_layout = qtw.QVBoxLayout(results_section)
-        # results_section_layout.addWidget(pwi.Title("Results"))
+        results_section_layout.addWidget(qtw.QLabel("Results"))
         results_section_layout.addWidget(self.results_textbox)
         
         notes_section = qtw.QWidget()
         notes_section_layout = qtw.QVBoxLayout(notes_section)
-        # notes_section_layout.addWidget(pwi.Title("Notes"))
+        notes_section_layout.addWidget(qtw.QLabel("Notes"))
         notes_section_layout.addWidget(self.notes_textbox)
         
         self.textboxes_layout.addWidget(results_section)
@@ -490,24 +499,35 @@ class MainWindow(qtw.QMainWindow):
         self._rh_widget = qtw.QWidget()
 
     def _place_widgets(self):
+        # ---- Make center widget
         self._center_widget = qtw.QWidget()
         self._center_layout = qtw.QHBoxLayout(self._center_widget)
         self.setCentralWidget(self._center_widget)
 
-        self._center_layout.addWidget(self.lh_form)
-        self.lh_form.setSizePolicy(
+        # ---- Make left hand group
+        lh_widget = qtw.QGroupBox("Inputs")
+        lh_layout = qtw.QVBoxLayout(lh_widget)
+        # lh_layout.setContentsMargins(-1, 0, -1, 0)
+
+        lh_layout.addWidget(self.lh_form)
+        lh_widget.setSizePolicy(
             qtw.QSizePolicy.Fixed, qtw.QSizePolicy.Fixed)
+        self._center_layout.addWidget(lh_widget)
 
+        # ---- Make right hand group
         self._center_layout.addWidget(self._rh_widget)
-
         self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
+        self._rh_layout.setContentsMargins(0, 0, 0, 0)
+
+        # self._rh_layout.addWidget(qtw.QLabel("Graph"))
         self._rh_layout.addWidget(self.graph, 3)
-        self.graph.setSizePolicy(
-            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
+        # self.graph.setSizePolicy(
+        #     qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
 
         self._rh_layout.addWidget(self.graph_data_choice)
         self._rh_layout.addWidget(self._graph_buttons)
         self._rh_layout.addLayout(self.textboxes_layout, 2)
+
 
     def _make_connections(self):
         self.lh_form.signal_good_beep.connect(self.signal_good_beep)
@@ -520,7 +540,7 @@ class MainWindow(qtw.QMainWindow):
     def save_state_to_file(self):
 
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
-                                                          dir=self.global_settings.last_used_folder,
+                                                          dir=settings.last_used_folder,
                                                           filter='Speaker stuff files (*.ssf)',
                                                           )
         # filter not working as expected, saves files without file extension ssf
@@ -533,7 +553,7 @@ class MainWindow(qtw.QMainWindow):
                 return  # nothing was selected, pick file canceled
         except:
             raise NotADirectoryError(file)
-        self.global_settings.update_attr("last_used_folder", os.path.dirname(file))
+        settings.update_attr("last_used_folder", os.path.dirname(file))
 
         json_string = json.dumps(
             self.lh_form.get_form_values(), indent=4)
@@ -543,7 +563,7 @@ class MainWindow(qtw.QMainWindow):
 
     def pick_a_file_and_load_state_from_it(self):
         file = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
-                                               dir=self.global_settings.last_used_folder,
+                                               dir=settings.last_used_folder,
                                                filter='Speaker stuff files (*.ssf)',
                                                )[0]
         if file:
@@ -558,7 +578,7 @@ class MainWindow(qtw.QMainWindow):
         except:
             raise FileNotFoundError(file)
 
-        self.global_settings.update_attr(
+        settings.update_attr(
             "last_used_folder", os.path.dirname(file))
         with open(file, "rt") as f:
             self.lh_form.update_form_values(json.load(f))
