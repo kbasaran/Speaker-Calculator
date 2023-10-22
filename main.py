@@ -197,9 +197,12 @@ class LeftHandForm(pwi.UserForm):
                       into_form=motor_definition_p1,
                       )
 
-        self.add_row(pwi.PushButtonGroup({"update_coil_choices": "Update coil choices"},
+        update_coil_choices_button_group = pwi.PushButtonGroup({"update_coil_choices": "Update coil choices"},
                                       {"update_coil_choices": "Populate the below dropdown with possible coil choices for the given parameters"},
-                                      ),
+                                      )
+        update_coil_choices_button = list(update_coil_choices_button_group.buttons().values())[0]
+        update_coil_choices_button.setMinimumHeight(32)  # maybe make relative to the height of the dropdown boxes? e.g. 1.5x?
+        self.add_row(update_coil_choices_button_group,
                       into_form=motor_definition_p1,
                       )
 
@@ -430,8 +433,6 @@ class MainWindow(qtw.QMainWindow):
     def _create_widgets(self):
         # ---- Left hand form
         self.lh_form = LeftHandForm()
-
-
         # self.lh_form.layout().setVerticalSpacing(2)
         
         # ---- Graph
@@ -474,21 +475,22 @@ class MainWindow(qtw.QMainWindow):
         
         for button in self._graph_buttons.buttons().values():
             font_pixel_size = button.font().pixelSize()
-            button.setMinimumHeight(42)
+            button.setMinimumHeight(48)
 
         # Text boxes
         self.results_textbox = qtw.QPlainTextEdit()
         self.notes_textbox = qtw.QPlainTextEdit()        
         self.textboxes_layout = qtw.QHBoxLayout()
-        # self.textboxes_layout.setContentsMargins(-1, 0, -1, 0)
         
         results_section = qtw.QWidget()
         results_section_layout = qtw.QVBoxLayout(results_section)
+        results_section_layout.setContentsMargins(-1, 0, -1, 0)
         results_section_layout.addWidget(qtw.QLabel("Results"))
         results_section_layout.addWidget(self.results_textbox)
         
         notes_section = qtw.QWidget()
         notes_section_layout = qtw.QVBoxLayout(notes_section)
+        notes_section_layout.setContentsMargins(-1, 0, -1, 0)
         notes_section_layout.addWidget(qtw.QLabel("Notes"))
         notes_section_layout.addWidget(self.notes_textbox)
         
@@ -507,9 +509,9 @@ class MainWindow(qtw.QMainWindow):
         # ---- Make left hand group
         lh_widget = qtw.QGroupBox("Inputs")
         lh_layout = qtw.QVBoxLayout(lh_widget)
-        # lh_layout.setContentsMargins(-1, 0, -1, 0)
 
         lh_layout.addWidget(self.lh_form)
+
         lh_widget.setSizePolicy(
             qtw.QSizePolicy.Fixed, qtw.QSizePolicy.Fixed)
         self._center_layout.addWidget(lh_widget)
@@ -517,15 +519,15 @@ class MainWindow(qtw.QMainWindow):
         # ---- Make right hand group
         self._center_layout.addWidget(self._rh_widget)
         self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
-        self._rh_layout.setContentsMargins(0, 0, 0, 0)
+        self._rh_layout.setContentsMargins(-1, 0, -1, 0)
 
-        # self._rh_layout.addWidget(qtw.QLabel("Graph"))
         self._rh_layout.addWidget(self.graph, 3)
-        # self.graph.setSizePolicy(
-        #     qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
+        self.graph.setSizePolicy(
+            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
 
         self._rh_layout.addWidget(self.graph_data_choice)
         self._rh_layout.addWidget(self._graph_buttons)
+        self.graph_data_choice.layout().setContentsMargins(-1, 0, -1, 0)
         self._rh_layout.addLayout(self.textboxes_layout, 2)
 
 
