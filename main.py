@@ -13,7 +13,6 @@ import generictools.personalized_widgets as pwi
 import logging
 from pathlib import Path
 import matplotlib as mpl
-import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
 
 
@@ -41,8 +40,8 @@ class Settings:
     author_short: str = app_definitions["author_short"]
     version: str = app_definitions["version"]
     GAMMA: float = 1.401  # adiabatic index of air
-    P0: int = 101325
-    RHO: float = 1.1839  # 25 degrees celcius
+    P0: int = 101325  # atmospheric pressure
+    RHO: float = 1.1839  # density of air at 25 degrees celcius
     Kair: float = 101325. * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
     vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
@@ -54,7 +53,6 @@ class Settings:
     max_legend_size: int = 10
     matplotlib_style: str = "bmh"
     graph_grids: str = "default"
-
 
     def __post_init__(self):
         settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
@@ -87,9 +85,6 @@ class Settings:
 
 
 class LeftHandForm(pwi.UserForm):
-    signal_save_clicked = qtc.Signal()
-    signal_load_clicked = qtc.Signal()
-    signal_new_clicked = qtc.Signal()
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
 
@@ -175,9 +170,9 @@ class LeftHandForm(pwi.UserForm):
                       into_form=motor_definition_p1,
                       )
 
-        self.add_row(pwi.FloatSpinBox("h_winding", "Desired height of the coil winding",
+        self.add_row(pwi.FloatSpinBox("h_winding_target", "Desired height of the coil winding",
                                    ),
-                      description="Coil winding height (mm)",
+                      description="Target winding height (mm)",
                       into_form=motor_definition_p1,
                       )
 
