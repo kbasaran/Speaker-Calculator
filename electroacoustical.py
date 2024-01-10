@@ -15,7 +15,7 @@ def calculate_air_mass(Sd: float) -> float:
     Air mass on diaphragm; the difference between Mms and Mmd.
     m2 in, kg out
     """
-    return 1.13*(Sd)**(3/2)  
+    return 1.13*(Sd)**(3/2)
 
 
 def calculate_Lm(Bl, Re, Mms, Sd):
@@ -35,6 +35,7 @@ def calculate_coil_to_bottom_plate_clearance(Xpeak):
     proposed_clearance = 1e-3 + (Xpeak - 3e-3) / 5
     return Xpeak + proposed_clearance
 
+
 @dataclass
 class Wire():
     name: str
@@ -43,7 +44,7 @@ class Wire():
     w_max: float
     resistance: float  # ohm/m
     mass_density: float  # kg/m
-    
+
 
 @dataclass
 class Coil():
@@ -57,7 +58,10 @@ class Coil():
         if i_layer == 1:
             turn_radius_wire_center_to_axis = self.carrier_OD/2 + self.wire.w_nom/2
         if i_layer > 1:
-            turn_radius_wire_center_to_axis = self.carrier_OD/2 + self.wire.w_nom/2 + (self.w_stacking_coef * (i_layer - 1) * self.wire.w_nom)
+            turn_radius_wire_center_to_axis = (self.carrier_OD/2
+                                               + self.wire.w_nom/2
+                                               + (self.w_stacking_coef * (i_layer - 1) * self.wire.w_nom)
+                                               )
         # pi/4 is stacking coefficient for ideal circular wire
         return 2 * np.pi * turn_radius_wire_center_to_axis
 
@@ -76,22 +80,22 @@ class Coil():
 
 def wind_coil(wire, N_layers, w_stacking_coef, carrier_OD, h_winding_target):
     "Create coil object based on given data."
-    
+
     def N_winding_for_single_layer(i_layer: int) -> int:
         "Calculate the number of windings that fit on one layer of coil."
         n_winding = h_winding_target / wire.h_nom - i_layer * 1  # 1 winding less on each stacked layer
         return round(n_winding)
-    
+
     N_windings = [N_winding_for_single_layer(i_layer) for i_layer in range(N_layers)]
     if any([n < 1 for n in N_windings]):
         raise ValueError("Some layers were impossible")
-    
+
     return Coil(carrier_OD, wire, N_windings, w_stacking_coef)
 
 
 def calculate_voltage(excitation_value, excitation_type, Rdc=None, nominal_impedance=None):
     "Simplify electrical input definition to a voltage value."
-    
+
     match excitation_type:
 
         case "Wn":
