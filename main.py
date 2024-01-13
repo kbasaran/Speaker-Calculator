@@ -788,22 +788,27 @@ def create_sound_engine(app):
     
     return sound_engine, sound_engine_thread
 
-
-def main():
-    global settings, app_definition, logger, create_sound_engine, Settings
-
-    settings = Settings(app_definitions["app_name"])
-    args = parse_args(app_definitions)
-
-    # ---- Setup logging
-    log_level = getattr(logging, args.debuglevel.upper(), logging.WARNING)
+def setup_logging(args):
+    if args.debuglevel:
+        log_level = getattr(logging, args.debuglevel.upper())
+    else:
+        log_level = logging.INFO
     home_folder = os.path.expanduser("~")
     log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
-    logger.info(f"Setting log level to: {log_level}")
+    logger.info(f"Starting with log level {log_level}.")
+
+    return logger
+
+def main():
+    global settings, app_definition, logger, create_sound_engine, Settings
+
+    settings = Settings(app_definitions["app_name"])
+    args = parse_args(app_definitions)
+    logger = setup_logging(args)
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
@@ -813,7 +818,7 @@ def main():
         app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
     # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandlerUser(app)
+    error_handler = pwi.ErrorHandlerUser(app, logger)
     sys.excepthook = error_handler.excepthook
     
     # ---- Create sound engine
@@ -833,7 +838,7 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
-        mw.status_bar().show_message(f"Opened file '{args.infile.name}'")
+        mw.status_bar().show_message(f"Opened file '{args.infile.name}'", 5)
     else:
         new_window()
 
