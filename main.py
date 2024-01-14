@@ -1,4 +1,4 @@
-# Speaker Stuff Calculator - Loudspeaker design and calculations
+# Speaker Stuff Calculator - Loudspeaker design and calculations tool
 # Copyright (C) 2024 - Kerem Basaran
 # https://github.com/kbasaran
 __email__ = "kbasaran@gmail.com"
@@ -394,11 +394,11 @@ class LeftHandForm(pwi.UserForm):
         self.add_row(box_type_choice_buttons)
 
         dof_choice_buttons = pwi.ChoiceButtonGroup("dof",
-                                        {0: "1 dof", 1: "2 dof"},
-                                        {0: "1 degree of freedom - only the loudspeaker moving mass has mobility.",
-                                            1: "2 degrees of freedom - loudspeaker moving mass is attached to a second lump mass that has mobility."},
-                                        vertical=False,
-                                        )
+                                                   {0: "1 dof", 1: "2 dof"},
+                                                   {0: "1 degree of freedom - only the loudspeaker moving mass has mobility.",
+                                                       1: "2 degrees of freedom - loudspeaker moving mass is attached to a second lump mass that has mobility."},
+                                                   vertical=False,
+                                                   )
         dof_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         self.add_row(dof_choice_buttons)
 
@@ -408,7 +408,7 @@ class MainWindow(qtw.QMainWindow):
     signal_new_window = qtc.Signal(dict)  # new_window with kwargs as widget values
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
-    signal_user_settings_changed = qtc.Signal()  # settings in menu changed, such as graph type, style, temperature
+    signal_user_settings_changed = qtc.Signal()  # settings from  menu bar changed, such as graph type
 
     def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
@@ -616,30 +616,30 @@ class MainWindow(qtw.QMainWindow):
 
     def open_about_menu(self):
         result_text = "\n".join([
-        "Linecraft - Frequency response display and statistics tool",
-        f"Version: {app_definitions['version']}",
-        "",
-        f"Copyright (C) 2023 - {app_definitions['author']}",
-        f"{app_definitions['website']}",
-        f"{app_definitions['email']}",
-        "",
-        "This program is free software: you can redistribute it and/or modify",
-        "it under the terms of the GNU General Public License as published by",
-        "the Free Software Foundation, either version 3 of the License, or",
-        "(at your option) any later version.",
-        "",
-        "This program is distributed in the hope that it will be useful,",
-        "but WITHOUT ANY WARRANTY; without even the implied warranty of",
-        "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
-        "GNU General Public License for more details.",
-        "",
-        "You should have received a copy of the GNU General Public License",
-        "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
-        "",
-        "This software uses Qt for Python under the GPLv3 license.",
-        "https://www.qt.io/",
-        "",
-        "See 'requirements.txt' for an extensive list of Python libraries used.",
+            "Speaker Stuff Calculator - Loudspeaker design and calculations tool",
+            f"Version: {app_definitions['version']}",
+            "",
+            f"Copyright (C) 2024 - {app_definitions['author']}",
+            f"{app_definitions['website']}",
+            f"{app_definitions['email']}",
+            "",
+            "This program is free software: you can redistribute it and/or modify",
+            "it under the terms of the GNU General Public License as published by",
+            "the Free Software Foundation, either version 3 of the License, or",
+            "(at your option) any later version.",
+            "",
+            "This program is distributed in the hope that it will be useful,",
+            "but WITHOUT ANY WARRANTY; without even the implied warranty of",
+            "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
+            "GNU General Public License for more details.",
+            "",
+            "You should have received a copy of the GNU General Public License",
+            "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
+            "",
+            "This software uses Qt for Python under the GPLv3 license.",
+            "https://www.qt.io/",
+            "",
+            "See 'requirements.txt' for an extensive list of Python libraries used.",
         ])
         text_box = pwi.ResultTextBox("About", result_text, monospace=False)
         text_box.exec()
@@ -650,6 +650,7 @@ class MainWindow(qtw.QMainWindow):
                                       )
         message_box.setStandardButtons(qtw.QMessageBox.Ok)
         message_box.exec()
+
 
 class SettingsDialog(qtw.QDialog):
     global settings
