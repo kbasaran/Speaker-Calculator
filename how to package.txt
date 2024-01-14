@@ -1,8 +1,0 @@
-write the correct version in the file and gui title
-
-cxfreeze 'Speaker Stuff Calculator.pyw' --target-dir dist --packages "scipy" --base-name Win32GUI --icon .\SSC_data\ssc.ico
-
-copy SSC_Data\ into dist
-copy default.sscf
-copy license
-copy source code
