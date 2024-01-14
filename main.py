@@ -1,3 +1,21 @@
+# Speaker Stuff Calculator - Loudspeaker design and calculations
+# Copyright (C) 2024 - Kerem Basaran
+# https://github.com/kbasaran
+__email__ = "kbasaran@gmail.com"
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import sys
 import json
 from dataclasses import dataclass, fields
@@ -13,12 +31,6 @@ import logging
 from pathlib import Path
 import matplotlib as mpl
 from functools import partial
-
-
-# https://realpython.com/python-super/#an-overview-of-pythons-super-function
-# super(super_of_which_class?=this class, in_which_object?=self)
-# The parameterless call to super() is recommended and sufficient for most use cases
-
 
 app_definitions = {"app_name": "Speaker Stuff Calculator",
                    "version": "0.2.0",
