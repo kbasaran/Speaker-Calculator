@@ -1,4 +1,3 @@
-import os
 import sys
 import json
 from dataclasses import dataclass, fields
@@ -26,15 +25,17 @@ app_definitions = {"app_name": "Speaker Stuff Calculator",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
-                   "icon_path": str(Path("./logo/icon.ico")),
+                   "icon_path": str(Path("./images/logo.ico")),
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
                    "email": "kbasaran@gmail.com",
                    "website": "https://github.com/kbasaran",
                    }
 
+
 @dataclass
 class Settings:
+    global logger
     app_name: str = app_definitions["app_name"]
     author: str = app_definitions["author"]
     author_short: str = app_definitions["author_short"]
@@ -44,20 +45,23 @@ class Settings:
     RHO: float = 1.1839  # density of air at 25 degrees celcius
     Kair: float = 101325. * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
-    vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
+    vc_table_file = str(Path.cwd().joinpath('SSC_data', 'WIRE_TABLE.csv'))
     f_min: int = 10
     f_max: int = 3000
     A_beep: int = 0.25
-    last_used_folder: str = os.path.expanduser('~')
+    last_used_folder: str = str(Path.home())
     show_legend: bool = True
     max_legend_size: int = 10
     matplotlib_style: str = "bmh"
     graph_grids: str = "default"
 
     def __post_init__(self):
-        settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
-        self.settings_sys = qtc.QSettings(
-            self.author_short, settings_storage_title)
+        settings_storage_title = (self.app_name
+                                  + " - "
+                                  + (self.version.split(".")[0] if "." in self.version else "")
+                                  )
+        self.settings_sys = qtc.QSettings(self.author_short, settings_storage_title)
+        logger.debug(f"Settings will be stored in '{self.author_short}', '{settings_storage_title}'")
         self.read_all_from_system()
 
     def update_attr(self, attr_name, new_val):
@@ -345,7 +349,7 @@ class LeftHandForm(pwi.UserForm):
         self.add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
                                [("Volts", "V"),
                                 ("Watts @Rdc", "W"),
-                                   ("Watss @Rnom", "Wn")
+                                   ("Watts @Rnom", "Wn")
                                 ],
                                ),
                       description="Unit",
@@ -389,10 +393,10 @@ class LeftHandForm(pwi.UserForm):
 
 class MainWindow(qtw.QMainWindow):
     global settings
-    signal_new_window = qtc.Signal(dict)  # new_window with kwargs as dict
+    signal_new_window = qtc.Signal(dict)  # new_window with kwargs as widget values
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
-    signal_user_settings_changed = qtc.Signal()
+    signal_user_settings_changed = qtc.Signal()  # settings in menu changed, such as graph type, style, temperature
 
     def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
@@ -525,7 +529,6 @@ class MainWindow(qtw.QMainWindow):
         self.graph_data_choice.layout().setContentsMargins(-1, 0, -1, 0)
         self._rh_layout.addLayout(self.textboxes_layout, 2)
 
-
     def _make_connections(self):
         self.lh_form.signal_good_beep.connect(self.signal_good_beep)
         self.lh_form.signal_bad_beep.connect(self.signal_bad_beep)
@@ -542,18 +545,17 @@ class MainWindow(qtw.QMainWindow):
                                                           )
         # filter not working as expected, saves files without file extension ssf
         try:
-            file = path_unverified[0]
-            if file:
-                file = (file + ".ssf" if file[-4:] != ".ssf" else file)
-                assert os.path.isdir(os.path.dirname(file))
+            file_raw = path_unverified[0]
+            if file_raw:
+                file = Path(file_raw + ".ssf" if file_raw[-4:] != ".ssf" else file_raw)
+                assert file.parent.is_dir()
             else:
                 return  # nothing was selected, pick file canceled
         except:
-            raise NotADirectoryError(file)
-        settings.update_attr("last_used_folder", os.path.dirname(file))
+            raise NotADirectoryError(file_raw)
+        settings.update_attr("last_used_folder", str(file.parent))
 
-        json_string = json.dumps(
-            self.lh_form.get_form_values(), indent=4)
+        json_string = json.dumps(self.lh_form.get_form_values(), indent=4)
         with open(file, "wt") as f:
             f.write(json_string)
         self.signal_good_beep.emit()
@@ -564,19 +566,19 @@ class MainWindow(qtw.QMainWindow):
                                                filter='Speaker stuff files (*.ssf)',
                                                )[0]
         if file:
-            self.load_preset_file(file)
+            self.load_preset_file(Path(file))
         else:
             pass  # canceled file select
 
-    def load_preset_file(self, file):
+    def load_preset_file(self, file: Path):
 
-        try:
-            os.path.isfile(file)
-        except:
+        if not isinstance(file, Path):
+            raise TypeError("Input type must be 'pathlib.Path'")
+        if not file.is_file():
             raise FileNotFoundError(file)
 
         settings.update_attr(
-            "last_used_folder", os.path.dirname(file))
+            "last_used_folder", str(file.parent))
         with open(file, "rt") as f:
             self.lh_form.update_form_values(json.load(f))
         self.signal_good_beep.emit()
@@ -753,7 +755,7 @@ class SettingsDialog(qtw.QDialog):
         self.accept()
 
 
-def parse_args(settings):
+def parse_args(app_definitions):
     import argparse
 
     description = (
@@ -768,9 +770,9 @@ def parse_args(settings):
                                      epilog={app_definitions['website']},
                                      )
     
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), action="store",
+    parser.add_argument('infile', nargs='?', type=Path,
                         help="Path to a '*.ssf' file. This will open with preset values.")
-    parser.add_argument('-d', '--debuglevel', nargs="?", default="warning", action="store",
+    parser.add_argument('-d', '--debuglevel', nargs="?", default="warning",
                         help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
@@ -793,8 +795,7 @@ def setup_logging(args):
         log_level = getattr(logging, args.debuglevel.upper())
     else:
         log_level = logging.INFO
-    home_folder = os.path.expanduser("~")
-    log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
+    log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
@@ -806,9 +807,9 @@ def setup_logging(args):
 def main():
     global settings, app_definition, logger, create_sound_engine, Settings
 
-    settings = Settings(app_definitions["app_name"])
     args = parse_args(app_definitions)
     logger = setup_logging(args)
+    settings = Settings(app_definitions["app_name"])
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
@@ -838,7 +839,7 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
-        mw.status_bar().show_message(f"Opened file '{args.infile.name}'", 5)
+        mw.status_bar().show_message(f"Opened file '{args.infile.name}'", 5000)
     else:
         new_window()
 
