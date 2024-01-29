@@ -76,7 +76,7 @@ class Settings:
         logger.debug(f"Settings will be stored in '{self.author_short}', '{settings_storage_title}'")
         self.read_all_from_system()
 
-    def update_attr(self, attr_name, new_val):
+    def update(self, attr_name, new_val):
         assert type(getattr(self, attr_name)) == type(new_val)
         setattr(self, attr_name, new_val)
         self.settings_sys.setValue(attr_name, getattr(self, attr_name))
@@ -565,7 +565,7 @@ class MainWindow(qtw.QMainWindow):
                 return  # nothing was selected, pick file canceled
         except:
             raise NotADirectoryError(file_raw)
-        settings.update_attr("last_used_folder", str(file.parent))
+        settings.update("last_used_folder", str(file.parent))
 
         json_string = json.dumps(self.lh_form.get_form_values(), indent=4)
         with open(file, "wt") as f:
@@ -589,7 +589,7 @@ class MainWindow(qtw.QMainWindow):
         if not file.is_file():
             raise FileNotFoundError(file)
 
-        settings.update_attr(
+        settings.update(
             "last_used_folder", str(file.parent))
         with open(file, "rt") as f:
             self.lh_form.update_form_values(json.load(f))
@@ -757,13 +757,13 @@ class SettingsDialog(qtw.QDialog):
 
         for widget_name, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
-                settings.update_attr(widget_name, widget.isChecked())
+                settings.update(widget_name, widget.isChecked())
             elif widget_name == "matplotlib_style":
-                settings.update_attr(widget_name, widget.currentData())
+                settings.update(widget_name, widget.currentData())
             elif widget_name == "graph_grids":
-                settings.update_attr(widget_name, widget.currentData())
+                settings.update(widget_name, widget.currentData())
             else:
-                settings.update_attr(widget_name, widget.value())
+                settings.update(widget_name, widget.value())
         self.signal_settings_changed.emit()
         self.accept()
 
