@@ -152,12 +152,12 @@ class LeftHandForm(pwi.UserForm):
                                    ("Define Bl, Rdc, Mms", "define_Bl_Re_Mms"),
                                 ],
                                ))
-        self._user_input_widgets["motor_spec_type"].setStyleSheet(
+        self.interactable_widgets["motor_spec_type"].setStyleSheet(
             "font-weight: bold")
 
         # ---- Stacked widget for motor definitions
         self.motor_definition_stacked = qtw.QStackedWidget()
-        self._user_input_widgets["motor_spec_type"].currentIndexChanged.connect(
+        self.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(
             self.motor_definition_stacked.setCurrentIndex)
 
         self.add_row(self.motor_definition_stacked)
@@ -711,7 +711,7 @@ class SettingsDialog(qtw.QDialog):
         layout.addWidget(button_group)
 
         # ---- read values from settings
-        for widget_name, widget in user_form._user_input_widgets.items():
+        for widget_name, widget in user_form.interactable_widgets.items():
             saved_setting = getattr(settings, widget_name)
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
@@ -738,7 +738,7 @@ class SettingsDialog(qtw.QDialog):
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
             self.reject)
         button_group.buttons()["save_pushbutton"].clicked.connect(
-            partial(self._save_and_close,  user_form._user_input_widgets, settings))
+            partial(self._save_and_close,  user_form.interactable_widgets, settings))
 
     def _save_and_close(self, user_input_widgets, settings):
         mpl_styles = [
