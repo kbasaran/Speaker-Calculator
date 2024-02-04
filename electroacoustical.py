@@ -5,7 +5,7 @@ Created on Sun Aug  6 20:23:15 2023
 
 @author: kerem
 """
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from functools import cached_property
 import numpy as np
 
@@ -93,16 +93,16 @@ def wind_coil(wire, N_layers, w_stacking_coef, carrier_OD, h_winding_target):
     return Coil(carrier_OD, wire, N_windings, w_stacking_coef)
 
 
-def calculate_voltage(excitation_value, excitation_type, Rdc=None, nominal_impedance=None):
+def calculate_voltage(excitation_value, excitation_type, Rdc=None, Rnom=None):
     "Simplify electrical input definition to a voltage value."
 
     match excitation_type:
 
         case "Wn":
-            if not nominal_impedance:
+            if not Rnom:
                 raise ValueError("Need to provide nominal impedance to calculate Wn")
             else:
-                input_voltage = (excitation_value * nominal_impedance) ** 0.5
+                input_voltage = (excitation_value * Rnom) ** 0.5
 
         case "W":
             if not Rdc:
@@ -114,12 +114,9 @@ def calculate_voltage(excitation_value, excitation_type, Rdc=None, nominal_imped
             input_voltage = excitation_value
 
         case _:
-            raise ValueError("excitation type can be one of (V, W, Wn)")
+            raise ValueError("excitation type must be one of (V, W, Wn)")
 
     return input_voltage
-
-
-
 
 
 
@@ -160,13 +157,12 @@ class SpeakerDriver():
         None.
 
         """
-        
         self.Re = coil.Rdc + Rlw
         self.Bl = Bavg * coil.total_wire_length()
 
     
     def update_core_parameters(self, **kwargs):
-        core_parameters = ("Bl", "Re", "fs", "Mms", "Sd", "Qms")
+        core_parameters = ("Bl", "Re", "fs", "Mms", "Sd", "Qms", "dead_mass")
         for key, val in kwargs.items():
             if key in core_parameters and isinstance(val, float):
                 if key == "Rms" and val < 0:
@@ -179,38 +175,54 @@ class SpeakerDriver():
                 raise ValueError(f"Invalid keyword argument: {key}: {val}")
     
         # derived parameters
+        # Mms and Mmd
+        if self.coil is not None:
+            try:
+                self.Mmd = dead_mass + self.coil.mass
+                self.Mms = self.Mmd + calculate_air_mass(self.Sd)
+            except NameError:
+                print("Unable to calculate 'Mms' and/or 'Mmd' with known parameters.")        
+        else:
+            # Mmd
+            try:
+                self.Mmd = self.Mms - calculate_air_mass(self.Sd)
+            except NameError:
+                print("Unable to calculate 'Mmd' with known parameters.")
+
         # Kms
         try:
             self.Kms = self.Mms * (self.fs * 2 * np.pi)**2
         except NameError:
             print("Unable to calculate 'Kms' with known parameters.")
+
         # Rms
         try:
             self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
         except NameError:
             print("Unable to calculate 'Rms' with known parameters.")
-        # Mmd
-        try:
-            self.Mmd = self.Mms - calculate_air_mass(self.Sd)
-        except NameError:
-            print("Unable to calculate 'Mmd' with known parameters.")
+
         # Ces
         try:
             self.Ces = self.Bl**2 / self.Re
         except NameError:
             print("Unable to calculate 'Ces = Bl²/Re' with known parameters.")
+
         # Qts, Qes
         try:
             self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Ces)
             self.Qes = (self.Mms * self.Kms)**0.5 / (self.Ces)
         except NameError:
-            print("Unable to calculate 'Qts' and 'Qes' with known parameters.")
+            print("Unable to calculate 'Qts' and/or 'Qes' with known parameters.")
+
         # Lm - sensitivity per W@Re
         try:
             self.Lm = calculate_Lm(self.Bl, self.Rdc, self.Mms, self.Sd)
         except NameError:
             print("Unable to calculate 'Lm' with known parameters.")
-    
+
+
+
+
 
 
 @dataclass
@@ -363,8 +375,8 @@ class SpeakerSystem():
         Kms = self.spk.Kms
         Sd = self.spk.Sd
         excitation = [form.get_value("excitation_value"), form.get_value("excitation_unit")["userData"]]
-        nominal_impedance = form.get_value("nominal_impedance")
-        self.V_in = calculate_input_voltage(excitation, Rdc, nominal_impedance)
+        Rnom = form.get_value("nominal_impedance")
+        self.V_in = calculate_input_voltage(excitation, Rdc, Rnom)
         self.box_type = form.get_value("box_type")
         self.dof = int(form.get_value("dof")[0])
 
