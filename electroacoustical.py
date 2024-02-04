@@ -5,7 +5,7 @@ Created on Sun Aug  6 20:23:15 2023
 
 @author: kerem
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from functools import cached_property
 import numpy as np
 
@@ -117,6 +117,100 @@ def calculate_voltage(excitation_value, excitation_type, Rdc=None, nominal_imped
             raise ValueError("excitation type can be one of (V, W, Wn)")
 
     return input_voltage
+
+
+
+
+
+
+def calculate_air_mass(Sd):
+    """Air mass on diaphragm; the difference between Mms and Mmd."""
+    return 1.13*(Sd)**(3/2)  # m2 in, kg out
+
+
+@dataclass
+class SpeakerDriver():
+    """Speaker driver class."""
+    Bl: float = None
+    Re: float = None
+    fs: float = None
+    Mms: float = None
+    Sd: float = None
+    Qms: float = None
+
+
+    def __post_init__(self):
+        self.update_core_parameters()
+    
+    def define_motor(self, coil: Coil, Rlw: float, Bavg: float):
+        """
+        Define coil and motor parameters of speaker.
+
+        Parameters
+        ----------
+        coil : Coil
+            Coil winding object.
+        Rlw : float
+            Leadwire resistance.
+        Bavg : float
+            Average magnetic field on the total height of coil in rest position.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        self.Re = coil.Rdc + Rlw
+        self.Bl = Bavg * coil.total_wire_length()
+
+    
+    def update_core_parameters(self, **kwargs):
+        core_parameters = ("Bl", "Re", "fs", "Mms", "Sd", "Qms")
+        for key, val in kwargs.items():
+            if key in core_parameters and isinstance(val, float):
+                if key == "Rms" and val < 0:
+                    raise ValueError(f"Damping coefficient 'Rms' cannot be negative: {val}")
+                elif val <= 0:
+                    raise ValueError(f"Value '{key}' cannot be zero or negative: {val}")
+                else:
+                    setattr(self, key, val)
+            else:
+                raise ValueError(f"Invalid keyword argument: {key}: {val}")
+    
+        # derived parameters
+        # Kms
+        try:
+            self.Kms = self.Mms * (self.fs * 2 * np.pi)**2
+        except NameError:
+            print("Unable to calculate 'Kms' with known parameters.")
+        # Rms
+        try:
+            self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
+        except NameError:
+            print("Unable to calculate 'Rms' with known parameters.")
+        # Mmd
+        try:
+            self.Mmd = self.Mms - calculate_air_mass(self.Sd)
+        except NameError:
+            print("Unable to calculate 'Mmd' with known parameters.")
+        # Ces
+        try:
+            self.Ces = self.Bl**2 / self.Re
+        except NameError:
+            print("Unable to calculate 'Ces = Bl²/Re' with known parameters.")
+        # Qts, Qes
+        try:
+            self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Ces)
+            self.Qes = (self.Mms * self.Kms)**0.5 / (self.Ces)
+        except NameError:
+            print("Unable to calculate 'Qts' and 'Qes' with known parameters.")
+        # Lm - sensitivity per W@Re
+        try:
+            self.Lm = calculate_Lm(self.Bl, self.Rdc, self.Mms, self.Sd)
+        except NameError:
+            print("Unable to calculate 'Lm' with known parameters.")
+    
 
 
 @dataclass
