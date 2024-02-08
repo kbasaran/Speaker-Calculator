@@ -276,3 +276,6 @@ class SpeakerSystem():
                 fb_d = None
 
             self.Vas = settings.Kair / self.speaker.Kms * self.speaker.Sd**2
+        
+    def get_ss_model(self):
+        return "an_ss_model"
