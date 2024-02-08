@@ -1,0 +1,3 @@
+[submodule "generic-tools"]
+	path = generic-tools
+	url = https://github.com/kbasaran/generic-tools.git
