@@ -100,99 +100,146 @@ class Settings:
         return str(self.as_dict())
 
 
-class LeftHandForm(pwi.UserForm):
+class InputSectionTabWidget(qtw.QTabWidget):
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
 
     def __init__(self):
         super().__init__()
-        self._populate_form()
+        forms = {}
+        forms["General"] = self._make_form_for_general_tab()
+        forms["Motor"] = self._make_form_for_motor_tab()
+        forms["Enclosure"] = self._make_form_for_enclosure_tab()
+        forms["System"] = self._make_form_for_system_tab()
 
-    def _populate_form(self):
+        self.interactable_widgets = {}
+        for name, form in forms.items():
+            self.addTab(form, name)
+            self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets} 
 
+    def _make_form_for_general_tab(self):
+        form = pwi.UserForm()
+        
         # ---- General specs
-        self.add_row(pwi.Title("General speaker specifications"))
+        form.add_row(pwi.Title("General speaker specifications"))
 
-        self.add_row(pwi.FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
+        form.add_row(pwi.FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
                                    decimals=1,
                                    min_max=(0.1, settings.f_max),
                                    ),
                       description="fs (Hz)",
                       )
 
-        self.add_row(pwi.FloatSpinBox("Qms", "Quality factor of speaker, only the mechanical part",
+        form.add_row(pwi.FloatSpinBox("Qms", "Quality factor of speaker, only the mechanical part",
                                    ),
                       description="Qms",
                       )
 
-        self.add_row(pwi.FloatSpinBox("Xmax", "Peak excursion allowed, one way",
+        form.add_row(pwi.FloatSpinBox("Xmax", "Peak excursion allowed, one way",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Xmax (mm)",
                       )
 
-        self.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itself and the air.|n(Dead mass = Mmd - coil mass)",
+        form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itform and the air.|n(Dead mass = Mmd - coil mass)",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Dead mass (g)",
                       )
 
-        self.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area",
+        form.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area",
                                    ratio_to_SI=1e-4,
                                    ),
                       description="Sd (cm²)"
                       )
+        
+        # ---- Electrical input
+        form.add_row(pwi.SunkenLine())
+
+        form.add_row(pwi.Title("Electrical Input"))
+
+        form.add_row(pwi.FloatSpinBox("Rs",
+                                   "The resistance between the speaker coil and the voltage source."
+                                   "\nMay be due to cables, speaker leadwires, connectors etc."
+                                   "\nCauses resistive loss at the input.",
+                                   ),
+                      description="Series resistance",
+                      )
+
+        form.add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
+                               [("Volts", "V"),
+                                ("Watts @Rdc", "W"),
+                                   ("Watts @Rnom", "Wn")
+                                ],
+                               ),
+                      description="Unit",
+                      )
+
+        form.add_row(pwi.FloatSpinBox("excitation_value", "The value for input excitation, in units chosen above",
+                                   ),
+                      description="Excitation value",
+                      )
+
+        form.add_row(pwi.FloatSpinBox("nominal_impedance", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
+                                   "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
+                                   ),
+                      description="Nominal impedance",
+                      )
+        
+        return form
+
+
+    def _make_form_for_motor_tab(self):
+        form = pwi.UserForm()
 
         # ---- Motor specs
-        self.add_row(pwi.SunkenLine())
-
-        self.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
+        form.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
                                [("Define Coil Dimensions and Average B", "define_coil"),
                                 ("Define Bl, Rdc, Mmd", "define_Bl_Re_Mmd"),
                                    ("Define Bl, Rdc, Mms", "define_Bl_Re_Mms"),
                                 ],
                                ))
-        self.interactable_widgets["motor_spec_type"].setStyleSheet(
+        form.interactable_widgets["motor_spec_type"].setStyleSheet(
             "font-weight: bold")
 
         # ---- Stacked widget for motor definitions
-        self.motor_definition_stacked = qtw.QStackedWidget()
-        self.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(
-            self.motor_definition_stacked.setCurrentIndex)
+        form.motor_definition_stacked = qtw.QStackedWidget()
+        form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(
+            form.motor_definition_stacked.setCurrentIndex)
 
-        self.add_row(self.motor_definition_stacked)
+        form.add_row(form.motor_definition_stacked)
 
         # ---- First page: "Define Coil Dimensions and Average B"
         motor_definition_p1 = pwi.SubForm()
-        self.motor_definition_stacked.addWidget(motor_definition_p1)
+        form.motor_definition_stacked.addWidget(motor_definition_p1)
 
-        self.add_row(pwi.FloatSpinBox("target_Rdc", "Rdc value that needs to be approached while calculating an appropriate coil and winding",
+        form.add_row(pwi.FloatSpinBox("target_Rdc", "Rdc value that needs to be approached while calculating an appropriate coil and winding",
                                    ),
                       description="Target Rdc (ohm)",
                       into_form=motor_definition_p1,
                       )
 
-        self.add_row(pwi.FloatSpinBox("former_ID", "Internal diameter of the coil former",
+        form.add_row(pwi.FloatSpinBox("former_ID", "Internal diameter of the coil former",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Coil Former ID (mm)",
                       into_form=motor_definition_p1,
                       )
 
-        self.add_row(pwi.IntSpinBox("t_former", "Thickness of the coil former",
+        form.add_row(pwi.IntSpinBox("t_former", "Thickness of the coil former",
                                  ratio_to_SI=1e-6,
                                  ),
                       description="Former thickness (\u03BCm)",
                       into_form=motor_definition_p1,
                       )
 
-        self.add_row(pwi.FloatSpinBox("h_winding_target", "Desired height of the coil winding",
+        form.add_row(pwi.FloatSpinBox("h_winding_target", "Desired height of the coil winding",
                                    ),
                       description="Target winding height (mm)",
                       into_form=motor_definition_p1,
                       )
 
-        self.add_row(pwi.FloatSpinBox("B_average", "Average B field across the coil windings."
+        form.add_row(pwi.FloatSpinBox("B_average", "Average B field across the coil windings."
                                    "\nNeeds to be calculated separately and input here.",
                                    decimals=3,
                                    ratio_to_SI=1e-3,
@@ -201,7 +248,7 @@ class LeftHandForm(pwi.UserForm):
                       into_form=motor_definition_p1,
                       )
 
-        self.add_row(pwi.LineTextBox("N_layer_options", "Enter the number of winding layer options that are accepted."
+        form.add_row(pwi.LineTextBox("N_layer_options", "Enter the number of winding layer options that are accepted."
                                   "\nUse integers with a comma in between, e.g.: '2, 4'",
                                   ),
                       description="Number of layer options",
@@ -213,11 +260,11 @@ class LeftHandForm(pwi.UserForm):
                                       )
         update_coil_choices_button = list(update_coil_choices_button_group.buttons().values())[0]
         update_coil_choices_button.setMinimumHeight(32)  # maybe make relative to the height of the dropdown boxes? e.g. 1.5x?
-        self.add_row(update_coil_choices_button_group,
+        form.add_row(update_coil_choices_button_group,
                       into_form=motor_definition_p1,
                       )
 
-        self.add_row(pwi.ComboBox("coil_options", "Select coil winding to be used for calculations",
+        form.add_row(pwi.ComboBox("coil_options", "Select coil winding to be used for calculations",
                                [("SV", "data1"),
                                 ("CCAW", "data2"),
                                 ("MEGA", "data3"), ],
@@ -227,21 +274,21 @@ class LeftHandForm(pwi.UserForm):
 
         # ---- Second page: "Define Bl, Rdc, Mmd"
         motor_definition_p2 = pwi.SubForm()
-        self.motor_definition_stacked.addWidget(motor_definition_p2)
+        form.motor_definition_stacked.addWidget(motor_definition_p2)
 
-        self.add_row(pwi.FloatSpinBox("Bl_p2", "Force factor",
+        form.add_row(pwi.FloatSpinBox("Bl_p2", "Force factor",
                                    ),
                       description="Bl (Tm)",
                       into_form=motor_definition_p2,
                       )
 
-        self.add_row(pwi.IntSpinBox("Rdc_p2", "DC resistance",
+        form.add_row(pwi.IntSpinBox("Rdc_p2", "DC resistance",
                                  ),
                       description="Rdc (ohm)",
                       into_form=motor_definition_p2,
                       )
 
-        self.add_row(pwi.FloatSpinBox("Mmd_p2",
+        form.add_row(pwi.FloatSpinBox("Mmd_p2",
                                    "Moving mass, excluding coupled air mass",
                                    decimals=3,
                                    ratio_to_SI=1e-3,
@@ -252,23 +299,23 @@ class LeftHandForm(pwi.UserForm):
 
         # ---- Third page: "Define Bl, Rdc, Mms"
         motor_definition_p3 = pwi.SubForm()
-        self.motor_definition_stacked.addWidget(motor_definition_p3)
+        form.motor_definition_stacked.addWidget(motor_definition_p3)
 
-        self.add_row(pwi.FloatSpinBox("Bl_p3",
+        form.add_row(pwi.FloatSpinBox("Bl_p3",
                                    "Force factor",
                                    ),
                       description="Bl (Tm)",
                       into_form=motor_definition_p3,
                       )
 
-        self.add_row(pwi.IntSpinBox("Rdc_p3",
+        form.add_row(pwi.IntSpinBox("Rdc_p3",
                                  "DC resistance",
                                  ),
                       description="Rdc (ohm)",
                       into_form=motor_definition_p3,
                       )
 
-        self.add_row(pwi.FloatSpinBox("Mms_p3",
+        form.add_row(pwi.FloatSpinBox("Mms_p3",
                                    "Moving mass, including coupled air mass",
                                    decimals=3,
                                    ratio_to_SI=1e-3,
@@ -278,111 +325,43 @@ class LeftHandForm(pwi.UserForm):
                       )
 
         # ---- Mechanical specs
-        self.add_row(pwi.SunkenLine())
+        form.add_row(pwi.SunkenLine())
 
-        self.add_row(pwi.Title("Motor mechanical specifications"))
+        form.add_row(pwi.Title("Motor mechanical specifications"))
 
-        self.add_row(pwi.FloatSpinBox("h_top_plate", "Thickness of the top plate (also called washer)",
+        form.add_row(pwi.FloatSpinBox("h_top_plate", "Thickness of the top plate (also called washer)",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Top plate thickness (mm)",
                       )
 
-        self.add_row(pwi.IntSpinBox("airgap_clearance_inner", "Clearance on the inner side of the coil former",
+        form.add_row(pwi.IntSpinBox("airgap_clearance_inner", "Clearance on the inner side of the coil former",
                                  ratio_to_SI=1e-6,
                                  ),
                       description="Airgap inner clearance (\u03BCm)",
                       )
 
-        self.add_row(pwi.IntSpinBox("airgap_clearance_outer", "Clearance on the outer side of the coil windings",
+        form.add_row(pwi.IntSpinBox("airgap_clearance_outer", "Clearance on the outer side of the coil windings",
                                  ratio_to_SI=1e-6,
                                  ),
                       description="Airgap outer clearance (\u03BCm)",
                       )
 
-        self.add_row(pwi.FloatSpinBox("former_extension_under_coil", "Extension of the coil former below the coil windings",
+        form.add_row(pwi.FloatSpinBox("former_extension_under_coil", "Extension of the coil former below the coil windings",
                                    ratio_to_SI=1e-3,
                                    ),
                       description="Former bottom ext. (mm)",
                       )
-
-        # ---- Closed box specs
-        self.add_row(pwi.SunkenLine())
-
-        self.add_row(pwi.Title("Closed box specifications"))
-
-        self.add_row(pwi.FloatSpinBox("Vb", "Internal free volume filled by air",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Box internal volume (l)",
-                      )
-
-        self.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker, mechanical part due to losses in box",
-                                   decimals=1
-                                   ),
-                      description="Qa - box absorption",
-                      )
-
-        # ---- Second degree of freedom
-        self.add_row(pwi.SunkenLine())
-
-        self.add_row(pwi.Title("Second degree of freedom"))
-
-        self.add_row(pwi.FloatSpinBox("k2", "Stiffness between the second body and the ground",
-                                   ratio_to_SI=1e3,
-                                   ),
-                      description="Stiffness (N/mm)",
-                      )
-
-        self.add_row(pwi.FloatSpinBox("m2", "Mass of the second body",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Mass (g)",
-                      )
-
-        self.add_row(pwi.FloatSpinBox("c2", "Damping coefficient between the second body and the ground",
-                                   ),
-                      description="Damping coefficient (kg/s)",
-                      )
-
-        # ---- Electrical input
-        self.add_row(pwi.SunkenLine())
-
-        self.add_row(pwi.Title("Electrical Input"))
-
-        self.add_row(pwi.FloatSpinBox("Rs",
-                                   "The resistance between the speaker coil and the voltage source."
-                                   "\nMay be due to cables, speaker leadwires, connectors etc."
-                                   "\nCauses resistive loss at the input.",
-                                   ),
-                      description="Series resistance",
-                      )
-
-        self.add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
-                               [("Volts", "V"),
-                                ("Watts @Rdc", "W"),
-                                   ("Watts @Rnom", "Wn")
-                                ],
-                               ),
-                      description="Unit",
-                      )
-
-        self.add_row(pwi.FloatSpinBox("excitation_value", "The value for input excitation, in units chosen above",
-                                   ),
-                      description="Excitation value",
-                      )
-
-        self.add_row(pwi.FloatSpinBox("nominal_impedance", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
-                                   "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
-                                   ),
-                      description="Nominal impedance",
-                      )
-
-        # ---- System type
-        self.add_row(pwi.SunkenLine())
-
-        self.add_row(pwi.Title("System type"))
         
+        return form
+
+
+
+    def _make_form_for_enclosure_tab(form):
+        form = pwi.UserForm()
+
+        form.add_row(pwi.Title("Enclosure type"))
+
         box_type_choice_buttons = pwi.ChoiceButtonGroup("box_type",
                                         {0: "Free-air", 1: "Closed box"},
                                         {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
@@ -391,7 +370,36 @@ class LeftHandForm(pwi.UserForm):
                                         vertical=False,
                                         )
         box_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
-        self.add_row(box_type_choice_buttons)
+        form.add_row(box_type_choice_buttons)
+
+        # ---- Closed box specs
+
+        form.add_row(pwi.SunkenLine())
+
+        form.add_row(pwi.Title("Closed box specifications"))
+
+        form.add_row(pwi.FloatSpinBox("Vb", "Internal free volume filled by air",
+                                   ratio_to_SI=1e-3,
+                                   ),
+                      description="Box internal volume (l)",
+                      )
+
+        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker, mechanical part due to losses in box",
+                                   decimals=1
+                                   ),
+                      description="Qa - box absorption",
+                      )
+        
+        return form
+
+
+    def _make_form_for_system_tab(form):
+        form = pwi.UserForm()
+
+        # ---- System type
+        form.add_row(pwi.Title("System type"))
+        
+
 
         dof_choice_buttons = pwi.ChoiceButtonGroup("dof",
                                                    {0: "1 dof", 1: "2 dof"},
@@ -400,7 +408,32 @@ class LeftHandForm(pwi.UserForm):
                                                    vertical=False,
                                                    )
         dof_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
-        self.add_row(dof_choice_buttons)
+        form.add_row(dof_choice_buttons)
+
+
+        # ---- Second degree of freedom
+
+        form.add_row(pwi.SunkenLine())
+        form.add_row(pwi.Title("Second degree of freedom"))
+
+        form.add_row(pwi.FloatSpinBox("k2", "Stiffness between the second body and the ground",
+                                   ratio_to_SI=1e3,
+                                   ),
+                      description="Stiffness (N/mm)",
+                      )
+
+        form.add_row(pwi.FloatSpinBox("m2", "Mass of the second body",
+                                   ratio_to_SI=1e-3,
+                                   ),
+                      description="Mass (g)",
+                      )
+
+        form.add_row(pwi.FloatSpinBox("c2", "Damping coefficient between the second body and the ground",
+                                   ),
+                      description="Damping coefficient (kg/s)",
+                      )
+        
+        return form
 
 
 class MainWindow(qtw.QMainWindow):
@@ -443,7 +476,7 @@ class MainWindow(qtw.QMainWindow):
 
     def _create_widgets(self):
         # ---- Left hand form
-        self.lh_form = LeftHandForm()
+        self.lh_form = InputSectionTabWidget()
         # self.lh_form.layout().setVerticalSpacing(2)
         
         # ---- Graph
@@ -518,7 +551,7 @@ class MainWindow(qtw.QMainWindow):
         self.setCentralWidget(self._center_widget)
 
         # ---- Make left hand group
-        lh_widget = qtw.QGroupBox("Inputs")
+        lh_widget = qtw.QWidget()
         lh_layout = qtw.QVBoxLayout(lh_widget)
 
         lh_layout.addWidget(self.lh_form)
