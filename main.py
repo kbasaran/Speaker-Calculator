@@ -77,6 +77,7 @@ class Settings:
         self.read_all_from_system()
 
     def update(self, attr_name, new_val):
+        # update a given setting
         assert type(getattr(self, attr_name)) == type(new_val)
         setattr(self, attr_name, new_val)
         self.settings_sys.setValue(attr_name, getattr(self, attr_name))
@@ -91,6 +92,7 @@ class Settings:
                 field.name, field.default, type=type(field.default)))
 
     def as_dict(self):
+        # return the settings as a dict
         settings = {}
         for field in fields(self):
             settings[field] = getattr(self, field.name)
@@ -101,6 +103,7 @@ class Settings:
 
 
 class InputSectionTabWidget(qtw.QTabWidget):
+    # additional signals that this widget can publish
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
 
@@ -112,10 +115,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
         forms["Enclosure"] = self._make_form_for_enclosure_tab()
         forms["System"] = self._make_form_for_system_tab()
 
-        self.interactable_widgets = {}
+        # self.interactable_widgets = {}
         for name, form in forms.items():
             self.addTab(form, name)
-            self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets} 
+            # self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets} 
 
     def _make_form_for_general_tab(self):
         form = pwi.UserForm()
@@ -188,7 +191,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
         
         return form
 
-
     def _make_form_for_motor_tab(self):
         form = pwi.UserForm()
 
@@ -204,8 +206,9 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         # ---- Stacked widget for motor definitions
         form.motor_definition_stacked = qtw.QStackedWidget()
-        form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(
-            form.motor_definition_stacked.setCurrentIndex)
+        form.motor_definition_stacked.setSizePolicy(qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Maximum)
+        # expands and pushes the next form rows down if I don't do the above line
+        form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(form.motor_definition_stacked.setCurrentIndex)
 
         form.add_row(form.motor_definition_stacked)
 
@@ -255,12 +258,18 @@ class InputSectionTabWidget(qtw.QTabWidget):
                       into_form=motor_definition_p1,
                       )
 
-        update_coil_choices_button_group = pwi.PushButtonGroup({"update_coil_choices": "Update coil choices"},
-                                      {"update_coil_choices": "Populate the below dropdown with possible coil choices for the given parameters"},
-                                      )
-        update_coil_choices_button = list(update_coil_choices_button_group.buttons().values())[0]
-        update_coil_choices_button.setMinimumHeight(32)  # maybe make relative to the height of the dropdown boxes? e.g. 1.5x?
-        form.add_row(update_coil_choices_button_group,
+        # update_coil_choices_button_group = pwi.PushButtonGroup({"update_coil_choices": "Update coil choices"},
+        #                               {"update_coil_choices": "Populate the below dropdown with possible coil choices for the given parameters"},
+        #                               )
+        # update_coil_choices_button = list(update_coil_choices_button_group.buttons().values())[0]
+
+        update_coil_choices_button = pwi.PushButton("update_coil_choices",
+                                                    "Update coil choices",
+                                                    tooltip="Populate the below dropdown with possible coil choices for the given parameters",
+                                                    )
+
+        # update_coil_choices_button.setMinimumHeight(32)  # maybe make relative to the height of the dropdown boxes? e.g. 1.5x?
+        form.add_row(update_coil_choices_button,
                       into_form=motor_definition_p1,
                       )
 
@@ -353,12 +362,17 @@ class InputSectionTabWidget(qtw.QTabWidget):
                       description="Former bottom ext. (mm)",
                       )
         
+        # spacer = qtw.QSpacerItem(0, 0, qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
+        # form.add_row(spacer)
+        
         return form
 
 
 
     def _make_form_for_enclosure_tab(form):
         form = pwi.UserForm()
+        
+        # ---- Enclosure type
 
         form.add_row(pwi.Title("Enclosure type"))
 
@@ -438,6 +452,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
 class MainWindow(qtw.QMainWindow):
     global settings
+    # these are signals that this object emits.
+    # they will be triggered by the functions and the widgets in this object.
     signal_new_window = qtc.Signal(dict)  # new_window with kwargs as widget values
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
@@ -446,26 +462,22 @@ class MainWindow(qtw.QMainWindow):
     def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
         self.setWindowTitle(app_definitions["app_name"])
-        self._create_core_objects()
         self._create_menu_bar()
         self._create_widgets()
         self._place_widgets()
         # self._add_status_bar()
         self._make_connections()
         if user_form_dict:
-            self.lh_form.update_form_values(user_form_dict)
+            self.load_state(user_form_dict)
         elif open_user_file:
             self.load_preset_file(open_user_file)
-
-    def _create_core_objects(self):
-        pass
 
     def _create_menu_bar(self):
         menu_bar = self.menuBar()
         
         file_menu = menu_bar.addMenu("File")
         new_window_action = file_menu.addAction("New window", self.duplicate_window)
-        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_state_from_it)
+        load_action = file_menu.addAction("Load state..", self.load_state_from_file)
         save_action = file_menu.addAction("Save state..", self.save_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
@@ -475,11 +487,14 @@ class MainWindow(qtw.QMainWindow):
         about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
-        # ---- Left hand form
-        self.lh_form = InputSectionTabWidget()
-        # self.lh_form.layout().setVerticalSpacing(2)
+        # ---- Left hand side (input form)
+        self.input_form = InputSectionTabWidget()
         
-        # ---- Graph
+        
+        # ---- Right hand side (graph etc.)
+        self._rh_widget = qtw.QWidget()
+        
+        # Graph
         self.graph = MatplotlibWidget(settings)
         self.graph_data_choice = pwi.ChoiceButtonGroup("_graph_buttons",
 
@@ -501,7 +516,7 @@ class MainWindow(qtw.QMainWindow):
                                                     6: "/",
                                                     },
 
-        # ---- Graph buttons
+        # Graph buttons
                                                    )
         self._graph_buttons = pwi.PushButtonGroup({"update_results": "Update results",
                                               "export_curve": "Export curve",
@@ -517,6 +532,7 @@ class MainWindow(qtw.QMainWindow):
                                               },
                                              )
         
+        # Make buttons under the graph larger
         for button in self._graph_buttons.buttons().values():
             font_pixel_size = button.font().pixelSize()
             button.setMinimumHeight(48)
@@ -541,24 +557,19 @@ class MainWindow(qtw.QMainWindow):
         self.textboxes_layout.addWidget(results_section)
         self.textboxes_layout.addWidget(notes_section)
 
-        # ---- Right hand side
-        self._rh_widget = qtw.QWidget()
-
     def _place_widgets(self):
         # ---- Make center widget
         self._center_widget = qtw.QWidget()
         self._center_layout = qtw.QHBoxLayout(self._center_widget)
         self.setCentralWidget(self._center_widget)
 
-        # ---- Make left hand group
-        lh_widget = qtw.QWidget()
-        lh_layout = qtw.QVBoxLayout(lh_widget)
+        # ---- Make left hand side
+        lh_layout = qtw.QVBoxLayout()
+        lh_layout.addWidget(self.input_form)
 
-        lh_layout.addWidget(self.lh_form)
-
-        lh_widget.setSizePolicy(
-            qtw.QSizePolicy.Fixed, qtw.QSizePolicy.Fixed)
-        self._center_layout.addWidget(lh_widget)
+        self.input_form.setSizePolicy(
+            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Minimum)
+        self._center_layout.addLayout(lh_layout)
 
         # ---- Make right hand group
         self._center_layout.addWidget(self._rh_widget)
@@ -575,15 +586,21 @@ class MainWindow(qtw.QMainWindow):
         self._rh_layout.addLayout(self.textboxes_layout, 2)
 
     def _make_connections(self):
-        self.lh_form.signal_good_beep.connect(self.signal_good_beep)
-        self.lh_form.signal_bad_beep.connect(self.signal_bad_beep)
+        self.input_form.signal_good_beep.connect(self.signal_good_beep)
+        self.input_form.signal_bad_beep.connect(self.signal_bad_beep)
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
         self.statusBar().showMessage("Test", 2000)
 
-    def save_state_to_file(self):
+    def get_state(self):
+        state = {}
+        forms = [self.input_form.widget[i] for i in range(self.input_form.count())]
+        for form in forms:
+            state = {**state, **form.get_form_values()}
+        return state
 
+    def save_state_to_file(self, state):
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
                                                           dir=settings.last_used_folder,
                                                           filter='Speaker stuff files (*.ssf)',
@@ -598,39 +615,53 @@ class MainWindow(qtw.QMainWindow):
                 return  # nothing was selected, pick file canceled
         except:
             raise NotADirectoryError(file_raw)
+
         settings.update("last_used_folder", str(file.parent))
 
-        json_string = json.dumps(self.lh_form.get_form_values(), indent=4)
+        json_string = json.dumps(state, indent=4)
         with open(file, "wt") as f:
             f.write(json_string)
+
         self.signal_good_beep.emit()
 
-    def pick_a_file_and_load_state_from_it(self):
-        file = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
-                                               dir=settings.last_used_folder,
-                                               filter='Speaker stuff files (*.ssf)',
-                                               )[0]
-        if file:
-            self.load_preset_file(Path(file))
+
+    def load_state_from_file(self, file:Path=None):
+        # when no file is provided as argumnent, this function raises a file selection menu
+        if file is None:
+            path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
+                                                   dir=settings.last_used_folder,
+                                                   filter='Speaker stuff files (*.ssf)',
+                                                   )
+    
+            # Check file
+            if file_raw := path_unverified[0]:
+                file = Path(file_raw)
+            else:
+                return  # canceled file select
         else:
-            pass  # canceled file select
-
-    def load_preset_file(self, file: Path):
-
-        if not isinstance(file, Path):
-            raise TypeError("Input type must be 'pathlib.Path'")
+            pass  # use the argument
+            
+        # Check if file exists
         if not file.is_file():
             raise FileNotFoundError(file)
 
-        settings.update(
-            "last_used_folder", str(file.parent))
+        settings.update("last_used_folder", str(file.parent))
+
         with open(file, "rt") as f:
-            self.lh_form.update_form_values(json.load(f))
+            state = json.load(f)
+            self.set_state(state)
+
+    def set_state(self, state: dict):
+        forms = [self.input_form.widget[i] for i in range(self.input_form.count())]
+        for form in forms:
+            form_object_names = [name for name in form.get_form_values.keys()]
+            relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
+            form.update_form_values(relevant_states)
         self.signal_good_beep.emit()
 
     def duplicate_window(self):
         self.signal_new_window.emit(
-            {"user_form_dict": self.lh_form.get_form_values()})
+            {"user_form_dict": self.input_form.get_form_values()})
 
     def open_settings_dialog(self):
         settings_dialog = SettingsDialog(parent=self)
