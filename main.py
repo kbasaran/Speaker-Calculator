@@ -118,77 +118,77 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # self.interactable_widgets = {}
         for name, form in forms.items():
             self.addTab(form, name)
-            # self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets} 
+            # self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets}
 
     def _make_form_for_general_tab(self):
         form = pwi.UserForm()
-        
+
         # ---- General specs
         form.add_row(pwi.Title("General speaker specifications"))
 
         form.add_row(pwi.FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
-                                   decimals=1,
-                                   min_max=(0.1, settings.f_max),
-                                   ),
-                      description="fs (Hz)",
-                      )
+                                      decimals=1,
+                                      min_max=(0.1, settings.f_max),
+                                      ),
+                     description="fs (Hz)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("Qms", "Quality factor of speaker, only the mechanical part",
-                                   ),
-                      description="Qms",
-                      )
+                                      ),
+                     description="Qms",
+                     )
 
         form.add_row(pwi.FloatSpinBox("Xmax", "Peak excursion allowed, one way",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Xmax (mm)",
-                      )
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Xmax (mm)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itform and the air.|n(Dead mass = Mmd - coil mass)",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Dead mass (g)",
-                      )
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Dead mass (g)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area",
-                                   ratio_to_SI=1e-4,
-                                   ),
-                      description="Sd (cm²)"
-                      )
-        
+                                      ratio_to_SI=1e-4,
+                                      ),
+                     description="Sd (cm²)"
+                     )
+
         # ---- Electrical input
         form.add_row(pwi.SunkenLine())
 
         form.add_row(pwi.Title("Electrical Input"))
 
         form.add_row(pwi.FloatSpinBox("Rs",
-                                   "The resistance between the speaker coil and the voltage source."
-                                   "\nMay be due to cables, speaker leadwires, connectors etc."
-                                   "\nCauses resistive loss at the input.",
-                                   ),
-                      description="Series resistance",
-                      )
+                                      "The resistance between the speaker coil and the voltage source."
+                                      "\nMay be due to cables, speaker leadwires, connectors etc."
+                                      "\nCauses resistive loss at the input.",
+                                      ),
+                     description="Series resistance",
+                     )
 
         form.add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
-                               [("Volts", "V"),
-                                ("Watts @Rdc", "W"),
-                                   ("Watts @Rnom", "Wn")
-                                ],
-                               ),
-                      description="Unit",
-                      )
+                                  [("Volts", "V"),
+                                   ("Watts @Rdc", "W"),
+                                      ("Watts @Rnom", "Wn")
+                                   ],
+                                  ),
+                     description="Unit",
+                     )
 
         form.add_row(pwi.FloatSpinBox("excitation_value", "The value for input excitation, in units chosen above",
-                                   ),
-                      description="Excitation value",
-                      )
+                                      ),
+                     description="Excitation value",
+                     )
 
         form.add_row(pwi.FloatSpinBox("nominal_impedance", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
-                                   "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
-                                   ),
-                      description="Nominal impedance",
-                      )
-        
+                                      "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
+                                      ),
+                     description="Nominal impedance",
+                     )
+
         return form
 
     def _make_form_for_motor_tab(self):
@@ -196,11 +196,11 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         # ---- Motor specs
         form.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
-                               [("Define Coil Dimensions and Average B", "define_coil"),
-                                ("Define Bl, Rdc, Mmd", "define_Bl_Re_Mmd"),
-                                   ("Define Bl, Rdc, Mms", "define_Bl_Re_Mms"),
-                                ],
-                               ))
+                                  [("Define Coil Dimensions and Average B", "define_coil"),
+                                   ("Define Bl, Rdc, Mmd", "define_Bl_Re_Mmd"),
+                                      ("Define Bl, Rdc, Mms", "define_Bl_Re_Mms"),
+                                   ],
+                                  ))
         form.interactable_widgets["motor_spec_type"].setStyleSheet(
             "font-weight: bold")
 
@@ -208,7 +208,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.motor_definition_stacked = qtw.QStackedWidget()
         form.motor_definition_stacked.setSizePolicy(qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Maximum)
         # expands and pushes the next form rows down if I don't do the above line
-        form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(form.motor_definition_stacked.setCurrentIndex)
+        form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(
+            form.motor_definition_stacked.setCurrentIndex)
 
         form.add_row(form.motor_definition_stacked)
 
@@ -217,46 +218,46 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.motor_definition_stacked.addWidget(motor_definition_p1)
 
         form.add_row(pwi.FloatSpinBox("target_Rdc", "Rdc value that needs to be approached while calculating an appropriate coil and winding",
-                                   ),
-                      description="Target Rdc (ohm)",
-                      into_form=motor_definition_p1,
-                      )
+                                      ),
+                     description="Target Rdc (ohm)",
+                     into_form=motor_definition_p1,
+                     )
 
         form.add_row(pwi.FloatSpinBox("former_ID", "Internal diameter of the coil former",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Coil Former ID (mm)",
-                      into_form=motor_definition_p1,
-                      )
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Coil Former ID (mm)",
+                     into_form=motor_definition_p1,
+                     )
 
         form.add_row(pwi.IntSpinBox("t_former", "Thickness of the coil former",
-                                 ratio_to_SI=1e-6,
-                                 ),
-                      description="Former thickness (\u03BCm)",
-                      into_form=motor_definition_p1,
-                      )
+                                    ratio_to_SI=1e-6,
+                                    ),
+                     description="Former thickness (\u03BCm)",
+                     into_form=motor_definition_p1,
+                     )
 
         form.add_row(pwi.FloatSpinBox("h_winding_target", "Desired height of the coil winding",
-                                   ),
-                      description="Target winding height (mm)",
-                      into_form=motor_definition_p1,
-                      )
+                                      ),
+                     description="Target winding height (mm)",
+                     into_form=motor_definition_p1,
+                     )
 
         form.add_row(pwi.FloatSpinBox("B_average", "Average B field across the coil windings."
-                                   "\nNeeds to be calculated separately and input here.",
-                                   decimals=3,
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Average B field on coil (mT)",
-                      into_form=motor_definition_p1,
-                      )
+                                      "\nNeeds to be calculated separately and input here.",
+                                      decimals=3,
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Average B field on coil (mT)",
+                     into_form=motor_definition_p1,
+                     )
 
         form.add_row(pwi.LineTextBox("N_layer_options", "Enter the number of winding layer options that are accepted."
-                                  "\nUse integers with a comma in between, e.g.: '2, 4'",
-                                  ),
-                      description="Number of layer options",
-                      into_form=motor_definition_p1,
-                      )
+                                     "\nUse integers with a comma in between, e.g.: '2, 4'",
+                                     ),
+                     description="Number of layer options",
+                     into_form=motor_definition_p1,
+                     )
 
         # update_coil_choices_button_group = pwi.PushButtonGroup({"update_coil_choices": "Update coil choices"},
         #                               {"update_coil_choices": "Populate the below dropdown with possible coil choices for the given parameters"},
@@ -270,68 +271,68 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         # update_coil_choices_button.setMinimumHeight(32)  # maybe make relative to the height of the dropdown boxes? e.g. 1.5x?
         form.add_row(update_coil_choices_button,
-                      into_form=motor_definition_p1,
-                      )
+                     into_form=motor_definition_p1,
+                     )
 
         form.add_row(pwi.ComboBox("coil_options", "Select coil winding to be used for calculations",
-                               [("SV", "data1"),
-                                ("CCAW", "data2"),
-                                ("MEGA", "data3"), ],
-                               ),
-                      into_form=motor_definition_p1,
-                      )
+                                  [("SV", "data1"),
+                                   ("CCAW", "data2"),
+                                      ("MEGA", "data3"), ],
+                                  ),
+                     into_form=motor_definition_p1,
+                     )
 
         # ---- Second page: "Define Bl, Rdc, Mmd"
         motor_definition_p2 = pwi.SubForm()
         form.motor_definition_stacked.addWidget(motor_definition_p2)
 
         form.add_row(pwi.FloatSpinBox("Bl_p2", "Force factor",
-                                   ),
-                      description="Bl (Tm)",
-                      into_form=motor_definition_p2,
-                      )
+                                      ),
+                     description="Bl (Tm)",
+                     into_form=motor_definition_p2,
+                     )
 
         form.add_row(pwi.IntSpinBox("Rdc_p2", "DC resistance",
-                                 ),
-                      description="Rdc (ohm)",
-                      into_form=motor_definition_p2,
-                      )
+                                    ),
+                     description="Rdc (ohm)",
+                     into_form=motor_definition_p2,
+                     )
 
         form.add_row(pwi.FloatSpinBox("Mmd_p2",
-                                   "Moving mass, excluding coupled air mass",
-                                   decimals=3,
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Mmd (g)",
-                      into_form=motor_definition_p2,
-                      )
+                                      "Moving mass, excluding coupled air mass",
+                                      decimals=3,
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Mmd (g)",
+                     into_form=motor_definition_p2,
+                     )
 
         # ---- Third page: "Define Bl, Rdc, Mms"
         motor_definition_p3 = pwi.SubForm()
         form.motor_definition_stacked.addWidget(motor_definition_p3)
 
         form.add_row(pwi.FloatSpinBox("Bl_p3",
-                                   "Force factor",
-                                   ),
-                      description="Bl (Tm)",
-                      into_form=motor_definition_p3,
-                      )
+                                      "Force factor",
+                                      ),
+                     description="Bl (Tm)",
+                     into_form=motor_definition_p3,
+                     )
 
         form.add_row(pwi.IntSpinBox("Rdc_p3",
-                                 "DC resistance",
-                                 ),
-                      description="Rdc (ohm)",
-                      into_form=motor_definition_p3,
-                      )
+                                    "DC resistance",
+                                    ),
+                     description="Rdc (ohm)",
+                     into_form=motor_definition_p3,
+                     )
 
         form.add_row(pwi.FloatSpinBox("Mms_p3",
-                                   "Moving mass, including coupled air mass",
-                                   decimals=3,
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Mms (g)",
-                      into_form=motor_definition_p3,
-                      )
+                                      "Moving mass, including coupled air mass",
+                                      decimals=3,
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Mms (g)",
+                     into_form=motor_definition_p3,
+                     )
 
         # ---- Mechanical specs
         form.add_row(pwi.SunkenLine())
@@ -339,50 +340,68 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.Title("Motor mechanical specifications"))
 
         form.add_row(pwi.FloatSpinBox("h_top_plate", "Thickness of the top plate (also called washer)",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Top plate thickness (mm)",
-                      )
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Top plate thickness (mm)",
+                     )
 
         form.add_row(pwi.IntSpinBox("airgap_clearance_inner", "Clearance on the inner side of the coil former",
-                                 ratio_to_SI=1e-6,
-                                 ),
-                      description="Airgap inner clearance (\u03BCm)",
-                      )
+                                    ratio_to_SI=1e-6,
+                                    ),
+                     description="Airgap inner clearance (\u03BCm)",
+                     )
 
         form.add_row(pwi.IntSpinBox("airgap_clearance_outer", "Clearance on the outer side of the coil windings",
-                                 ratio_to_SI=1e-6,
-                                 ),
-                      description="Airgap outer clearance (\u03BCm)",
-                      )
+                                    ratio_to_SI=1e-6,
+                                    ),
+                     description="Airgap outer clearance (\u03BCm)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("former_extension_under_coil", "Extension of the coil former below the coil windings",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Former bottom ext. (mm)",
-                      )
-        
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Former bottom ext. (mm)",
+                     )
+
         # spacer = qtw.QSpacerItem(0, 0, qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
         # form.add_row(spacer)
-        
+
+        # Add logic
+        def adjust_form_for_calc_type():
+            form.interactable_widgets["h_top_plate"].setEnabled(
+                form.get_value("motor_spec_type")["current_data"] == "define_coil"
+                )
+            form.interactable_widgets["airgap_clearance_inner"].setEnabled(
+                form.get_value("motor_spec_type")["current_data"] == "define_coil"
+                )
+            form.interactable_widgets["airgap_clearance_outer"].setEnabled(
+                form.get_value("motor_spec_type")["current_data"] == "define_coil"
+                )
+            form.interactable_widgets["former_extension_under_coil"].setEnabled(
+                form.get_value("motor_spec_type")["current_data"] == "define_coil"
+                )
+            self.widget(0).interactable_widgets["dead_mass"].setEnabled(
+                form.get_value("motor_spec_type")["current_data"] == "define_coil"
+                )
+
+        form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(adjust_form_for_calc_type)
+
         return form
-
-
 
     def _make_form_for_enclosure_tab(form):
         form = pwi.UserForm()
-        
+
         # ---- Enclosure type
 
         form.add_row(pwi.Title("Enclosure type"))
 
         box_type_choice_buttons = pwi.ChoiceButtonGroup("box_type",
-                                        {0: "Free-air", 1: "Closed box"},
-                                        {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
-                                            1: "Speaker rear side coupled to a lossy sealed box.",
-                                         },
-                                        vertical=False,
-                                        )
+                                                        {0: "Free-air", 1: "Closed box"},
+                                                        {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
+                                                         1: "Speaker rear side coupled to a lossy sealed box.",
+                                                         },
+                                                        vertical=False,
+                                                        )
         box_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         form.add_row(box_type_choice_buttons)
 
@@ -393,27 +412,24 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.Title("Closed box specifications"))
 
         form.add_row(pwi.FloatSpinBox("Vb", "Internal free volume filled by air",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Box internal volume (l)",
-                      )
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Box internal volume (l)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker, mechanical part due to losses in box",
-                                   decimals=1
-                                   ),
-                      description="Qa - box absorption",
-                      )
-        
-        return form
+                                      decimals=1
+                                      ),
+                     description="Qa - box absorption",
+                     )
 
+        return form
 
     def _make_form_for_system_tab(form):
         form = pwi.UserForm()
 
         # ---- System type
         form.add_row(pwi.Title("System type"))
-        
-
 
         dof_choice_buttons = pwi.ChoiceButtonGroup("dof",
                                                    {0: "1 dof", 1: "2 dof"},
@@ -424,29 +440,28 @@ class InputSectionTabWidget(qtw.QTabWidget):
         dof_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         form.add_row(dof_choice_buttons)
 
-
         # ---- Second degree of freedom
 
         form.add_row(pwi.SunkenLine())
         form.add_row(pwi.Title("Second degree of freedom"))
 
         form.add_row(pwi.FloatSpinBox("k2", "Stiffness between the second body and the ground",
-                                   ratio_to_SI=1e3,
-                                   ),
-                      description="Stiffness (N/mm)",
-                      )
+                                      ratio_to_SI=1e3,
+                                      ),
+                     description="Stiffness (N/mm)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("m2", "Mass of the second body",
-                                   ratio_to_SI=1e-3,
-                                   ),
-                      description="Mass (g)",
-                      )
+                                      ratio_to_SI=1e-3,
+                                      ),
+                     description="Mass (g)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("c2", "Damping coefficient between the second body and the ground",
-                                   ),
-                      description="Damping coefficient (kg/s)",
-                      )
-        
+                                      ),
+                     description="Damping coefficient (kg/s)",
+                     )
+
         return form
 
 
@@ -474,7 +489,7 @@ class MainWindow(qtw.QMainWindow):
 
     def _create_menu_bar(self):
         menu_bar = self.menuBar()
-        
+
         file_menu = menu_bar.addMenu("File")
         new_window_action = file_menu.addAction("New window", self.duplicate_window)
         load_action = file_menu.addAction("Load state..", self.load_state_from_file)
@@ -489,49 +504,48 @@ class MainWindow(qtw.QMainWindow):
     def _create_widgets(self):
         # ---- Left hand side (input form)
         self.input_form = InputSectionTabWidget()
-        
-        
+
         # ---- Right hand side (graph etc.)
         self._rh_widget = qtw.QWidget()
-        
+
         # Graph
         self.graph = MatplotlibWidget(settings)
         self.graph_data_choice = pwi.ChoiceButtonGroup("_graph_buttons",
 
-                                                   {0: "SPL",
-                                                    1: "Impedance",
-                                                    2: "Displacement",
-                                                    3: "Relative",
-                                                    4: "Forces",
-                                                    5: "Accelerations",
-                                                    6: "Phase",
-                                                    },
+                                                       {0: "SPL",
+                                                        1: "Impedance",
+                                                        2: "Displacement",
+                                                        3: "Relative",
+                                                        4: "Forces",
+                                                        5: "Accelerations",
+                                                        6: "Phase",
+                                                        },
 
-                                                   {0: "/",
-                                                    1: "/",
-                                                    2: "/",
-                                                    3: "/",
-                                                    4: "/",
-                                                    5: "/",
-                                                    6: "/",
-                                                    },
+                                                       {0: "/",
+                                                           1: "/",
+                                                           2: "/",
+                                                           3: "/",
+                                                           4: "/",
+                                                           5: "/",
+                                                           6: "/",
+                                                        },
 
-        # Graph buttons
-                                                   )
+                                                       # Graph buttons
+                                                       )
         self._graph_buttons = pwi.PushButtonGroup({"update_results": "Update results",
-                                              "export_curve": "Export curve",
-                                              "export_quick": "Quick export",
-                                              "import_curve": "Import curve",
-                                              "remove_curve": "Remove curve",
-                                              },
-                                             {"update_results": "Update calculated values. Click this when you modify the user input.",
-                                              "export_curve": "Open export menu",
-                                              "export_quick": "Quick export using latest settings",
-                                              "import_curve": "Open import menu",
-                                              "remove_curve": "Open remove curves menu",
-                                              },
-                                             )
-        
+                                                   "export_curve": "Export curve",
+                                                   "export_quick": "Quick export",
+                                                   "import_curve": "Import curve",
+                                                   "remove_curve": "Remove curve",
+                                                   },
+                                                  {"update_results": "Update calculated values. Click this when you modify the user input.",
+                                                   "export_curve": "Open export menu",
+                                                   "export_quick": "Quick export using latest settings",
+                                                   "import_curve": "Open import menu",
+                                                   "remove_curve": "Open remove curves menu",
+                                                   },
+                                                  )
+
         # Make buttons under the graph larger
         for button in self._graph_buttons.buttons().values():
             font_pixel_size = button.font().pixelSize()
@@ -539,21 +553,21 @@ class MainWindow(qtw.QMainWindow):
 
         # Text boxes
         self.results_textbox = qtw.QPlainTextEdit()
-        self.notes_textbox = qtw.QPlainTextEdit()        
+        self.notes_textbox = qtw.QPlainTextEdit()
         self.textboxes_layout = qtw.QHBoxLayout()
-        
+
         results_section = qtw.QWidget()
         results_section_layout = qtw.QVBoxLayout(results_section)
         results_section_layout.setContentsMargins(-1, 0, -1, 0)
         results_section_layout.addWidget(qtw.QLabel("Results"))
         results_section_layout.addWidget(self.results_textbox)
-        
+
         notes_section = qtw.QWidget()
         notes_section_layout = qtw.QVBoxLayout(notes_section)
         notes_section_layout.setContentsMargins(-1, 0, -1, 0)
         notes_section_layout.addWidget(qtw.QLabel("Notes"))
         notes_section_layout.addWidget(self.notes_textbox)
-        
+
         self.textboxes_layout.addWidget(results_section)
         self.textboxes_layout.addWidget(notes_section)
 
@@ -629,15 +643,14 @@ class MainWindow(qtw.QMainWindow):
 
         self.signal_good_beep.emit()
 
-
-    def load_state_from_file(self, file:Path=None):
+    def load_state_from_file(self, file: Path = None):
         # when no file is provided as argumnent, this function raises a file selection menu
         if file is None:
             path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
-                                                   dir=settings.last_used_folder,
-                                                   filter='Speaker stuff files (*.ssf)',
-                                                   )
-    
+                                                              dir=settings.last_used_folder,
+                                                              filter='Speaker stuff files (*.ssf)',
+                                                              )
+
             # Check file
             if file_raw := path_unverified[0]:
                 file = Path(file_raw)
@@ -645,7 +658,7 @@ class MainWindow(qtw.QMainWindow):
                 return  # canceled file select
         else:
             pass  # use the argument
-            
+
         # Check if file exists
         if not file.is_file():
             raise FileNotFoundError(file)
@@ -760,7 +773,6 @@ class SettingsDialog(qtw.QDialog):
                           "Graph grid view",
                           )
 
-
         user_form.add_row(pwi.SunkenLine())
 
         user_form.add_row(pwi.FloatSpinBox("A_beep",
@@ -851,7 +863,7 @@ def parse_args(app_definitions):
                                      description=description,
                                      epilog={app_definitions['website']},
                                      )
-    
+
     parser.add_argument('infile', nargs='?', type=Path,
                         help="Path to a '*.ssf' file. This will open with preset values.")
     parser.add_argument('-d', '--debuglevel', nargs="?", default="warning",
@@ -865,12 +877,13 @@ def create_sound_engine(app):
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
     sound_engine_thread.start(qtc.QThread.HighPriority)
-    
+
     # ---- Connect
     app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.exit)
-    
+
     return sound_engine, sound_engine_thread
+
 
 def setup_logging(args):
     if args.debuglevel:
@@ -885,6 +898,7 @@ def setup_logging(args):
     logger.info(f"Starting with log level {log_level}.")
 
     return logger
+
 
 def main():
     global settings, app_definition, logger, create_sound_engine, Settings
@@ -903,12 +917,13 @@ def main():
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerDeveloper(app, logger)
     sys.excepthook = error_handler.excepthook
-    
+
     # ---- Create sound engine
     sound_engine, sound_engine_thread = create_sound_engine(app)
 
     # ---- Create main window
     windows = []  # if you don't store them they get garbage collected once new_window terminates
+
     def new_window(**kwargs):
         mw = MainWindow(settings, sound_engine, **kwargs)
         windows.append(mw)
