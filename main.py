@@ -468,9 +468,9 @@ class MainWindow(qtw.QMainWindow):
         # self._add_status_bar()
         self._make_connections()
         if user_form_dict:
-            self.load_state(user_form_dict)
+            self.set_state(user_form_dict)
         elif open_user_file:
-            self.load_preset_file(open_user_file)
+            self.load_state_from_file(open_user_file)
 
     def _create_menu_bar(self):
         menu_bar = self.menuBar()
@@ -595,12 +595,13 @@ class MainWindow(qtw.QMainWindow):
 
     def get_state(self):
         state = {}
-        forms = [self.input_form.widget[i] for i in range(self.input_form.count())]
+        forms = [self.input_form.widget(i) for i in range(self.input_form.count())]
         for form in forms:
             state = {**state, **form.get_form_values()}
         return state
 
-    def save_state_to_file(self, state):
+    def save_state_to_file(self, state=None):
+        global app_definitions
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
                                                           dir=settings.last_used_folder,
                                                           filter='Speaker stuff files (*.ssf)',
@@ -617,6 +618,10 @@ class MainWindow(qtw.QMainWindow):
             raise NotADirectoryError(file_raw)
 
         settings.update("last_used_folder", str(file.parent))
+
+        if state is None:
+            state = self.get_state()
+        state["application_data"] = app_definitions
 
         json_string = json.dumps(state, indent=4)
         with open(file, "wt") as f:
@@ -652,16 +657,16 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(state)
 
     def set_state(self, state: dict):
-        forms = [self.input_form.widget[i] for i in range(self.input_form.count())]
+        forms = [self.input_form.widget(i) for i in range(self.input_form.count())]
         for form in forms:
-            form_object_names = [name for name in form.get_form_values.keys()]
+            form_object_names = [name for name in form.get_form_values().keys()]
             relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
             form.update_form_values(relevant_states)
         self.signal_good_beep.emit()
 
     def duplicate_window(self):
         self.signal_new_window.emit(
-            {"user_form_dict": self.input_form.get_form_values()})
+            {"user_form_dict": self.get_state()})
 
     def open_settings_dialog(self):
         settings_dialog = SettingsDialog(parent=self)
@@ -896,7 +901,7 @@ def main():
         app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
     # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandlerUser(app, logger)
+    error_handler = pwi.ErrorHandlerDeveloper(app, logger)
     sys.excepthook = error_handler.excepthook
     
     # ---- Create sound engine
