@@ -538,7 +538,7 @@ class MainWindow(qtw.QMainWindow):
                                                    "import_curve": "Import curve",
                                                    "remove_curve": "Remove curve",
                                                    },
-                                                  {"update_results": "Update calculated values. Click this when you modify the user input.",
+                                                  {"update_results": "Update calculated values. Click this each time you modify the user form.",
                                                    "export_curve": "Open export menu",
                                                    "export_quick": "Quick export using latest settings",
                                                    "import_curve": "Open import menu",
@@ -550,6 +550,10 @@ class MainWindow(qtw.QMainWindow):
         for button in self._graph_buttons.buttons().values():
             font_pixel_size = button.font().pixelSize()
             button.setMinimumHeight(48)
+
+            # temporary disable, to be decided later
+            if button.text() != "Update results":
+                button.setEnabled(False)
 
         # Text boxes
         self.results_textbox = qtw.QPlainTextEdit()
