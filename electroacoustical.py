@@ -128,6 +128,7 @@ class SpeakerDriver():
     Mms: float = None
     Sd: float = None
     Qms: float = None
+    Rs: float = 0
 
     def __post_init__(self):
         self.update_core_parameters()
@@ -231,6 +232,7 @@ class SpeakerSystem():
     speaker: SpeakerDriver
     housing: Housing = None
     dof2: Dof = None
+    Rs: float = 0
 
     def set_dof2(self, dof: Dof):
         self.dof2 = dof

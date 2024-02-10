@@ -18,6 +18,7 @@ __email__ = "kbasaran@gmail.com"
 
 import sys
 import json
+import pickle
 from dataclasses import dataclass, fields
 
 from PySide6 import QtWidgets as qtw
@@ -26,6 +27,7 @@ from PySide6 import QtGui as qtg
 
 from generictools.graphing_widget import MatplotlibWidget
 import generictools.personalized_widgets as pwi
+from version_convert import convert_v01_to_v02
 
 import logging
 from pathlib import Path
@@ -161,12 +163,12 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.Title("Electrical Input"))
 
-        form.add_row(pwi.FloatSpinBox("Rs",
-                                      "The resistance between the speaker coil and the voltage source."
-                                      "\nMay be due to cables, speaker leadwires, connectors etc."
-                                      "\nCauses resistive loss at the input.",
+        form.add_row(pwi.FloatSpinBox("Rs_source",
+                                      "The resistance between the speaker terminal and the voltage source."
+                                      "\nMay be due to cables, connectors etc."
+                                      "\nCauses resistive loss before arrival at the speaker terminals.",
                                       ),
-                     description="Series resistance",
+                     description="Source resistance",
                      )
 
         form.add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
@@ -193,6 +195,16 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
     def _make_form_for_motor_tab(self):
         form = pwi.UserForm()
+        
+        form.add_row(pwi.FloatSpinBox("Rs_spk",
+                                      "The resistance between the speaker terminal and the coil."
+                                      "\nUsually only due to leadwires."
+                                      ),
+                     description="Series resistance",
+                     )
+        
+        form.add_row(pwi.SunkenLine())
+
 
         # Motor spec type
         form.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
@@ -654,7 +666,7 @@ class MainWindow(qtw.QMainWindow):
         if file is None:
             path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
                                                               dir=settings.last_used_folder,
-                                                              filter='Speaker stuff files (*.ssf)',
+                                                              filter='Speaker stuff files (*.ssf *.sscf)',
                                                               )
 
             # Check file
@@ -673,9 +685,19 @@ class MainWindow(qtw.QMainWindow):
 
         settings.update("last_used_folder", str(file.parent))
 
-        with open(file, "rt") as f:
-            state = json.load(f)
+        suffix = file.suffixes[-1]
+
+        if suffix == ".sscf":
+            # backwards compatibility with v0.1
+            state = convert_v01_to_v02(file)
             self.set_state(state)
+            
+        elif suffix == ".ssf":
+            with open(file, "rt") as f:
+                state = json.load(f)
+            self.set_state(state)
+        else:
+            raise ValueError(f"Invalid suffix '{suffix}'")
 
     def set_state(self, state: dict):
         forms = [self.input_form.widget(i) for i in range(self.input_form.count())]
