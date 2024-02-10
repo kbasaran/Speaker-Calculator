@@ -20,7 +20,7 @@ def convert_v01_to_v02(file: Path) -> dict:
     with open(file, "rb") as f:
         form_dict = pickle.load(f)
     
-    print(form_dict.keys())
+    # print("',\n'".join(form_dict.keys()))
 
 
     necessary_parameters_for_v2 = [
@@ -33,7 +33,7 @@ def convert_v01_to_v02(file: Path) -> dict:
         'Rs_source',
         'excitation_unit',
         'excitation_value',
-        'nominal_impedance',
+        'Rnom',
         
         'Rs_spk',
         'motor_spec_type',
@@ -66,10 +66,72 @@ def convert_v01_to_v02(file: Path) -> dict:
 
         'user_curves',
         'user_notes',
-
         ]
 
+
+    keys_in_v1 = [
+        'result_sys',
+        'user_curves',
+        'fs',
+        'Qms',
+        'Xmax',
+        'dead_mass',
+        'Sd',
+        'motor_spec_type',
+        'target_Rdc',
+        'former_ID',
+        't_former',
+        'h_winding',
+        'B_average',
+        'N_layer_options',
+        'coil_choice_box',
+        'Bl',
+        'Rdc',
+        'Mmd',
+        'h_washer',
+        'airgap_clearance_inner',
+        'airgap_clearance_outer',
+        'former_extension_under_coil',
+        'Vb',
+        'Qa',
+        'k2',
+        'm2',
+        'c2',
+        'excitation_unit',
+        'excitation_value',
+        'nominal_impedance',
+        'box_type',
+        'dof',
+        'user_notes',
+        'coil_options_table',
+        ]
     
+    new_default = {"Rs_spk": 0.,
+                    "Rs_source": 0.,
+                    }
+    
+    # key is new name, value is old name
+    translation = {"Rnom": "nominal_impedance",
+                   "h_winding_target": "h_winding",
+                   }
+    
+    missing_parameters = set(necessary_parameters_for_v2)
+    state = {}
+    for key in necessary_parameters_for_v2:
+        if key in keys_in_v1:
+            state[key] = form_dict[key]
+            missing_parameters.remove(key)
+        elif key in new_default.keys():
+            state[key] = new_default[key]
+            missing_parameters.remove(key)
+        elif key in translation.keys():
+            old_key = translation[key]
+            state[key] = form_dict[old_key]
+            missing_parameters.remove(key)
+    
+    if missing_parameters:
+        raise ValueError("Could not be converted: " + str(missing_parameters))
+
     # setattr(self, "coil_options_table", form_dict.pop("coil_options_table"))
     # form.coil_choice_box["obj"].clear()
     # if form_dict["motor_spec_type"]["userData"] == "define_coil":
@@ -84,7 +146,7 @@ def convert_v01_to_v02(file: Path) -> dict:
     
     # self.set_state(state)
     
-    return {}
+    return state
 
 if __name__ == "__main__":
     convert_v01_to_v02(Path("/home/kerem/GitHub/Speaker-Stuff-Calculator/default.sscf"))
