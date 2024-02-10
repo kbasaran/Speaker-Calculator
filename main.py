@@ -194,7 +194,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
     def _make_form_for_motor_tab(self):
         form = pwi.UserForm()
 
-        # ---- Motor specs
+        # Motor spec type
         form.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
                                   [("Define Coil Dimensions and Average B", "define_coil"),
                                    ("Define Bl, Rdc, Mmd", "define_Bl_Re_Mmd"),
@@ -204,7 +204,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.interactable_widgets["motor_spec_type"].setStyleSheet(
             "font-weight: bold")
 
-        # ---- Stacked widget for motor definitions
+        # Stacked widget for different motor definition types
         form.motor_definition_stacked = qtw.QStackedWidget()
         form.motor_definition_stacked.setSizePolicy(qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Maximum)
         # expands and pushes the next form rows down if I don't do the above line
@@ -366,7 +366,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # spacer = qtw.QSpacerItem(0, 0, qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
         # form.add_row(spacer)
 
-        # Add logic
+        # ---- Form logic
         def adjust_form_for_calc_type():
             form.interactable_widgets["h_top_plate"].setEnabled(
                 form.get_value("motor_spec_type")["current_data"] == "define_coil"
@@ -392,7 +392,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form = pwi.UserForm()
 
         # ---- Enclosure type
-
         form.add_row(pwi.Title("Enclosure type"))
 
         box_type_choice_buttons = pwi.ChoiceButtonGroup("box_type",
@@ -406,7 +405,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(box_type_choice_buttons)
 
         # ---- Closed box specs
-
         form.add_row(pwi.SunkenLine())
 
         form.add_row(pwi.Title("Closed box specifications"))
@@ -481,7 +479,6 @@ class MainWindow(qtw.QMainWindow):
         self._create_widgets()
         self._place_widgets()
         # self._add_status_bar()
-        self._make_connections()
         if user_form_dict:
             self.set_state(user_form_dict)
         elif open_user_file:
@@ -504,6 +501,9 @@ class MainWindow(qtw.QMainWindow):
     def _create_widgets(self):
         # ---- Left hand side (input form)
         self.input_form = InputSectionTabWidget()
+        # connect its signals
+        self.input_form.signal_good_beep.connect(self.signal_good_beep)
+        self.input_form.signal_bad_beep.connect(self.signal_bad_beep)
 
         # ---- Right hand side (graph etc.)
         self._rh_widget = qtw.QWidget()
@@ -599,10 +599,6 @@ class MainWindow(qtw.QMainWindow):
         self.graph_data_choice.layout().setContentsMargins(-1, 0, -1, 0)
         self._rh_layout.addLayout(self.textboxes_layout, 2)
 
-    def _make_connections(self):
-        self.input_form.signal_good_beep.connect(self.signal_good_beep)
-        self.input_form.signal_bad_beep.connect(self.signal_bad_beep)
-
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
         self.statusBar().showMessage("Test", 2000)
@@ -612,6 +608,7 @@ class MainWindow(qtw.QMainWindow):
         forms = [self.input_form.widget(i) for i in range(self.input_form.count())]
         for form in forms:
             state = {**state, **form.get_form_values()}
+
         return state
 
     def save_state_to_file(self, state=None):
@@ -620,16 +617,21 @@ class MainWindow(qtw.QMainWindow):
                                                           dir=settings.last_used_folder,
                                                           filter='Speaker stuff files (*.ssf)',
                                                           )
-        # filter not working as expected, saves files without file extension ssf
+
         try:
             file_raw = path_unverified[0]
             if file_raw:
                 file = Path(file_raw + ".ssf" if file_raw[-4:] != ".ssf" else file_raw)
+                # filter not working as expected, saves files without file extension ssf
+                # therefore above logic
                 assert file.parent.is_dir()
             else:
-                return  # nothing was selected, pick file canceled
+                return  # empty file_raw. means nothing was selected, so pick file is canceled.
         except:
+            # Path object could not be created
             raise NotADirectoryError(file_raw)
+        
+        # if you reached here, file is ready as Path object
 
         settings.update("last_used_folder", str(file.parent))
 
@@ -663,6 +665,8 @@ class MainWindow(qtw.QMainWindow):
         if not file.is_file():
             raise FileNotFoundError(file)
 
+        # if you reached here, file is ready as Path object
+
         settings.update("last_used_folder", str(file.parent))
 
         with open(file, "rt") as f:
@@ -672,6 +676,10 @@ class MainWindow(qtw.QMainWindow):
     def set_state(self, state: dict):
         forms = [self.input_form.widget(i) for i in range(self.input_form.count())]
         for form in forms:
+            # each tab is a form
+            # for each form, make a "relevant states" dictionary
+            # this dictionary will not contain all the settings
+            # but only the ones that have items with matching names to form's items (names in form_object_names)
             form_object_names = [name for name in form.get_form_values().keys()]
             relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
             form.update_form_values(relevant_states)
