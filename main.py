@@ -185,7 +185,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Excitation value",
                      )
 
-        form.add_row(pwi.FloatSpinBox("nominal_impedance", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
+        form.add_row(pwi.FloatSpinBox("Rnom", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
                                       "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
                                       ),
                      description="Nominal impedance",
@@ -689,6 +689,7 @@ class MainWindow(qtw.QMainWindow):
 
         if suffix == ".sscf":
             # backwards compatibility with v0.1
+
             state = convert_v01_to_v02(file)
             self.set_state(state)
             
@@ -881,6 +882,17 @@ class SettingsDialog(qtw.QDialog):
                 settings.update(widget_name, widget.value())
         self.signal_settings_changed.emit()
         self.accept()
+
+
+# the v01 files require below classes to open. this is because I pickled their instances
+# and to load again the pickles, app needs to create instances
+# [face palm]
+class SpeakerDriver():
+    pass
+
+
+class SpeakerSystem():
+    pass
 
 
 def parse_args(app_definitions):

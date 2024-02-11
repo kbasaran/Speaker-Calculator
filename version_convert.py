@@ -9,19 +9,23 @@ Created on Sat Feb 10 10:37:25 2024
 from pathlib import Path
 import pickle
 
+# the v01 files require below classes to open. this is because I pickled their instances
+# and to load again the pickles, app needs to create instances
+# [face palm]
+
+
 class SpeakerDriver():
     pass
-    
+
+
 class SpeakerSystem():
     pass
 
+
 def convert_v01_to_v02(file: Path) -> dict:
-               
+
     with open(file, "rb") as f:
         form_dict = pickle.load(f)
-    
-    # print("',\n'".join(form_dict.keys()))
-
 
     necessary_parameters_for_v2 = [
         'fs',
@@ -29,12 +33,12 @@ def convert_v01_to_v02(file: Path) -> dict:
         'Xmax',
         'dead_mass',
         'Sd',
-        
+
         'Rs_source',
         'excitation_unit',
         'excitation_value',
         'Rnom',
-        
+
         'Rs_spk',
         'motor_spec_type',
         'target_Rdc',
@@ -45,20 +49,20 @@ def convert_v01_to_v02(file: Path) -> dict:
         'N_layer_options',
         'coil_choice_box',
         'coil_options_table',
-        
+
         'Bl',
         'Rdc',
         'Mmd',
-        
+
         'h_washer',
         'airgap_clearance_inner',
         'airgap_clearance_outer',
         'former_extension_under_coil',
-        
+
         'box_type',
         'Vb',
         'Qa',
-        
+
         'dof',
         'k2',
         'm2',
@@ -67,7 +71,6 @@ def convert_v01_to_v02(file: Path) -> dict:
         'user_curves',
         'user_notes',
         ]
-
 
     keys_in_v1 = [
         'result_sys',
@@ -105,30 +108,30 @@ def convert_v01_to_v02(file: Path) -> dict:
         'user_notes',
         'coil_options_table',
         ]
-    
+
     new_default = {"Rs_spk": 0.,
-                    "Rs_source": 0.,
-                    }
-    
+                   "Rs_source": 0.,
+                   }
+
     # key is new name, value is old name
     translation = {"Rnom": "nominal_impedance",
                    "h_winding_target": "h_winding",
                    }
-    
+
     missing_parameters = set(necessary_parameters_for_v2)
     state = {}
     for key in necessary_parameters_for_v2:
-        if key in keys_in_v1:
-            state[key] = form_dict[key]
-            missing_parameters.remove(key)
-        elif key in new_default.keys():
+        if key in new_default.keys():
             state[key] = new_default[key]
             missing_parameters.remove(key)
         elif key in translation.keys():
             old_key = translation[key]
             state[key] = form_dict[old_key]
             missing_parameters.remove(key)
-    
+        elif key in keys_in_v1:
+            state[key] = form_dict[key]
+            missing_parameters.remove(key)
+
     if missing_parameters:
         raise ValueError("Could not be converted: " + str(missing_parameters))
 
@@ -143,10 +146,11 @@ def convert_v01_to_v02(file: Path) -> dict:
     # for item_name, value in form_dict.items():
     #     if item_name not in items_to_skip:
     #         self.set_value(item_name, value)
-    
+
     # self.set_state(state)
-    
+
     return state
 
+
 if __name__ == "__main__":
-    convert_v01_to_v02(Path("/home/kerem/GitHub/Speaker-Stuff-Calculator/default.sscf"))
+    state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
