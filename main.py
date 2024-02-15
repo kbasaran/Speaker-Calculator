@@ -689,7 +689,6 @@ class MainWindow(qtw.QMainWindow):
 
         if suffix == ".sscf":
             # backwards compatibility with v0.1
-
             state = convert_v01_to_v02(file)
             self.set_state(state)
             

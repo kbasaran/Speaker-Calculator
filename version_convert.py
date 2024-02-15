@@ -48,7 +48,6 @@ def convert_v01_to_v02(file: Path) -> dict:
         'B_average',
         'N_layer_options',
         'coil_choice_box',
-        'coil_options_table',
 
         'Bl',
         'Rdc',
@@ -118,36 +117,58 @@ def convert_v01_to_v02(file: Path) -> dict:
                    "h_winding_target": "h_winding",
                    }
 
+    def set_excitation_unit():
+        excitation_unit_combobox_setting = {"current_text": form_dict["excitation_unit"]["name"],
+                                            "current_data": form_dict["excitation_unit"]["userData"],
+                                            }
+        state["excitation_unit"] = excitation_unit_combobox_setting
+
+    def set_coil_choice_box():
+        coil_choice_box_setting = {"current_text": form_dict["coil_choice_box"]["name"],
+                                   "current_data": form_dict["coil_choice_box"]["userData"],
+                                   }
+        state["coil_choice_box"] = coil_choice_box_setting
+
+    def set_motor_spec_type():
+        motor_spec_type_setting = {"current_text": form_dict["motor_spec_type"]["name"],
+                                   "current_data": form_dict["motor_spec_type"]["userData"],
+                                   }
+        state["motor_spec_type"] = motor_spec_type_setting
+
     missing_parameters = set(necessary_parameters_for_v2)
     state = {}
+
     for key in necessary_parameters_for_v2:
-        if key in new_default.keys():
+        if key == "excitation_unit":
+            set_excitation_unit()
+
+        elif key == "coil_choice_box":
+            set_coil_choice_box()
+
+        elif key == "motor_spec_type":
+            set_motor_spec_type()
+
+        elif key == "t_former":
+            state[key] = int(form_dict[key])
+            # other parameters have the same issue
+            # stored in SI unit or stored as in the value in widget
+
+        elif key in new_default.keys():
             state[key] = new_default[key]
-            missing_parameters.remove(key)
+
         elif key in translation.keys():
             old_key = translation[key]
             state[key] = form_dict[old_key]
-            missing_parameters.remove(key)
+
         elif key in keys_in_v1:
             state[key] = form_dict[key]
-            missing_parameters.remove(key)
+
+        else:
+            continue
+        missing_parameters.remove(key)
 
     if missing_parameters:
         raise ValueError("Could not be converted: " + str(missing_parameters))
-
-    # setattr(self, "coil_options_table", form_dict.pop("coil_options_table"))
-    # form.coil_choice_box["obj"].clear()
-    # if form_dict["motor_spec_type"]["userData"] == "define_coil":
-    #     coil_choice = (form_dict["coil_choice_box"]["name"],
-    #                    form_dict["coil_choice_box"]["userData"])
-    #     form.coil_choice_box["obj"].addItem(*coil_choice)
-
-    # items_to_skip = ["result_sys", "pickles_path"]
-    # for item_name, value in form_dict.items():
-    #     if item_name not in items_to_skip:
-    #         self.set_value(item_name, value)
-
-    # self.set_state(state)
 
     return state
 
