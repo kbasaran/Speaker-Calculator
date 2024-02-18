@@ -162,7 +162,7 @@ def convert_v01_to_v02(file: Path) -> dict:
             return 1
         else:
             raise ValueError(f'Could not convert parent body setting: {form_dict["dof"]}')
-            
+
     def set_user_curves(value_from_v01):
         curves = {}
         for i, curve in enumerate(value_from_v01):
@@ -219,16 +219,40 @@ def convert_v01_to_v02(file: Path) -> dict:
 
         }
 
+
+    missing_values = set(conversion.keys())
     state = {}
     for key, (name_from_v01, converter) in conversion.items():
         if name_from_v01 is None:
             state[key] = converter
+            missing_values.remove(key)
         else:
-            value_from_v01 = form_dict[name_from_v01]
-            state[key] = converter(value_from_v01)
-    
+            try:
+                value_from_v01 = form_dict[name_from_v01]
+                state[key] = converter(value_from_v01)
+                missing_values.remove(key)
+            except KeyError as e:
+                raise RuntimeError(f"Key error for name in v01: {name_from_v01}")
+
+    if missing_values:
+        print("----Missing----")
+        print(missing_values)
+
     return state
+
+
+def check_all_v01_files_in_a_folder(folder_path):
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    sscf_files = folder_path.glob("*.sscf")
+    states = []
+    for file in sscf_files:
+        # print()
+        # print(file)
+        states.append(convert_v01_to_v02(file))
 
 
 if __name__ == "__main__":
     state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
+    check_all_v01_files_in_a_folder(pathlib.Path("C:\\Users\\user\\Documents\\SSC files"))

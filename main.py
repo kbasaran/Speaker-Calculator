@@ -130,7 +130,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
                                       decimals=1,
-                                      min_max=(0.1, settings.f_max),
+                                      min_max=(0.1, 1e6),
                                       ),
                      description="fs (Hz)",
                      )
@@ -147,6 +147,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
 
         form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itform and the air.|n(Dead mass = Mmd - coil mass)",
+                                      decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
                      description="Dead mass (g)",
@@ -167,6 +168,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "The resistance between the speaker terminal and the voltage source."
                                       "\nMay be due to cables, connectors etc."
                                       "\nCauses resistive loss before arrival at the speaker terminals.",
+                                      min_max=(0, 1e6),
                                       ),
                      description="Source resistance",
                      )
@@ -190,7 +192,17 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       ),
                      description="Nominal impedance",
                      )
+        
+        # ---- Form logic
+        def adjust_form_for_excitation_unit(chosen_index):
+            is_Wn = \
+                form.interactable_widgets["excitation_unit"].itemData(chosen_index) == "Wn"
+            form.interactable_widgets["Rnom"].setEnabled(is_Wn)
 
+        form.interactable_widgets["excitation_unit"].currentIndexChanged.connect(adjust_form_for_excitation_unit)
+        # adjustment at start
+        adjust_form_for_excitation_unit(form.interactable_widgets["excitation_unit"].currentIndex())
+        
         return form
 
     def _make_form_for_motor_tab(self):
@@ -198,7 +210,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
         
         form.add_row(pwi.FloatSpinBox("Rs_spk",
                                       "The resistance between the speaker terminal and the coil."
-                                      "\nUsually only due to leadwires."
+                                      "\nUsually only due to leadwires.",
+                                      min_max=(0, 1e6),
                                       ),
                      description="Series resistance",
                      )
@@ -244,6 +257,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.IntSpinBox("t_former", "Thickness of the coil former",
                                     coeff_for_SI=1e-6,
+                                      min_max=(0, 1e6)
                                     ),
                      description="Former thickness (\u03BCm)",
                      into_form=motor_definition_p1,
@@ -271,11 +285,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Number of layer options",
                      into_form=motor_definition_p1,
                      )
-
-        # update_coil_choices_button_group = pwi.PushButtonGroup({"update_coil_choices": "Update coil choices"},
-        #                               {"update_coil_choices": "Populate the below dropdown with possible coil choices for the given parameters"},
-        #                               )
-        # update_coil_choices_button = list(update_coil_choices_button_group.buttons().values())[0]
 
         update_coil_choices_button = pwi.PushButton("update_coil_choices",
                                                     "Update coil choices",
@@ -352,7 +361,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.Title("Motor mechanical specifications"))
 
-        form.add_row(pwi.FloatSpinBox("h_top_plate", "Thickness of the top plate (also called washer)",
+        form.add_row(pwi.FloatSpinBox("h_top_plate", "Thickness of the top plate",
                                       coeff_for_SI=1e-3,
                                       ),
                      description="Top plate thickness (mm)",
@@ -380,24 +389,18 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # form.add_row(spacer)
 
         # ---- Form logic
-        def adjust_form_for_calc_type():
-            form.interactable_widgets["h_top_plate"].setEnabled(
-                form.get_value("motor_spec_type")["current_data"] == "define_coil"
-                )
-            form.interactable_widgets["airgap_clearance_inner"].setEnabled(
-                form.get_value("motor_spec_type")["current_data"] == "define_coil"
-                )
-            form.interactable_widgets["airgap_clearance_outer"].setEnabled(
-                form.get_value("motor_spec_type")["current_data"] == "define_coil"
-                )
-            form.interactable_widgets["former_extension_under_coil"].setEnabled(
-                form.get_value("motor_spec_type")["current_data"] == "define_coil"
-                )
-            self.widget(0).interactable_widgets["dead_mass"].setEnabled(
-                form.get_value("motor_spec_type")["current_data"] == "define_coil"
-                )
+        def adjust_form_for_calc_type(chosen_index):
+            is_define_coil = \
+                form.interactable_widgets["motor_spec_type"].itemData(chosen_index) == "define_coil"
+            form.interactable_widgets["h_top_plate"].setEnabled(is_define_coil)
+            form.interactable_widgets["airgap_clearance_inner"].setEnabled(is_define_coil)
+            form.interactable_widgets["airgap_clearance_outer"].setEnabled(is_define_coil)
+            form.interactable_widgets["h_former_under_coil"].setEnabled(is_define_coil)
+            self.widget(0).interactable_widgets["dead_mass"].setEnabled(is_define_coil)
 
         form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(adjust_form_for_calc_type)
+        # adjustment at start -- not necessary because it starts all enabled from and in tab 1
+        # adjust_form_for_calc_type(form.interactable_widgets["motor_spec_type"].currentIndex())
 
         return form
 
@@ -423,6 +426,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.Title("Closed box specifications"))
 
         form.add_row(pwi.FloatSpinBox("Vb", "Internal free volume filled by air",
+                                      decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
                      description="Box internal volume (l)",
@@ -433,6 +437,15 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       ),
                      description="Qa - box absorption",
                      )
+        
+        # ---- Form logic
+        def adjust_form_for_enclosure_type(clicked_id):
+            form.interactable_widgets["Vb"].setEnabled(clicked_id == 1)
+            form.interactable_widgets["Qa"].setEnabled(clicked_id == 1)
+
+        form.interactable_widgets["box_type"].idClicked.connect(adjust_form_for_enclosure_type)
+        # adjustment at start
+        adjust_form_for_enclosure_type(form.interactable_widgets["box_type"].checkedId())
 
         return form
 
@@ -453,9 +466,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         # ---- Second degree of freedom
 
-        form.add_row(pwi.SunkenLine())
-        form.add_row(pwi.Title("Parent body"))
-
         form.add_row(pwi.FloatSpinBox("k2", "Stiffness between the parent body and the ground",
                                       coeff_for_SI=1e3,
                                       ),
@@ -472,6 +482,16 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       ),
                      description="Damping coefficient (kg/s)",
                      )
+        
+        # ---- Form logic
+        def adjust_form_for_system_type(clicked_id):
+            form.interactable_widgets["k2"].setEnabled(clicked_id == 1)
+            form.interactable_widgets["m2"].setEnabled(clicked_id == 1)
+            form.interactable_widgets["c2"].setEnabled(clicked_id == 1)
+
+        form.interactable_widgets["parent_body"].idClicked.connect(adjust_form_for_system_type)
+        # adjustment at start
+        adjust_form_for_system_type(form.interactable_widgets["parent_body"].checkedId())
 
         return form
 
@@ -983,6 +1003,8 @@ def main():
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
         mw.status_bar().show_message(f"Opened file '{args.infile.name}'", 5000)
+    elif (default_file := Path.cwd().joinpath("default.sscf")).is_file():
+        new_window(open_user_file=default_file)
     else:
         new_window()
 
