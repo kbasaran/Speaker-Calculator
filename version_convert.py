@@ -28,51 +28,6 @@ def convert_v01_to_v02(file: Path) -> dict:
     with open(file, "rb") as f:
         form_dict = pickle.load(f)
 
-    necessary_parameters_for_v2 = [
-        'fs',
-        'Qms',
-        'Xmax',
-        'dead_mass',
-        'Sd',
-
-        'Rs_source',
-        'excitation_unit',
-        'excitation_value',
-        'Rnom',
-
-        'Rs_spk',
-        'motor_spec_type',
-        'target_Rdc',
-        'former_ID',
-        't_former',
-        'h_winding_target',
-        'B_average',
-        'N_layer_options',
-        'coil_choice_box',
-
-        'Bl',
-        'Rdc',
-        'Mmd',
-        'Mms',
-
-        'h_washer',
-        'airgap_clearance_inner',
-        'airgap_clearance_outer',
-        'former_extension_under_coil',
-
-        'box_type',
-        'Vb',
-        'Qa',
-
-        'parent_body',
-        'k2',
-        'm2',
-        'c2',
-
-        'user_curves',
-        'user_notes',
-        ]
-
     keys_in_v1 = [
         'result_sys',
         'user_curves',
@@ -135,7 +90,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                                             }
         return excitation_unit_combobox_setting
 
-    def set_coil_choice_box(value_from_v01):
+    def set_coil_options(value_from_v01):
         coil_choice_box_setting = {"current_text": value_from_v01["name"],
                                    "current_data": value_from_v01["userData"],
                                    }
@@ -190,7 +145,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "h_winding_target":         ("h_winding",               lambda x: x*1e3),
                     "B_average":                ("B_average",               lambda x: x),
                     "N_layer_options":          ("N_layer_options",         lambda x: x),
-                    "coil_options":             ("coil_choice_box",         set_coil_choice_box),
+                    "coil_options":             ("coil_choice_box",         set_coil_options),
 
                     "Bl_p2":                    ("Bl",                      lambda x: x),
                     "Rdc_p2":                   ("Rdc",                     lambda x: x),

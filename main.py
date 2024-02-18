@@ -439,13 +439,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
         
         # ---- Form logic
-        def adjust_form_for_enclosure_type(clicked_id):
-            form.interactable_widgets["Vb"].setEnabled(clicked_id == 1)
-            form.interactable_widgets["Qa"].setEnabled(clicked_id == 1)
+        def adjust_form_for_enclosure_type(toggled_id, checked):
+            form.interactable_widgets["Vb"].setEnabled(toggled_id == 1 and checked is True)
+            form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
 
-        form.interactable_widgets["box_type"].idClicked.connect(adjust_form_for_enclosure_type)
+        form.interactable_widgets["box_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start
-        adjust_form_for_enclosure_type(form.interactable_widgets["box_type"].checkedId())
+        adjust_form_for_enclosure_type(0, True)
 
         return form
 
@@ -484,14 +484,14 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
         
         # ---- Form logic
-        def adjust_form_for_system_type(clicked_id):
-            form.interactable_widgets["k2"].setEnabled(clicked_id == 1)
-            form.interactable_widgets["m2"].setEnabled(clicked_id == 1)
-            form.interactable_widgets["c2"].setEnabled(clicked_id == 1)
+        def adjust_form_for_system_type(toggled_id, checked):
+            form.interactable_widgets["k2"].setEnabled(toggled_id == 1 and checked is True)
+            form.interactable_widgets["m2"].setEnabled(toggled_id == 1 and checked is True)
+            form.interactable_widgets["c2"].setEnabled(toggled_id == 1 and checked is True)
 
-        form.interactable_widgets["parent_body"].idClicked.connect(adjust_form_for_system_type)
+        form.interactable_widgets["parent_body"].idToggled.connect(adjust_form_for_system_type)
         # adjustment at start
-        adjust_form_for_system_type(form.interactable_widgets["parent_body"].checkedId())
+        adjust_form_for_system_type(0, True)
 
         return form
 
@@ -905,7 +905,7 @@ class SettingsDialog(qtw.QDialog):
 
 
 # the v01 files require below classes to open. this is because I pickled their instances
-# and to load again the pickles, app needs to create instances
+# and to load them again, app needs to create instances of these classes
 # [face palm]
 class SpeakerDriver():
     pass
