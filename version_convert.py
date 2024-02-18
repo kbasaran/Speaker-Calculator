@@ -143,7 +143,7 @@ def convert_v01_to_v02(file: Path) -> dict:
         elif value_from_v01 == "Closed box":
             return 1
         else:
-            raise ValueError(f'Could not convert box type setting: {form_dict["dof"]["name"]}')
+            raise ValueError(f'Could not convert box type setting: {form_dict["dof"]}')
 
     def set_parent_body(value_from_v01):
         if value_from_v01 == "1 dof":
@@ -151,7 +151,7 @@ def convert_v01_to_v02(file: Path) -> dict:
         elif value_from_v01 == "2 dof":
             return 1
         else:
-            raise ValueError(f'Could not convert parent body setting: {form_dict["dof"]["name"]}')
+            raise ValueError(f'Could not convert parent body setting: {form_dict["dof"]}')
             
     def set_user_curves(value_from_v01):
         curves = {}
@@ -159,8 +159,7 @@ def convert_v01_to_v02(file: Path) -> dict:
             curves[i] = curve
         return curves
 
-
-    # value_conversions. use name in v0.2.
+    # key, old name, conversion function
     conversion = {  "fs":                       ("fs",                      lambda x: x),
                     "Qms":                      ("Qms",                     lambda x: x),
                     "Xmax":                     ("Xmax",                    lambda x: x * 1e3),
