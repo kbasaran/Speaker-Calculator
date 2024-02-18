@@ -8,6 +8,7 @@ Created on Sat Feb 10 10:37:25 2024
 
 from pathlib import Path
 import pickle
+import pathlib
 
 # the v01 files require below classes to open. this is because I pickled their instances
 # and to load again the pickles, app needs to create instances
@@ -111,11 +112,20 @@ def convert_v01_to_v02(file: Path) -> dict:
 
     def set_excitation_unit(value_from_v01):
         match value_from_v01["name"]:
+
             case "Volt":
                 current_text = "Volts"
+            case "Volts":
+                current_text = "Volts"
+
             case "W@Rdc":
                 current_text = "Watts @Rdc"
+            case "Watt@Rdc":
+                current_text = "Watts @Rdc"
+
             case "W@Rnom":
+                current_text = "Watts @Rnom"
+            case "Watt@Rnom":
                 current_text = "Watts @Rnom"
             case _:
                 raise ValueError(f"No case matches: {value_from_v01}")
@@ -221,6 +231,4 @@ def convert_v01_to_v02(file: Path) -> dict:
 
 
 if __name__ == "__main__":
-    # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
-    state = convert_v01_to_v02(Path("/home/user/Documents/SSC files/example.sscf"))
-                             
+    state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
