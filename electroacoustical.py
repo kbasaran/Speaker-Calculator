@@ -215,39 +215,25 @@ class SpeakerDriver():
 
 
 @dataclass
-class Dof():
-    m: float
-    c: float
-    k: float
-
-
-@dataclass
-class Housing():
-    Vb: float
-    Qa: float
-
-
-@dataclass
 class SpeakerSystem():
     speaker: SpeakerDriver
-    housing: Housing = None
-    dof2: Dof = None
+    Vb: float = np.inf
+    Qa: float = 0
+    mobile_parent = False
     Rs: float = 0
 
-    def set_dof2(self, dof: Dof):
-        self.dof2 = dof
+    def __post_init__(self, mobile_parent=False, housing_type="closed"):
         self.update()
 
-    def set_housing(self, housing: Housing):
-        self.housing = housing
-        self.update()
-
-    def __post_init__(self):
-        self.update()
-
-    def update(self):
+    def update(self, **kwargs):
         global settings
-        if self.dof2 is not None:
+        for key, val in kwargs.items():
+            if key in self.locals():
+                setattr(self, key, val)
+            else:
+                raise KeyError("Not familiar with key '{key}'")
+
+        if not self.mobile_parent:
             zeta2_free = self.dof2.c / 2 / ((self.speaker.Mms + self.dof2.m) * self.dof2.k)**0.5
             if self.dof2.c > 0:
                 q2_free = 1 / 2 / zeta2_free
@@ -265,7 +251,7 @@ class SpeakerSystem():
             self.f2 = f2_undamped
             self.Q2 = q2_free
 
-        if self.housing is not None:
+        if self.housing is not np.inf:
             self.Kbox = self.speakerSd**2 * settings.Kair / self.housing.Vb
             self.Rbox = ((self.speaker.Kms + self.Kbox) * self.speaker.Mms)**0.5 / self.housing.Qa
             zeta_boxed_speaker = (self.Rbox + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
