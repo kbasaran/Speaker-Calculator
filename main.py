@@ -703,6 +703,7 @@ class MainWindow(qtw.QMainWindow):
             raise FileNotFoundError(file)
 
         # if you reached here, file is ready as Path object
+        print(f"Loading file '{file.name}'")
 
         settings.update("last_used_folder", str(file.parent))
 

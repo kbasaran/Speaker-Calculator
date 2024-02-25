@@ -82,6 +82,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                 current_text = "Watts @Rnom"
             case "Watt@Rnom":
                 current_text = "Watts @Rnom"
+
             case _:
                 raise ValueError(f"No case matches: {value_from_v01}")
 
@@ -97,10 +98,18 @@ def convert_v01_to_v02(file: Path) -> dict:
         return coil_choice_box_setting
 
     def set_motor_spec_type(value_from_v01):
-        motor_spec_type_setting = {"current_text": value_from_v01["name"],
-                                   "current_data": value_from_v01["userData"],
-                                   }
-        return motor_spec_type_setting
+        match value_from_v01["userData"]:
+
+            case "define_coil":
+               return {"current_text": "Define Coil Dimensions and Average B",
+                       "current_data": "define_coil",
+                       }
+            case "define_Bl_Re":
+               return {"current_text": "Define Bl, Rdc, Mmd",
+                       "current_data": "define_Bl_Re_Mmd",
+                       }
+            case _:
+                raise ValueError(f"No case matches: {value_from_v01}")
 
     def set_box_type(value_from_v01):
         if value_from_v01 == "Free-air":
