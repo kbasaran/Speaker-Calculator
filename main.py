@@ -645,6 +645,8 @@ class MainWindow(qtw.QMainWindow):
         forms = [self.input_form.widget(i) for i in range(self.input_form.count())]
         for form in forms:
             state = {**state, **form.get_form_values()}
+        
+        state["user_notes"] = self.notes_textbox.toPlainText()
 
         return state
 
@@ -731,6 +733,9 @@ class MainWindow(qtw.QMainWindow):
             form_object_names = [name for name in form.get_form_values().keys()]
             relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
             form.update_form_values(relevant_states)
+        
+        self.notes_textbox.setPlainText(state.get("user_notes", "[No notes could be loaded.]"))
+
         self.signal_good_beep.emit()
 
     def duplicate_window(self):
