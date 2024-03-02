@@ -212,11 +212,11 @@ def check_all_v01_files_in_a_folder(folder_path):
     sscf_files = folder_path.glob("*.sscf")
     states = []
     for file in sscf_files:
-        # print()
-        # print(file)
+        print()
+        print(file)
         states.append(convert_v01_to_v02(file))
 
 
 if __name__ == "__main__":
-    state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
-    check_all_v01_files_in_a_folder(pathlib.Path("C:\\Users\\user\\Documents\\SSC files"))
+    # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
+    check_all_v01_files_in_a_folder(pathlib.Path(""))
