@@ -90,17 +90,17 @@ symbolic_ss = {"a": make_state_matrix_A(),  # system matrix
                "d": smp.Matrix([0]*len(state_vars)),  # no feedforward
                }
 
-values = {Bl: 3,
+values = {Bl: 2,
           Re: 4,
           Sd: 52e-4,
-          Mms: 5e-3,
-          Kms: 1000,
-          Rms: 1,
-          M2: 1000,
-          K2: 1000,
-          R2: 1000,
-          P0: 100000,
-          gamma: 1.4,
+          Mms: 4.424e-3,
+          Kms: 1746,
+          Rms: 0.695,
+          M2: 10e-3,
+          K2: 1e3,
+          R2: 4,
+          P0: 101325,
+          gamma: 1.401,
           Vb: 2e-3,
           Rs_source: 0,
           }
@@ -125,10 +125,17 @@ def make_tfs() -> list:
 
 tf_separates = make_tfs()
 
-f = 250 * 2**np.arange(-2, 1/12, step=1/3)
-w = f * 2 * np.pi
+f = 250 * 2**np.arange(-3, 1/12, step=1/3)
 
-_, resp_x1 = np.abs(signal.freqresp(tf_separates[x1], w))
+def make_freq_responses(f, tf_separates):
+    resps = {}
+    w = f * 2 * np.pi
+    for key, val in tf_separates.items():
+        _, resp = np.abs(signal.freqresp(val, w))
+        resps[key] = resp
+    return w, resps
 
-plt.semilogx(f, resp_x1)
-print(f, resp_x1)
+w, resps = make_freq_responses(f, tf_separates)
+
+plt.semilogx(f, resps[x1])
+print(f, resps[x1])
