@@ -464,7 +464,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
         dof_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         form.add_row(dof_choice_buttons)
 
-        # ---- Second degree of freedom
+        # ---- Parent body
+
+        form.add_row(pwi.FloatSpinBox("m2", "Mass of the parent body",
+                                      coeff_for_SI=1e-3,
+                                      ),
+                     description="Mass (g)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("k2", "Stiffness between the parent body and the ground",
                                       coeff_for_SI=1e3,
@@ -472,11 +478,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Stiffness (N/mm)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("m2", "Mass of the parent body",
-                                      coeff_for_SI=1e-3,
-                                      ),
-                     description="Mass (g)",
-                     )
 
         form.add_row(pwi.FloatSpinBox("c2", "Damping coefficient between the parent body and the ground",
                                       ),
