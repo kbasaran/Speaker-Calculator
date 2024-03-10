@@ -9,6 +9,53 @@ from dataclasses import dataclass
 from functools import cached_property
 import numpy as np
 
+"""
+https://www.micka.de/en/introduction.php
+
+Glossary of Symbols:
+
+fS: Resonance frequency of driver
+
+VAS: Volume of air having the same acoustic compliance as driver suspension
+
+QTS: total Q of driver at fS
+
+RE: dc resistance of driver voice coil
+
+LE: voice-coil inductance
+(it is only used for voice-coil impedance diagram)
+
+QMS: Q of driver at fS considering driver nonelectrical losses only
+
+QES: Q of driver at fS considering electrical resistance RE only
+
+Rg: output resistance of source (represents any resistances between source and driver - for example resistance of crossover inductor)
+
+QE: Q of driver at fS considering system electrical resistance RE and Rg only
+
+QT: total Q of driver at fS including all system resistances
+
+QL: enclosure Q at fB resulting from leakage losses
+
+fB: resonance frequency of vented enclosure
+
+QTC: total Q of system at fC including all system resistances
+
+fC: resonance frequency of closed box
+
+VB: Net internal volume of enclosure (without port volume!)
+
+RAP: Acoustic resistance of port losses
+
+RAL: Acoustic resistance of enclosure losses caused by leakage
+
+RAB: Acoustic resistance of enclosure losses caused by internal energy absorption
+
+Pe: nominal electrical input power (defined through Re): Pe=Re*(eg/(Rg+Re))2
+
+eg: open-circuit output voltage of source
+"""
+
 
 def calculate_air_mass(Sd: float) -> float:
     """
