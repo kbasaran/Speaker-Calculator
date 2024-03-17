@@ -28,7 +28,7 @@ Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
 Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
 Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
 P0, gamma, Vb = smp.symbols("P_0, gamma, V_b", real=True, positive=True)
-Sd, Spr, Bl, Re, Rs_source = smp.symbols("S_d, S_pr, Bl, R_e, R_source", real=True, positive=True)
+Sd, Spr, Bl, Re, Rs_source = smp.symbols("S_d, S_pr, Bl, R_e, Rs_source", real=True, positive=True)
 # Dynamic symbols
 x1, x2 = mech.dynamicsymbols("x(1:3)")
 xpr = mech.dynamicsymbols("x_pr")
@@ -40,32 +40,36 @@ x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
 x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
 xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
 
-# temporaily disable radiator
-xpr, xpr_t, xpr_tt = 0, 0, 0
-
-eqns = [(- Mms * x1_tt
+eqns = [
+        
+        (- Mms * x1_tt
          - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
          - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
          + (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
          ),
-        
+
         (- M2 * x2_tt - R2 * x2_t - K2 * x2
          - Rms*(x2_t - x1_t) - Kms*(x2 - x1)
          + P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
+         + P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr * dir_pr
          - (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
+         ),
+
+        (- Mpr * xpr_tt - Rpr * xpr_t - Kpr * xpr
+         - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr
          ),
 
         ]
 
 # define state space system
-state_vars = [x1, x1_t, x2, x2_t]
+state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]
 input_vars = [Vsource]
-state_diffs = [x1_t, x1_tt, x2_t, x2_tt]
-output_vector = [x1, x1_t, x1_tt, x2, x2_t, x2_tt]
+state_diffs = [var.diff() for var in state_vars]
 
 sols = solve(eqns, [state_var for state_var in state_diffs if state_var not in state_vars], as_dict=True)
 sols[x1_t] = x1_t
 sols[x2_t] = x2_t
+sols[xpr_t] = xpr_t
 
 def make_state_matrix_A():
     matrix = []
@@ -93,12 +97,21 @@ symbolic_ss = {"a": make_state_matrix_A(),  # system matrix
 values = {Bl: 2,
           Re: 4,
           Sd: 52e-4,
+
           Mms: 4.424e-3,
           Kms: 1746,
           Rms: 0.695,
+
           M2: 10e-3,
           K2: 1e3,
           R2: 4,
+
+          Mpr: 20e-3,
+          Kpr: 5e3,
+          Rpr: 1,
+          Spr: 30e-4,
+          dir_pr: 1,
+
           P0: 101325,
           gamma: 1.401,
           Vb: 2e-3,
@@ -114,28 +127,100 @@ def substitute_symbols_in_ss(values, a, b, c, d):
             )
 
 
-def make_tfs() -> list:
+def calculate_transfer_functions(symbolic_ss: dict, values: dict) -> list:
     ss = substitute_symbols_in_ss(values, *symbolic_ss.values())
     sys = signal.StateSpace(*ss)
-    tf_all = sys.to_tf()
-    tf_separates = {}
-    for i, num in enumerate(tf_all.num):
-        tf_separates[state_vars[i]] = signal.TransferFunction(num, tf_all.den)
-    return tf_separates
+    transfer_function_whole_system = sys.to_tf()
+    transfer_functions = {}
+    for i, num in enumerate(transfer_function_whole_system.num):
+        transfer_functions[state_vars[i]] = signal.TransferFunction(num, transfer_function_whole_system.den)
+    return transfer_functions
 
-tf_separates = make_tfs()
-
-f = 250 * 2**np.arange(-3, 1/12, step=1/3)
-
-def make_freq_responses(f, tf_separates):
+def calculate_freq_responses(f: list, transfer_functions: list) -> (list, list):
     resps = {}
     w = f * 2 * np.pi
-    for key, val in tf_separates.items():
+    for key, val in transfer_functions.items():
         _, resp = np.abs(signal.freqresp(val, w))
         resps[key] = resp
     return w, resps
 
-w, resps = make_freq_responses(f, tf_separates)
 
-plt.semilogx(f, resps[x1])
-print(f, resps[x1])
+
+
+
+def calculate_SPL(Sd, f, diaphragm_velocity_RMS, RHO=1.1839):
+    # SPL calculation with simplified radiation impedance * acceleration
+    a = np.sqrt(Sd/np.pi)  # piston radius
+    p0 = 0.5 * 1j * 2 * np.pi * f * a**2 * diaphragm_velocity_RMS
+    pref = 2e-5
+    return 20*np.log10(np.abs(p0)/pref)
+
+def calculate_Icoil(Rs_source, Re, Bl, x_t, V_in):
+    """    
+    Parameters
+    ----------
+    Rs_source : series resistance before the speaker
+    Re : coil resistance
+    Bl : B * l
+    x_t : diaphragm velocity, RMS
+    Vin : Voltage at source
+
+    Returns
+    -------
+    current going through the circuit of amplifier to speaker and coil
+
+    """
+
+    return (V_in - Bl * x_t) / (Rs_source + Re)
+
+def calculate_Vcoil(Icoil, Re, Bl, x_t, V_in):
+    """    
+    Parameters
+    ----------
+    Re : coil resistance
+    Bl : B * l
+    x_t : diaphragm velocity, RMS
+    Vin : Voltage at source
+
+    Returns
+    -------
+    voltage accross coil
+
+    """
+    return Icoil * Re + Bl * x_t
+
+def calculate_Zcoil(Rs_source, Re, Bl, x_t, V_in):
+    """    
+    Parameters
+    ----------
+    Rs_source : series resistance before the speaker
+    Re : coil resistance
+    Bl : B * l
+    x_t : diaphragm velocity, RMS, 1D array
+    Vin : Voltage at source
+
+    Returns
+    -------
+    Type: imaginary float
+    coil impedance
+
+    """
+    Icoil = calculate_Icoil(Rs_source, Re, Bl, x_t, V_in)
+    Vcoil = calculate_Vcoil(Icoil, Re, Bl, x_t, V_in)
+    return Vcoil / Icoil
+
+if __name__ == "__main__":
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    transfer_functions = calculate_transfer_functions(symbolic_ss, values)
+    
+    f = 250 * 2**np.arange(-3, 1/12, step=1/46)
+    w, resps = calculate_freq_responses(f, transfer_functions)
+    
+    ax1.semilogx(f, resps[x1] * 1e3)
+    ax1.grid()
+    ax1.set_title("x1 (mm)")
+    print(f, resps[x1])
+    
+    ax2.semilogx(f, calculate_Zcoil(values[Rs_source], values[Re], values[Bl], resps[x1_t], 1))
+    ax2.set_title("Z (ohm)")
+    ax2.grid()
