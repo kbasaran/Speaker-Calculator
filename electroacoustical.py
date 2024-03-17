@@ -178,9 +178,9 @@ class SpeakerDriver():
     Rs: float = 0
 
     def __post_init__(self):
-        self.update_core_parameters()
+        self.update()
 
-    def define_motor(self, coil: Coil, Rlw: float, Bavg: float):
+    def set_motor(self, coil: (Coil, None), Bavg: float = None):
         """
         Define coil and motor parameters of speaker.
 
@@ -198,15 +198,21 @@ class SpeakerDriver():
         None.
 
         """
-        self.Re = coil.Rdc + Rlw
-        self.Bl = Bavg * coil.total_wire_length()
+        if coil is not None:
+            self.Re = coil.Rdc + self.Rs
+            self.Bl = Bavg * coil.total_wire_length()
 
-    def update_core_parameters(self, **kwargs):
-        core_parameters = ("Bl", "Re", "fs", "Mms", "Sd", "Qms", "dead_mass")
+        self.update()
+
+    def update(self, **kwargs):
+        core_parameters = ("Bl", "Rdc", "Rs", "fs", "Mms", "Sd", "Qms", "dead_mass")
         for key, val in kwargs.items():
             if key in core_parameters and isinstance(val, float):
                 if key == "Rms" and val < 0:
                     raise ValueError(f"Damping coefficient 'Rms' cannot be negative: {val}")
+                if key == "Rdc" and self.coil is not None:
+                    # coil is defined and also Rdc is defined separately -- overdefining
+                    raise RuntimeError("'Rdc' was alrady defined in coil object. Cannot be defined again.")
                 elif val <= 0:
                     raise ValueError(f"Value '{key}' cannot be zero or negative: {val}")
                 else:
@@ -215,6 +221,15 @@ class SpeakerDriver():
                 raise ValueError(f"Invalid keyword argument: {key}: {val}")
 
         # derived parameters
+        # Re
+        if self.coil is not None:
+            self.Re = self.coil.Rdc + self.Rs
+        else:
+            try:
+                self.Re = self.Rdc + self.Rs
+            except NameError:
+                print("Unable to calculate 'Re' with known parameters.")
+        
         # Mms and Mmd
         if self.coil is not None:
             try:
