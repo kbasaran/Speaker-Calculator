@@ -6,14 +6,6 @@ Created on Mon Mar  4 18:41:51 2024
 @author: kerem
 """
 
-#!/usr/bin/env python
-# coding: utf-8
-
-# **Double Pendulum Self Trial**
-# https://www.youtube.com/watch?v=8ZZDNd4eyVI
-
-# In[1]:
-
 import numpy as np
 import sympy as smp
 import sympy.physics.mechanics as mech
@@ -29,19 +21,23 @@ Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
 Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
 P0, gamma, Vb = smp.symbols("P_0, gamma, V_b", real=True, positive=True)
 Sd, Spr, Bl, Re, Rs_source = smp.symbols("S_d, S_pr, Bl, R_e, Rs_source", real=True, positive=True)
+
 # Dynamic symbols
 x1, x2 = mech.dynamicsymbols("x(1:3)")
 xpr = mech.dynamicsymbols("x_pr")
 Vsource = mech.dynamicsymbols("V_source", real=True)
+
 # Direction coefficient for passive radiator
-dir_pr = smp.symbols("direction_pr")  # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
+dir_pr = smp.symbols("direction_pr")
+# 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
+
 # Derivatives
 x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
 x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
 xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
 
 eqns = [
-        
+
         (- Mms * x1_tt
          - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
          - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
@@ -71,6 +67,7 @@ sols[x1_t] = x1_t
 sols[x2_t] = x2_t
 sols[xpr_t] = xpr_t
 
+
 def make_state_matrix_A():
     matrix = []
     for state_diff in state_diffs:
@@ -81,12 +78,14 @@ def make_state_matrix_A():
         matrix.append(coeffs)
     return smp.Matrix(matrix)
 
+
 def make_state_matrix_B():
     matrix = []
     for state_diff in state_diffs:
         coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
         matrix.append(coeffs)
     return smp.Matrix(matrix)
+
 
 symbolic_ss = {"a": make_state_matrix_A(),  # system matrix
                "b": make_state_matrix_B(),  # input matrix
@@ -136,6 +135,7 @@ def calculate_transfer_functions(symbolic_ss: dict, values: dict) -> list:
         transfer_functions[state_vars[i]] = signal.TransferFunction(num, transfer_function_whole_system.den)
     return transfer_functions
 
+
 def calculate_freq_responses(f: list, transfer_functions: list) -> (list, list):
     resps = {}
     w = f * 2 * np.pi
@@ -145,18 +145,28 @@ def calculate_freq_responses(f: list, transfer_functions: list) -> (list, list):
     return w, resps
 
 
-
-
-
-def calculate_SPL(Sd, f, diaphragm_velocity_RMS, RHO=1.1839):
+def calculate_SPL_from_diaphragm_velocity(Sd, f, diaphragm_velocity_RMS, RHO):
     # SPL calculation with simplified radiation impedance * acceleration
     a = np.sqrt(Sd/np.pi)  # piston radius
-    p0 = 0.5 * 1j * 2 * np.pi * f * a**2 * diaphragm_velocity_RMS
+    w = 2 * np.pi * f
+    p0 = 0.5 * 1j * w * RHO * a**2 * diaphragm_velocity_RMS
     pref = 2e-5
     return 20*np.log10(np.abs(p0)/pref)
 
+
+def calculate_SPL_for_Xmax(Sd, f, Xmax, RHO):
+    # SPL calculation for maximum displacement
+    a = np.sqrt(Sd/np.pi)  # piston radius
+    w = 2 * np.pi * f
+    x1_max_rms_array = [np.array(Xmax/2**0.5)] * len(w)
+    x1t_max_rms_array = np.abs(x1_max_rms_array * w * 1j)
+    p0_xmax_limited = 0.5 * 1j * w * RHO * a**2 * x1t_max_rms_array
+    pref = 2e-5
+    return 20*np.log10(np.abs(p0_xmax_limited)/pref)
+
+
 def calculate_Icoil(Rs_source, Re, Bl, x_t, V_in):
-    """    
+    """
     Parameters
     ----------
     Rs_source : series resistance before the speaker
@@ -173,8 +183,9 @@ def calculate_Icoil(Rs_source, Re, Bl, x_t, V_in):
 
     return (V_in - Bl * x_t) / (Rs_source + Re)
 
-def calculate_Vcoil(Icoil, Re, Bl, x_t, V_in):
-    """    
+
+def calculate_Vcoil(Rs_source, Re, Bl, x_t, V_in):
+    """
     Parameters
     ----------
     Re : coil resistance
@@ -187,10 +198,13 @@ def calculate_Vcoil(Icoil, Re, Bl, x_t, V_in):
     voltage accross coil
 
     """
+    Icoil = calculate_Icoil(Rs_source, Re, Bl, x_t, V_in)
+
     return Icoil * Re + Bl * x_t
 
+
 def calculate_Zcoil(Rs_source, Re, Bl, x_t, V_in):
-    """    
+    """
     Parameters
     ----------
     Rs_source : series resistance before the speaker
@@ -209,18 +223,19 @@ def calculate_Zcoil(Rs_source, Re, Bl, x_t, V_in):
     Vcoil = calculate_Vcoil(Icoil, Re, Bl, x_t, V_in)
     return Vcoil / Icoil
 
+
 if __name__ == "__main__":
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
     transfer_functions = calculate_transfer_functions(symbolic_ss, values)
-    
+
     f = 250 * 2**np.arange(-3, 1/12, step=1/46)
     w, resps = calculate_freq_responses(f, transfer_functions)
-    
+
     ax1.semilogx(f, resps[x1] * 1e3)
     ax1.grid()
     ax1.set_title("x1 (mm)")
     print(f, resps[x1])
-    
+
     ax2.semilogx(f, calculate_Zcoil(values[Rs_source], values[Re], values[Bl], resps[x1_t], 1))
     ax2.set_title("Z (ohm)")
     ax2.grid()
