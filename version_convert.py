@@ -152,6 +152,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "former_ID":                ("former_ID",               lambda x: x*1e3),
                     "t_former":                 ("t_former",                lambda x: int(x*1e6)),
                     "h_winding_target":         ("h_winding",               lambda x: x*1e3),
+                    "w_stacking_coef":          (None,                      0.9),
                     "B_average":                ("B_average",               lambda x: x),
                     "N_layer_options":          ("N_layer_options",         lambda x: x),
                     "coil_options":             ("coil_choice_box",         set_coil_options),
@@ -196,7 +197,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                 state[key] = converter(value_from_v01)
                 missing_values.remove(key)
             except KeyError as e:
-                raise RuntimeError(f"Key error for name in v01: {name_from_v01}")
+                raise RuntimeError(f"Key error for name in v01: {name_from_v01}.\n{str(e)}")
 
     if missing_values:
         print("----Missing----")

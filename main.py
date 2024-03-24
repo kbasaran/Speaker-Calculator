@@ -18,7 +18,6 @@ __email__ = "kbasaran@gmail.com"
 
 import sys
 import json
-import pickle
 from dataclasses import dataclass, fields
 
 from PySide6 import QtWidgets as qtw
@@ -267,6 +266,19 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       coeff_for_SI=1e-3,
                                       ),
                      description="Target winding height (mm)",
+                     into_form=motor_definition_p1,
+                     )
+
+        form.add_row(pwi.FloatSpinBox("w_stacking_coef",
+                                      "Stacking coefficient for additional winding layers put on."
+                                      "\nE.g. if this is set to 0.8 and the wire nominal thickness is 1mm"
+                                      "\nnominal thickness of windings that are 1,2,3 layers will be"
+                                      "\n1mm,1.8mm,2.6mm, respectively."
+                                      "\nFor stacking of ideal circular wires this value is 'sin(60)=0.5'"
+                                      "\nHas no effect on the height of the winding.",
+                                      min_max=(0, 1),
+                                      ),
+                     description="Stacking coeff. for additional layers",
                      into_form=motor_definition_p1,
                      )
 
