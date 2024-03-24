@@ -84,7 +84,7 @@ def calculate_coil_to_bottom_plate_clearance(Xpeak):
 
 
 @dataclass
-class Wire():
+class Wire:
     name: str
     w_nom: float
     h_nom: float
@@ -94,7 +94,7 @@ class Wire():
 
 
 @dataclass
-class Coil():
+class Coil:
     carrier_OD: float
     wire: Wire
     N_windings: tuple
@@ -165,126 +165,97 @@ def calculate_voltage(excitation_value, excitation_type, Rdc=None, Rnom=None):
 
     return input_voltage
 
+@dataclass
+class Motor:
+    coil: Coil
+    Bavg: float
+
+    """
+    Coil and motor parameters of speaker.
+
+    Parameters
+    ----------
+    coil : Coil
+        Coil winding object.
+    Bavg : float
+        Average magnetic field on the total height of coil in rest position.
+    """
+
 
 @dataclass
-class SpeakerDriver():
+class SpeakerDriver:
     """Speaker driver class."""
-    Bl: float = None
-    Re: float = None
-    fs: float = None
-    Mms: float = None
-    Sd: float = None
-    Qms: float = None
-    Rs: float = 0
+    fs: float
+    Sd: float
+    Qms: float
+    motor: None | Motor = None
+    Rs: float = 0  # resistance between the coil and the speaker terminals (leadwire etc.)
+    Bl: float = None  # provide only if motor is None
+    Re: float = None  # provide only if motor is None
+    Mms: float = None # provide only if motor is None
+    dead_mass: float = None  # provide if motor is Motor
 
     def __post_init__(self):
-        self.update()
-
-    def set_motor(self, coil: (Coil, None), Bavg: float = None):
-        """
-        Define coil and motor parameters of speaker.
-
-        Parameters
-        ----------
-        coil : Coil
-            Coil winding object.
-        Rlw : float
-            Leadwire resistance.
-        Bavg : float
-            Average magnetic field on the total height of coil in rest position.
-
-        Returns
-        -------
-        None.
-
-        """
-        if coil is not None:
-            self.Re = coil.Rdc + self.Rs
-            self.Bl = Bavg * coil.total_wire_length()
-
-        self.update()
-
-    def update(self, **kwargs):
-        core_parameters = ("Bl", "Rdc", "Rs", "fs", "Mms", "Sd", "Qms", "dead_mass")
-        for key, val in kwargs.items():
-            if key in core_parameters and isinstance(val, float):
-                if key == "Rms" and val < 0:
-                    raise ValueError(f"Damping coefficient 'Rms' cannot be negative: {val}")
-                if key == "Rdc" and self.coil is not None:
-                    # coil is defined and also Rdc is defined separately -- overdefining
-                    raise RuntimeError("'Rdc' was alrady defined in coil object. Cannot be defined again.")
-                elif val <= 0:
-                    raise ValueError(f"Value '{key}' cannot be zero or negative: {val}")
-                else:
-                    setattr(self, key, val)
-            else:
-                raise ValueError(f"Invalid keyword argument: {key}: {val}")
+        if self.motor is not None:
+            should_not_have_been_specified = ("Bl", "Re")
+            if not all([self.get(val) is None for val in should_not_have_been_specified]):
+                raise RuntimeError("These attributes should not be specified when motor is already specified:"
+                                   f"\n{should_not_have_been_specified}")
+            self.Bl = self.motor.coil.h_winding * self.motor.Bavg
+            self.Re = self.motor.Rdc + self.Rs
 
         # derived parameters
-        # Re
-        if self.coil is not None:
-            self.Re = self.coil.Rdc + self.Rs
-        else:
-            try:
-                self.Re = self.Rdc + self.Rs
-            except NameError:
-                print("Unable to calculate 'Re' with known parameters.")
-        
         # Mms and Mmd
-        if self.coil is not None:
+        if self.motor is not None:
             try:
-                self.Mmd = dead_mass + self.coil.mass
+                if "Mms" in locals().keys():
+                    raise RuntimeError("Double definition. 'Mms' should not be defined in object instantiation"
+                                       " when 'motor' is already defined.")
+                self.Mmd = self.dead_mass + self.motor.coil.mass
                 self.Mms = self.Mmd + calculate_air_mass(self.Sd)
             except NameError:
                 print("Unable to calculate 'Mms' and/or 'Mmd' with known parameters.")
         else:
-            # Mmd
+            # only Mmd
             try:
                 self.Mmd = self.Mms - calculate_air_mass(self.Sd)
             except NameError:
                 print("Unable to calculate 'Mmd' with known parameters.")
 
-        # Kms
-        try:
-            self.Kms = self.Mms * (self.fs * 2 * np.pi)**2
-        except NameError:
-            print("Unable to calculate 'Kms' with known parameters.")
-
-        # Rms
-        try:
-            self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
-        except NameError:
-            print("Unable to calculate 'Rms' with known parameters.")
-
-        # Ces
-        try:
-            self.Ces = self.Bl**2 / self.Re
-        except NameError:
-            print("Unable to calculate 'Ces = Bl²/Re' with known parameters.")
-
-        # Qts, Qes
-        try:
-            self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Ces)
-            self.Qes = (self.Mms * self.Kms)**0.5 / (self.Ces)
-        except NameError:
-            print("Unable to calculate 'Qts' and/or 'Qes' with known parameters.")
-
+        self.Kms = self.Mms * (self.fs * 2 * np.pi)**2
+        self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
+        self.Ces = self.Bl**2 / self.Re
+        self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Ces)
+        self.Qes = (self.Mms * self.Kms)**0.5 / (self.Ces)
         # Lm - sensitivity per W@Re
-        try:
-            self.Lm = calculate_Lm(self.Bl, self.Rdc, self.Mms, self.Sd)
-        except NameError:
-            print("Unable to calculate 'Lm' with known parameters.")
-
+        self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd)
+        self.Vas = settings.Kair / self.Kms * self.Sd**2
 
 @dataclass
-class SpeakerSystem():
+class Housing:
+    Vb: float
+    Qa: float
+
+@dataclass
+class ParentBody:
+    m: float
+    k: float
+    c: float
+    
+@dataclass
+class PassiveRadiator:
+    m: float
+    k: float
+    c: float
+    Sp: float
+
+@dataclass
+class SpeakerSystem:
     speaker: SpeakerDriver
-    housing_type: str = "closed"
     Rs: float = 0
-    Vb: float = np.inf
-    Qa: float = 0
-    mobile_parent = None  # None or [m, k, c]
-    passive_radiator = None  # None or [m, k, c, surface area]
+    housing: None | Housing = None
+    parent_body: None | ParentBody = None
+    passive_radiator: None | PassiveRadiator = None
 
     def __post_init__(self):
         self.update()
@@ -297,49 +268,57 @@ class SpeakerSystem():
             else:
                 raise KeyError("Not familiar with key '{key}'")
 
-        if self.mobile_parent is not None:
-            zeta2_free = self.dof2.c / 2 / ((self.speaker.Mms + self.dof2.m) * self.dof2.k)**0.5
-            if self.dof2.c > 0:
+        if self.housing is not None:
+            self.Khousing = self.speaker.Sd**2 * settings.Kair / self.housing.Vb
+            self.Rbox = ((self.speaker.Kms + self.Khousing) * self.speaker.Mms)**0.5 / self.housing.Qa
+            zeta_boxed_speaker = (self.Rbox + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
+                / 2 / ((self.speaker.Kms+self.Khousing) * self.speaker.Mms)**0.5
+
+            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms+self.Khousing) / self.speaker.Mms)**0.5
+            
+            fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
+            if np.iscomplex(fb_damped):
+                fb_damped = None
+
+            self.fb = fb_undamped
+            self.Qtc = np.inf if zeta_boxed_speaker == 0 else 1 / 2 / zeta_boxed_speaker
+
+        if self.parent_body is not None:
+            # Zeta is damping ratio. It is not damping coefficient (c) or quality factor (Q).
+            # Zeta = c / 2 / (k*m)**0.5)
+            # Q = (k*m)**0.5 / c
+            zeta2_free = self.parent_body.c / 2 / ((self.speaker.Mms + self.parent_body.m) * self.parent_body.k)**0.5
+            if self.parent_body.c > 0:
                 q2_free = 1 / 2 / zeta2_free
-            elif self.dof2.c == 0:
+            elif self.parent_body.c == 0:
                 q2_free = np.inf
             else:
-                raise ValueError(f"Invalid value for dof2.c: {self.dof2.c}")
+                raise ValueError(f"Invalid value for parent_body.c: {self.parent_body.c}")
 
             # assuming relative displacement between x1 and x2 are zero
             # i.e. blocked speaker
-            f2_undamped = 1 / 2 / np.pi * (self.dof2.k / (self.speaker.Mms + self.dof2.m))**0.5
+            f2_undamped = 1 / 2 / np.pi * (self.parent_body.k / (self.speaker.Mms + self.parent_body.m))**0.5
+            
             f2_damped = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
             if np.iscomplex(f2_damped):
                 f2_damped = None
+            
             self.f2 = f2_undamped
             self.Q2 = q2_free
-
-        if self.housing is not np.inf:
-            self.Kbox = self.speakerSd**2 * settings.Kair / self.housing.Vb
-            self.Rbox = ((self.speaker.Kms + self.Kbox) * self.speaker.Mms)**0.5 / self.housing.Qa
-            zeta_boxed_speaker = (self.Rbox + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
-                / 2 / ((self.speaker.Kms+self.Kbox) * self.speaker.Mms)**0.5
-            self.Qtc = 1 / 2 / zeta_boxed_speaker
-
-            self.fb = 1 / 2 / np.pi * ((self.speaker.Kms+self.Kbox) / self.speaker.Mms)**0.5
-            fb_d = self.fb * (1 - 2 * zeta_boxed_speaker**2)**0.5
-            if np.iscomplex(fb_d):
-                fb_d = None
-
-            self.Vas = settings.Kair / self.speaker.Kms * self.speaker.Sd**2
+        
+        if self.passive_radiaor is not None:
+            raise RuntimeError("Passive raditor model is not implemented yet.")
 
         self.ss_model = self._build_ss_model()
 
-    def _build_ss_model(self):
+    def _update_ss_model(self, w):
 
-        self.x1tt_1V = self.x1t_1V * cons.w * 1j
-        self.x1tt = self.x1tt_1V * self.V_coil
+        self.x1tt_1V = self.x1t_1V * w * 1j
+        self.x1tt = self.x1tt_1V * self.Vcoil
 
-        self.x2tt_1V = self.x2t_1V * cons.w * 1j
-        self.x2tt = self.x2tt_1V * self.V_coil
+        self.x2tt_1V = self.x2t_1V * w * 1j
+        self.x2tt = self.x2tt_1V * self.Vcoil
 
-        return "an_ss_model"
 
     def power_at_Re(self, Vspeaker):
         # Calculation of power at Rdc for given voltage at the speaker terminals
@@ -349,15 +328,15 @@ class SpeakerSystem():
         # force coil means force generated by coil
         # force speaker means force generated by speaker (inertial forces)
         force_coil = self.speaker.Bl * np.real(self.calculate_Vcoil() / self.speaker.Re)  # why not np.abs?
-        force_speaker = - self.x1tt * Mms  # inertial force
-        force_parent_body = - self.x2tt * M2  # inertial force
-        force_pr = - self.x3tt * Mp  # inertial force
+        force_speaker = - self.x1_tt * self.speaker.Mms  # inertial force
+        force_parent_body = - self.x2tt * self.M2  # inertial force
+        force_pr = - self.x3tt * self.parent_body["m"]  # inertial force
 
         forces = {}
         forces["Lorentz force"] = force_coil
         forces["Inertial force from speaker diaphragm"] = - force_speaker
 
-        if self.mobile_parent is not None:
+        if self.parent_body is not None:
             forces["Inertial force from parent mass"] = - force_parent_body
 
         if self.passive_radiator is not None:
@@ -372,7 +351,7 @@ class SpeakerSystem():
         accs["Acceleration of speaker diaphragm, RMS"] = self.x1_tt
         accs["Acceleration of speaker diaphragm, Peak"] = self.x1_tt * 2**0.5
 
-        if self.mobile_parent is not None:
+        if self.parent_body is not None:
             accs["Acceleration of parent body, RMS"] = self.x2_tt
             accs["Acceleration of parent body, Peak"] = self.x2_tt * 2**0.5
 
@@ -382,11 +361,11 @@ class SpeakerSystem():
 
         return accs
 
-    def get_displacement_phases(self) -> dict:
+    def get_phases_for_displacements(self) -> dict:
         phases = {}
         phases["Speaker diaphragm"] = np.angle(self.x1, deg=True)
 
-        if self.mobile_parent is not None:
+        if self.parent_body is not None:
             phases["Parent body"] = np.angle(self.x2, deg=True)
 
         if self.passive_radiator is not None:
