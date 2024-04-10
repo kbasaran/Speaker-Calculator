@@ -28,7 +28,7 @@ def convert_v01_to_v02(file: Path) -> dict:
     with open(file, "rb") as f:
         form_dict = pickle.load(f)
 
-    keys_in_v1 = [
+    keys_in_v01 = [
         'result_sys',
         'user_curves',
         'fs',
@@ -145,14 +145,15 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "excitation_value":         ("excitation_value",        lambda x: x),
                     "Rnom":                     ("nominal_impedance",       lambda x: x),
             
-                    "Rs_spk":                   (None,                      0.),
+
                     "motor_spec_type":          ("motor_spec_type",         set_motor_spec_type),
-    
+
                     "target_Rdc":               ("Rdc",                     lambda x: x),
                     "former_ID":                ("former_ID",               lambda x: x*1e3),
                     "t_former":                 ("t_former",                lambda x: int(x*1e6)),
                     "h_winding_target":         ("h_winding",               lambda x: x*1e3),
                     "w_stacking_coef":          (None,                      0.9),
+                    "Rs_leadwire":              (None,                      0.),
                     "B_average":                ("B_average",               lambda x: x),
                     "N_layer_options":          ("N_layer_options",         lambda x: x),
                     "coil_options":             ("coil_choice_box",         set_coil_options),
@@ -220,4 +221,6 @@ def check_all_v01_files_in_a_folder(folder_path):
 
 if __name__ == "__main__":
     # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
-    check_all_v01_files_in_a_folder(pathlib.Path(""))
+    check_all_v01_files_in_a_folder(pathlib.Path(
+        "C:\\Users\\user\\Documents\\SSC files"
+        ))

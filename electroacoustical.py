@@ -185,7 +185,11 @@ class Motor:
 
 @dataclass
 class SpeakerDriver:
-    """Speaker driver class."""
+    """
+    Speaker driver class.
+    Mostly to carry data. It also does some Thiele & Small calculations.
+    Does not make frequency dependent calculations such as SPL, Impedance.
+    """
     fs: float
     Sd: float
     Qms: float
@@ -231,6 +235,7 @@ class SpeakerDriver:
         # Lm - sensitivity per W@Re
         self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd)
         self.Vas = settings.Kair / self.Kms * self.Sd**2
+
 
 @dataclass
 class Housing:

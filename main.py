@@ -206,17 +206,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
     def _make_form_for_motor_tab(self):
         form = pwi.UserForm()
-        
-        form.add_row(pwi.FloatSpinBox("Rs_spk",
-                                      "The resistance between the speaker terminal and the coil."
-                                      "\nUsually only due to leadwires.",
-                                      min_max=(0, 1e6),
-                                      ),
-                     description="Series resistance",
-                     )
-        
-        form.add_row(pwi.SunkenLine())
-
 
         # Motor spec type
         form.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
@@ -279,6 +268,17 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       min_max=(0, 1),
                                       ),
                      description="Stacking coeff. for additional layers",
+                     into_form=motor_definition_p1,
+                     )
+
+        form.add_row(pwi.FloatSpinBox("Rs_leadwire",
+                                      "Resistance between the coil and the speaker terminals, e.g. leadwire",
+                                      min_max=(0, form.interactable_widgets["h_winding_target"].maximum()),
+                                      # took the automatically assigned maximum from another widget
+                                      # instead of typing n an arbitrary number
+                                      # 'None' was not expected by the underlying 'setRange' method
+                                      ),
+                     description="Leadwire resistance (ohm)",
                      into_form=motor_definition_p1,
                      )
 
