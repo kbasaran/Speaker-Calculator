@@ -165,6 +165,7 @@ def calculate_voltage(excitation_value, excitation_type, Rdc=None, Rnom=None):
 
     return input_voltage
 
+
 @dataclass
 class Motor:
     coil: Coil
@@ -188,12 +189,12 @@ class SpeakerDriver:
     fs: float
     Sd: float
     Qms: float
-    motor: None | Motor = None
+    motor: None | Motor = None  # None of 'Motor' instance
     Rs: float = 0  # resistance between the coil and the speaker terminals (leadwire etc.)
     Bl: float = None  # provide only if motor is None
     Re: float = None  # provide only if motor is None
-    Mms: float = None # provide only if motor is None
-    dead_mass: float = None  # provide if motor is Motor
+    Mms: float = None  # provide only if motor is None
+    dead_mass: float = None  # provide only if motor is 'Motor' instance
 
     def __post_init__(self):
         if self.motor is not None:
@@ -236,12 +237,14 @@ class Housing:
     Vb: float
     Qa: float
 
+
 @dataclass
 class ParentBody:
     m: float
     k: float
     c: float
-    
+
+
 @dataclass
 class PassiveRadiator:
     m: float
@@ -249,10 +252,11 @@ class PassiveRadiator:
     c: float
     Sp: float
 
+
 @dataclass
 class SpeakerSystem:
     speaker: SpeakerDriver
-    Rs: float = 0
+    Rs: float = 0  # series electrical resistance to the speaker terminals
     housing: None | Housing = None
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
@@ -275,7 +279,7 @@ class SpeakerSystem:
                 / 2 / ((self.speaker.Kms+self.Khousing) * self.speaker.Mms)**0.5
 
             fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms+self.Khousing) / self.speaker.Mms)**0.5
-            
+
             fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
             if np.iscomplex(fb_damped):
                 fb_damped = None
@@ -298,27 +302,28 @@ class SpeakerSystem:
             # assuming relative displacement between x1 and x2 are zero
             # i.e. blocked speaker
             f2_undamped = 1 / 2 / np.pi * (self.parent_body.k / (self.speaker.Mms + self.parent_body.m))**0.5
-            
+
             f2_damped = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
             if np.iscomplex(f2_damped):
                 f2_damped = None
-            
+
             self.f2 = f2_undamped
             self.Q2 = q2_free
-        
+
         if self.passive_radiaor is not None:
             raise RuntimeError("Passive raditor model is not implemented yet.")
 
-        self.ss_model = self._build_ss_model()
+        self._update_ss_model()
 
     def _update_ss_model(self, w):
+        
+        # Build the ss model here
 
         self.x1tt_1V = self.x1t_1V * w * 1j
         self.x1tt = self.x1tt_1V * self.Vcoil
 
         self.x2tt_1V = self.x2t_1V * w * 1j
         self.x2tt = self.x2tt_1V * self.Vcoil
-
 
     def power_at_Re(self, Vspeaker):
         # Calculation of power at Rdc for given voltage at the speaker terminals
@@ -372,4 +377,3 @@ class SpeakerSystem:
             phases["Passive radiator"] = np.angle(self.x3, deg=True)
 
         return phases
-
