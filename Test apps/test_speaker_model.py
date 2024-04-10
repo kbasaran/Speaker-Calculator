@@ -12,8 +12,11 @@ import sympy.physics.mechanics as mech
 from sympy.abc import t
 from sympy.solvers import solve
 from scipy import signal
+import time
 import matplotlib.pyplot as plt
 plt.grid()
+
+start_time = time.perf_counter()
 
 # Static symbols
 Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
@@ -91,7 +94,8 @@ symbolic_ss = {"a": make_state_matrix_A(),  # system matrix
                "b": make_state_matrix_B(),  # input matrix
                "c": smp.Matrix(smp.eye(len(state_vars))),  # give all state vars in output
                "d": smp.Matrix([0]*len(state_vars)),  # no feedforward
-               }
+               }  # state space model ready
+
 
 values = {Bl: 2,
           Re: 4,
@@ -128,6 +132,7 @@ def substitute_symbols_in_ss(values, a, b, c, d):
 
 def calculate_transfer_functions(symbolic_ss: dict, values: dict) -> list:
     ss = substitute_symbols_in_ss(values, *symbolic_ss.values())
+    print(f"SS model ready in {(time.perf_counter() - start_time) * 1000:.1f}ms")
     sys = signal.StateSpace(*ss)
     transfer_function_whole_system = sys.to_tf()
     transfer_functions = {}
@@ -177,7 +182,7 @@ def calculate_Icoil(Rs_source, Re, Bl, x_t, V_in):
 
     Returns
     -------
-    current going through the circuit of amplifier to speaker and coil
+    Current going through the circuit of amplifier to speaker and coil
 
     """
 
@@ -195,7 +200,7 @@ def calculate_Vcoil(Rs_source, Re, Bl, x_t, V_in):
 
     Returns
     -------
-    voltage accross coil
+    Voltage accross coil
 
     """
     Icoil = calculate_Icoil(Rs_source, Re, Bl, x_t, V_in)
@@ -216,7 +221,7 @@ def calculate_Zcoil(Rs_source, Re, Bl, x_t, V_in):
     Returns
     -------
     Type: imaginary float
-    coil impedance
+    Coil impedance
 
     """
     Icoil = calculate_Icoil(Rs_source, Re, Bl, x_t, V_in)
@@ -225,17 +230,21 @@ def calculate_Zcoil(Rs_source, Re, Bl, x_t, V_in):
 
 
 if __name__ == "__main__":
+
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
     transfer_functions = calculate_transfer_functions(symbolic_ss, values)
+    print(f"Transfer functions ready in {(time.perf_counter() - start_time) * 1000:.1f}ms")
 
     f = 250 * 2**np.arange(-3, 1/12, step=1/46)
     w, resps = calculate_freq_responses(f, transfer_functions)
+    z_coil = calculate_Zcoil(values[Rs_source], values[Re], values[Bl], resps[x1_t], 1)
+    print(f"All calculations ready in {(time.perf_counter() - start_time) * 1000:.1f}ms")
 
     ax1.semilogx(f, resps[x1] * 1e3)
     ax1.grid()
     ax1.set_title("x1 (mm)")
-    print(f, resps[x1])
+    # print(f, resps[x1])
 
-    ax2.semilogx(f, calculate_Zcoil(values[Rs_source], values[Re], values[Bl], resps[x1_t], 1))
+    ax2.semilogx(f, z_coil)
     ax2.set_title("Z (ohm)")
     ax2.grid()
