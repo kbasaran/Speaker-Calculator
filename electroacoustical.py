@@ -8,6 +8,11 @@ Created on Sun Aug  6 20:23:15 2023
 from dataclasses import dataclass
 from functools import cached_property
 import numpy as np
+import sympy as smp
+import sympy.physics.mechanics as mech
+from sympy.abc import t
+from sympy.solvers import solve
+from scipy import signal
 
 """
 https://www.micka.de/en/introduction.php
@@ -242,12 +247,25 @@ class Housing:
     Vb: float
     Qa: float
 
+    def K(self, Sd):
+        global settings
+        return Sd**2 * settings.Kair / self.Vb
+    
+    def R(self, Sd, Mms, Kms):
+        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
+
 
 @dataclass
 class ParentBody:
     m: float
     k: float
     c: float
+    
+    def f(self):
+        return 1 / 2 / np.pi * (self.k / self.m)**0.5
+    
+    def Q(self):
+        return (self.k * self.m)**0.5 / self.c
 
 
 @dataclass
@@ -256,6 +274,15 @@ class PassiveRadiator:
     k: float
     c: float
     Sp: float
+    
+    def f(self):
+        return 1 / 2 / np.pi * (self.k / self.m)**0.5
+    
+    def Q(self):
+        return (self.k * self.m)**0.5 / self.c
+    
+    def m_s(self):
+        return self.m + calculate_air_mass(self.Sp)
 
 
 @dataclass
@@ -271,27 +298,35 @@ class SpeakerSystem:
 
     def update(self, **kwargs):
         global settings
+        topology_changed = False  # to see if we need to update the state space model topology or simply change its values
         for key, val in kwargs.items():
-            if key in self.locals():
+            if key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
+                if bool(val) != bool(getattr(self, key)):
+                    topology_changed = True
                 setattr(self, key, val)
             else:
                 raise KeyError("Not familiar with key '{key}'")
 
+        # ---- With housing
         if self.housing is not None:
-            self.Khousing = self.speaker.Sd**2 * settings.Kair / self.housing.Vb
-            self.Rbox = ((self.speaker.Kms + self.Khousing) * self.speaker.Mms)**0.5 / self.housing.Qa
-            zeta_boxed_speaker = (self.Rbox + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
-                / 2 / ((self.speaker.Kms+self.Khousing) * self.speaker.Mms)**0.5
+            zeta_boxed_speaker = (self.housing.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
+                                  + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
+                / 2 / ((self.speaker.Kms+self.housing.K(self.speaker.Sd)) * self.speaker.Mms)**0.5
 
-            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms+self.Khousing) / self.speaker.Mms)**0.5
+            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms+self.housing.K(self.speaker.Sd)) / self.speaker.Mms)**0.5
 
             fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
-            if np.iscomplex(fb_damped):
+            if np.iscomplex(fb_damped):  # means overdamped I think
                 fb_damped = None
 
             self.fb = fb_undamped
             self.Qtc = np.inf if zeta_boxed_speaker == 0 else 1 / 2 / zeta_boxed_speaker
+        
+        else:
+            self.fb = None
+            self.Qtc = None
 
+        # ---- Wİth mobile parent body
         if self.parent_body is not None:
             # Zeta is damping ratio. It is not damping coefficient (c) or quality factor (Q).
             # Zeta = c / 2 / (k*m)**0.5)
@@ -309,26 +344,42 @@ class SpeakerSystem:
             f2_undamped = 1 / 2 / np.pi * (self.parent_body.k / (self.speaker.Mms + self.parent_body.m))**0.5
 
             f2_damped = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
-            if np.iscomplex(f2_damped):
+            if np.iscomplex(f2_damped):  # means overdamped I think
                 f2_damped = None
 
             self.f2 = f2_undamped
             self.Q2 = q2_free
+            
+        else:
+            self.f2 = None
+            self.Q2 = None
 
-        if self.passive_radiaor is not None:
+        # ---- with passive radiator
+        if self.passive_raditaor is not None:
             raise RuntimeError("Passive raditor model is not implemented yet.")
-
-        self._update_ss_model()
-
-    def _update_ss_model(self, w):
+        else:
+            pass
         
-        # Build the ss model here
+        # ---- Rebuild ss model if a new topology is in place
+        if topology_changed:
+            self.ss_model_symbolic_matrices = self._update_ss_model_symbolic_matrices()
+        
+        # ---- Update values of ss model
+        values = {**settings}
+        self.ss_model = self.substitute_values_into_ss_model(values)
+        
+    def _update_ss_model_symbolic_matrices(self) -> tuple:
+        # build ss model matrices here
+        return (a, b, c, d)
 
-        self.x1tt_1V = self.x1t_1V * w * 1j
-        self.x1tt = self.x1tt_1V * self.Vcoil
-
-        self.x2tt_1V = self.x2t_1V * w * 1j
-        self.x2tt = self.x2tt_1V * self.Vcoil
+    def substitute_values_into_ss_model(self, values):
+        a, b, c, d = self.ss_symbolic_model
+        ss_matrices = (np.array(a.subs(values)).astype(float),
+                       np.array(b.subs(values)).astype(float),
+                       np.array(c.subs(values)).astype(float),
+                       np.array(d.subs(values)).astype(float),
+                       )
+        self.ss_model = signal.StateSpace(*ss_matrices)
 
     def power_at_Re(self, Vspeaker):
         # Calculation of power at Rdc for given voltage at the speaker terminals
