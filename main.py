@@ -92,7 +92,7 @@ class Settings:
             setattr(self, field.name, self.settings_sys.value(
                 field.name, field.default, type=type(field.default)))
 
-    def as_dict(self):
+    def as_dict(self):  # better use asdict method from dataclasses instead of this
         # return the settings as a dict
         settings = {}
         for field in fields(self):
