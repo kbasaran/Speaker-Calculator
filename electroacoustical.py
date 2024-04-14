@@ -285,6 +285,24 @@ class PassiveRadiator:
         # passive radiator with coupled air mass included
         return self.m + calculate_air_mass(self.Sp)
 
+def make_state_matrix_A(state_vars, state_diffs, sols):
+    matrix = []
+    for state_diff in state_diffs:
+        if state_diff in state_vars:
+            coeffs = [int(state_vars[i] == state_diff) for i in range(len(state_vars))]
+        else:
+            coeffs = [sols[state_diff].coeff(state_var) for state_var in state_vars]
+        matrix.append(coeffs)
+    return smp.Matrix(matrix)
+
+
+def make_state_matrix_B(state_diffs, input_vars, sols):
+    matrix = []
+    for state_diff in state_diffs:
+        coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+        matrix.append(coeffs)
+    return smp.Matrix(matrix)
+
 
 @dtc.dataclass
 class SpeakerSystem:
@@ -299,8 +317,16 @@ class SpeakerSystem:
         self.update()
         
     def get_parameters_as_dict(self) -> dict:
+        
+        
+        ----------
+        How to make a list of parameters in ss model from this
+        ----------
+        
+        
         parameters = {}
         for key, val in dtc.asdict(self).items():  # items being speaker, Rs, housing, parent_body etc.
+            # items returned with val are also dicts, not objects (so child classes also get conversion to dict)
             if dtc.is_dataclass(val):
                 parameters.update(dtc.asdict(val)) # add each field in the elemt to parameters dict
             else:
@@ -308,17 +334,63 @@ class SpeakerSystem:
         return parameters
 
     def _topology_update(self):
-        a = 1
-        b = 1
-        c = 1
-        d = 1
-        
-        
-        # Not finished
-        
-        
-        
-        self.ss_model_symbolic_matrices = (a, b, c, d)
+        # Static symbols
+        Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
+        Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
+        Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
+        P0, gamma, Vb = smp.symbols("P_0, gamma, V_b", real=True, positive=True)
+        Sd, Spr, Bl, Re, Rs_source = smp.symbols("S_d, S_pr, Bl, R_e, Rs_source", real=True, positive=True)
+
+        # Dynamic symbols
+        x1, x2 = mech.dynamicsymbols("x(1:3)")
+        xpr = mech.dynamicsymbols("x_pr")
+        Vsource = mech.dynamicsymbols("V_source", real=True)
+
+        # Direction coefficient for passive radiator
+        dir_pr = smp.symbols("direction_pr")
+        # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
+
+        # Derivatives
+        x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
+        x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
+        xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
+
+        eqns = [
+
+                (- Mms * x1_tt
+                 - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
+                 - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
+                 + (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
+                 ),
+
+                (- M2 * x2_tt - R2 * x2_t - K2 * x2
+                 - Rms*(x2_t - x1_t) - Kms*(x2 - x1)
+                 + P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
+                 + P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr * dir_pr
+                 - (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
+                 ),
+
+                (- Mpr * xpr_tt - Rpr * xpr_t - Kpr * xpr
+                 - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr
+                 ),
+
+                ]
+
+        # define state space system
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]
+        input_vars = [Vsource]
+        state_diffs = [var.diff() for var in state_vars]
+
+        sols = solve(eqns, [state_var for state_var in state_diffs if state_var not in state_vars], as_dict=True)
+        sols[x1_t] = x1_t
+        sols[x2_t] = x2_t
+        sols[xpr_t] = xpr_t
+
+        self.symbolic_ss = {"a": make_state_matrix_A(state_vars, state_diffs, sols),  # system matrix
+                            "b": make_state_matrix_B(state_diffs, input_vars, sols),  # input matrix
+                            "c": smp.Matrix(smp.eye(len(state_vars))),  # give all state vars in output
+                            "d": smp.Matrix([0]*len(state_vars)),  # no feedforward
+                            }
 
     def update(self, **kwargs):
         global settings
@@ -395,11 +467,10 @@ class SpeakerSystem:
         self.ss_model = self.substitute_values_into_ss_model(values)
 
     def substitute_values_into_ss_model(self, values:dict) -> signal.StateSpace:
-        a, b, c, d = self.ss_model_symbolic_matrices
-        ss_matrices = (np.array(a.subs(values)).astype(float),
-                       np.array(b.subs(values)).astype(float),
-                       np.array(c.subs(values)).astype(float),
-                       np.array(d.subs(values)).astype(float),
+        ss_matrices = (np.array(self.symbolic_ss["a"].subs(values)).astype(float),
+                       np.array(self.symbolic_ss["b"].subs(values)).astype(float),
+                       np.array(self.symbolic_ss["c"].subs(values)).astype(float),
+                       np.array(self.symbolic_ss["d"].subs(values)).astype(float),
                        )
         return signal.StateSpace(*ss_matrices)
 
