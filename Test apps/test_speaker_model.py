@@ -131,6 +131,7 @@ def substitute_symbols_in_ss(values, a, b, c, d):
 
 
 def calculate_transfer_functions(symbolic_ss: dict, values: dict) -> list:
+    print(f"Substituting values in SS model starting: {(time.perf_counter() - start_time) * 1000:.1f}ms")
     ss = substitute_symbols_in_ss(values, *symbolic_ss.values())
     print(f"SS model ready in {(time.perf_counter() - start_time) * 1000:.1f}ms")
     sys = signal.StateSpace(*ss)
