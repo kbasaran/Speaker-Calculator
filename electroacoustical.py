@@ -5,7 +5,7 @@ Created on Sun Aug  6 20:23:15 2023
 
 @author: kerem
 """
-from dataclasses import dataclass
+import dataclasses as dtc
 from functools import cached_property
 import numpy as np
 import sympy as smp
@@ -88,7 +88,7 @@ def calculate_coil_to_bottom_plate_clearance(Xpeak):
     return Xpeak + proposed_clearance
 
 
-@dataclass
+@dtc.dataclass
 class Wire:
     name: str
     w_nom: float
@@ -98,7 +98,7 @@ class Wire:
     mass_density: float  # kg/m
 
 
-@dataclass
+@dtc.dataclass
 class Coil:
     carrier_OD: float
     wire: Wire
@@ -171,7 +171,7 @@ def calculate_voltage(excitation_value, excitation_type, Rdc=None, Rnom=None):
     return input_voltage
 
 
-@dataclass
+@dtc.dataclass
 class Motor:
     coil: Coil
     Bavg: float
@@ -188,7 +188,7 @@ class Motor:
     """
 
 
-@dataclass
+@dtc.dataclass
 class SpeakerDriver:
     """
     Speaker driver class.
@@ -198,12 +198,12 @@ class SpeakerDriver:
     fs: float
     Sd: float
     Qms: float
-    motor: None | Motor = None  # None of 'Motor' instance
-    Rs: float = 0  # resistance between the coil and the speaker terminals (leadwire etc.)
     Bl: float = None  # provide only if motor is None
     Re: float = None  # provide only if motor is None
     Mms: float = None  # provide only if motor is None
+    motor: None | Motor = None  # None of 'Motor' instance
     dead_mass: float = None  # provide only if motor is 'Motor' instance
+    Rs: float = 0  # resistance between the coil and the speaker terminals (leadwire etc.)
 
     def __post_init__(self):
         if self.motor is not None:
@@ -242,7 +242,7 @@ class SpeakerDriver:
         self.Vas = settings.Kair / self.Kms * self.Sd**2
 
 
-@dataclass
+@dtc.dataclass
 class Housing:
     Vb: float
     Qa: float
@@ -255,7 +255,7 @@ class Housing:
         return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
 
 
-@dataclass
+@dtc.dataclass
 class ParentBody:
     m: float
     k: float
@@ -268,9 +268,9 @@ class ParentBody:
         return (self.k * self.m)**0.5 / self.c
 
 
-@dataclass
+@dtc.dataclass
 class PassiveRadiator:
-    m: float
+    m: float  # without coupled air mass
     k: float
     c: float
     Sp: float
@@ -282,10 +282,11 @@ class PassiveRadiator:
         return (self.k * self.m)**0.5 / self.c
     
     def m_s(self):
+        # passive radiator with coupled air mass included
         return self.m + calculate_air_mass(self.Sp)
 
 
-@dataclass
+@dtc.dataclass
 class SpeakerSystem:
     speaker: SpeakerDriver
     Rs: float = 0  # series electrical resistance to the speaker terminals
@@ -294,11 +295,36 @@ class SpeakerSystem:
     passive_radiator: None | PassiveRadiator = None
 
     def __post_init__(self):
+        self._topology_update()
         self.update()
+        
+    def get_parameters_as_dict(self) -> dict:
+        parameters = {}
+        for key, val in dtc.asdict(self).items():  # items being speaker, Rs, housing, parent_body etc.
+            if dtc.is_dataclass(val):
+                parameters.update(dtc.asdict(val)) # add each field in the elemt to parameters dict
+            else:
+                parameters[key] = val  # e.g. Rs
+        return parameters
+
+    def _topology_update(self):
+        a = 1
+        b = 1
+        c = 1
+        d = 1
+        
+        
+        # Not finished
+        
+        
+        
+        self.ss_model_symbolic_matrices = (a, b, c, d)
 
     def update(self, **kwargs):
         global settings
         topology_changed = False  # to see if we need to update the state space model topology or simply change its values
+        
+        # --- Use kwargs to update attributes of the object 'self'
         for key, val in kwargs.items():
             if key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
                 if bool(val) != bool(getattr(self, key)):
@@ -306,8 +332,12 @@ class SpeakerSystem:
                 setattr(self, key, val)
             else:
                 raise KeyError("Not familiar with key '{key}'")
+                
+        # ---- Rebuild ss model if a new topology is in place
+        if topology_changed:
+            self._topology_update()
 
-        # ---- With housing
+        # ---- Update housing related attributes
         if self.housing is not None:
             zeta_boxed_speaker = (self.housing.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
                                   + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
@@ -326,7 +356,7 @@ class SpeakerSystem:
             self.fb = None
             self.Qtc = None
 
-        # ---- Wİth mobile parent body
+        # ---- Update mobile parent body related attributes
         if self.parent_body is not None:
             # Zeta is damping ratio. It is not damping coefficient (c) or quality factor (Q).
             # Zeta = c / 2 / (k*m)**0.5)
@@ -354,32 +384,24 @@ class SpeakerSystem:
             self.f2 = None
             self.Q2 = None
 
-        # ---- with passive radiator
-        if self.passive_raditaor is not None:
+        # ---- Update passive radiator related attributes
+        if self.passive_radiator is not None:
             raise RuntimeError("Passive raditor model is not implemented yet.")
         else:
             pass
-        
-        # ---- Rebuild ss model if a new topology is in place
-        if topology_changed:
-            self.ss_model_symbolic_matrices = self._update_ss_model_symbolic_matrices()
-        
-        # ---- Update values of ss model
-        values = {**settings}
-        self.ss_model = self.substitute_values_into_ss_model(values)
-        
-    def _update_ss_model_symbolic_matrices(self) -> tuple:
-        # build ss model matrices here
-        return (a, b, c, d)
 
-    def substitute_values_into_ss_model(self, values):
-        a, b, c, d = self.ss_symbolic_model
+        # ---- Subsitute new parameters into the symbolic ss model
+        values = {**dtc.asdict(settings), **self.get_parameters_as_dict()}
+        self.ss_model = self.substitute_values_into_ss_model(values)
+
+    def substitute_values_into_ss_model(self, values:dict) -> signal.StateSpace:
+        a, b, c, d = self.ss_model_symbolic_matrices
         ss_matrices = (np.array(a.subs(values)).astype(float),
                        np.array(b.subs(values)).astype(float),
                        np.array(c.subs(values)).astype(float),
                        np.array(d.subs(values)).astype(float),
                        )
-        self.ss_model = signal.StateSpace(*ss_matrices)
+        return signal.StateSpace(*ss_matrices)
 
     def power_at_Re(self, Vspeaker):
         # Calculation of power at Rdc for given voltage at the speaker terminals
@@ -433,3 +455,18 @@ class SpeakerSystem:
             phases["Passive radiator"] = np.angle(self.x3, deg=True)
 
         return phases
+
+if __name__ == "__main__":
+    @dtc.dataclass
+    class Settings:
+        RHO: float = 1.1839  # density of air at 25 degrees celcius
+        Kair: float = 101325. * RHO
+        GAMMA: float = 1.401  # adiabatic index of air
+        P0: int = 101325  # atmospheric pressure
+        c_air: float = (P0 * GAMMA / RHO)**0.5
+    
+    settings = Settings()
+    # do a test model
+    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
+    my_system = SpeakerSystem(my_speaker)
+    
