@@ -655,12 +655,13 @@ class MainWindow(qtw.QMainWindow):
 
     def get_state(self):
         state = {}
-        forms = [self.input_form.widget(i) for i in range(self.input_form.count())]
-        for form in forms:
-            state = {**state, **form.get_form_values()}
+        tab_widgets = [self.input_form.widget(i) for i in range(self.input_form.count())]
+        for input_form_widget in tab_widgets:
+            state = {**state, **input_form_widget.get_form_values()}
         
         state["user_notes"] = self.notes_textbox.toPlainText()
 
+        logger.debug(f"Get states returning states dictionary:\n{state}")
         return state
 
     def save_state_to_file(self, state=None):
@@ -737,16 +738,15 @@ class MainWindow(qtw.QMainWindow):
             raise ValueError(f"Invalid suffix '{suffix}'")
 
     def set_state(self, state: dict):
-        forms = [self.input_form.widget(i) for i in range(self.input_form.count())]
-        for form in forms:
-            # each tab is a form
-            # for each form, make a "relevant states" dictionary
+        tab_widgets = [self.input_form.widget(i) for i in range(self.input_form.count())]
+        for input_form_widget in tab_widgets:
+            # for each form on its corresponding tab, make a "relevant states" dictionary
             # this dictionary will not contain all the settings
             # but only the ones that have items with matching names to form's items (names in form_object_names)
-            form_object_names = [name for name in form.get_form_values().keys()]
+            form_object_names = [name for name in input_form_widget.get_form_values().keys()]
             relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
-            form.update_form_values(relevant_states)
-        
+            input_form_widget.update_form_values(relevant_states)
+
         self.notes_textbox.setPlainText(state.get("user_notes", "[No notes could be loaded.]"))
 
         self.signal_good_beep.emit()
