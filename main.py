@@ -37,7 +37,7 @@ app_definitions = {"app_name": "Speaker Stuff Calculator",
                    "version": "0.2.0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Loudspeaker design and calculations",
-                   "copyright": "Copyright (C) 2023 Kerem Basaran",
+                   "copyright": "Copyright (C) 2024 Kerem Basaran",
                    "icon_path": str(Path("./images/logo.ico")),
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
@@ -661,7 +661,7 @@ class MainWindow(qtw.QMainWindow):
         
         state["user_notes"] = self.notes_textbox.toPlainText()
 
-        logger.debug(f"Get states returning states dictionary:\n{state}")
+        print(f"Get states returning states dictionary:\n{state}")
         return state
 
     def save_state_to_file(self, state=None):
@@ -775,7 +775,7 @@ class MainWindow(qtw.QMainWindow):
             "Speaker Stuff Calculator - Loudspeaker design and calculations tool",
             f"Version: {app_definitions['version']}",
             "",
-            f"Copyright (C) 2024 - {app_definitions['author']}",
+            f"{app_definitions['copyright']}",
             f"{app_definitions['website']}",
             f"{app_definitions['email']}",
             "",
@@ -976,7 +976,11 @@ def setup_logging(args):
     else:
         log_level = logging.INFO
     log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
-    logging.basicConfig(filename=log_filename, level=log_level, force=True)
+    logging.basicConfig(filename=log_filename,
+                        level=log_level,
+                        format="%(asctime)s %(levelname)s - %(funcName)s: %(message)s",
+                        force=True,
+                        )
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
