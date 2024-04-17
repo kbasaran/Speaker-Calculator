@@ -319,29 +319,29 @@ class SpeakerSystem:
     def get_parameters_as_dict(self) -> dict:
         parameters = {
             "Mms": self.speaker.Mms,
-            "M2": self.parent_body.get("m", None),
-            "Mpr": self.passive_radiator.get("m", None),
+            "M2": None if self.parent_body is None else self.parent_body.m,
+            "Mpr": None if self.passive_radiator is None else self.passive_radiator.m,
 
             "Kms": self.speaker.Kms,
-            "K2": self.parent_body.get("k", None),
-            "Kpr": self.passive_radiator.get("k", None),
+            "K2": None if self.parent_body is None else self.parent_body.k,
+            "Kpr": None if self.passive_radiator is None else self.passive_radiator.k,
             
             "Rms": self.speaker.Rms,
-            "R2": self.parent_body.get("c", None),
-            "Rpr": self.passive_radiator.get("c", None),
+            "R2": None if self.parent_body is None else self.parent_body.c,
+            "Rpr": None if self.passive_radiator is None else self.passive_radiator.c,
             
-            "P0": self.settings.P0,
-            "gamma": self.settings.GAMMA,
-            "Vb": self.housing.get("Vb", None),
+            "P0": settings.P0,
+            "gamma": settings.GAMMA,
+            "Vb": None if self.housing is None else self.housing.Vb,
             
             "Sd": self.speaker.Sd,
-            "Spr": self.passive_radiator.get("Sp", None),
+            "Spr": None if self.passive_radiator is None else self.passive_radiator.Sp,
             "Bl": self.speaker.Bl,
             "Re": self.speaker.Re,
             "Rs_source": self.Rs,
             }
 
-        return {parameter: val for (parameter, val) in parameters if val is not None}
+        return {parameter: val for (parameter, val) in parameters.items() if val is not None}
 
     def _topology_update(self):
         # Static symbols
