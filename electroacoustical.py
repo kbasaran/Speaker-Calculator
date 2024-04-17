@@ -317,21 +317,31 @@ class SpeakerSystem:
         self.update()
         
     def get_parameters_as_dict(self) -> dict:
-        
-        
-        ----------
-        How to make a list of parameters in ss model from this
-        ----------
-        
-        
-        parameters = {}
-        for key, val in dtc.asdict(self).items():  # items being speaker, Rs, housing, parent_body etc.
-            # items returned with val are also dicts, not objects (so child classes also get conversion to dict)
-            if dtc.is_dataclass(val):
-                parameters.update(dtc.asdict(val)) # add each field in the elemt to parameters dict
-            else:
-                parameters[key] = val  # e.g. Rs
-        return parameters
+        parameters = {
+            "Mms": self.speaker.Mms,
+            "M2": self.parent_body.get("m", None),
+            "Mpr": self.passive_radiator.get("m", None),
+
+            "Kms": self.speaker.Kms,
+            "K2": self.parent_body.get("k", None),
+            "Kpr": self.passive_radiator.get("k", None),
+            
+            "Rms": self.speaker.Rms,
+            "R2": self.parent_body.get("c", None),
+            "Rpr": self.passive_radiator.get("c", None),
+            
+            "P0": self.settings.P0,
+            "gamma": self.settings.GAMMA,
+            "Vb": self.housing.get("Vb", None),
+            
+            "Sd": self.speaker.Sd,
+            "Spr": self.passive_radiator.get("Sp", None),
+            "Bl": self.speaker.Bl,
+            "Re": self.speaker.Re,
+            "Rs_source": self.Rs,
+            }
+
+        return {parameter: val for (parameter, val) in parameters if val is not None}
 
     def _topology_update(self):
         # Static symbols
@@ -354,9 +364,10 @@ class SpeakerSystem:
         x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
-
+        
+        # define state space system
         eqns = [
-
+            
                 (- Mms * x1_tt
                  - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
                  - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
@@ -376,15 +387,32 @@ class SpeakerSystem:
 
                 ]
 
-        # define state space system
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]
+
+        state_vars = [x1, x1_t]
+
+        if self.parent_body is not None:
+            state_vars = [*state_vars, x2, x2_t]
+        else:
+            eqns = [eqn.subs({x2: 0, x2_t: 0}) for eqn in eqns]
+            
+        if self.passive_radiator is not None:
+            state_vars = [*state_vars, xpr, xpr_t]
+        else:
+            eqns = [eqn.subs({xpr: 0, xpr_t: 0}) for eqn in eqns]
+            
         input_vars = [Vsource]
         state_diffs = [var.diff() for var in state_vars]
 
         sols = solve(eqns, [state_var for state_var in state_diffs if state_var not in state_vars], as_dict=True)
+        
+        # change some solutions into direct (must be a better way......)
         sols[x1_t] = x1_t
-        sols[x2_t] = x2_t
-        sols[xpr_t] = xpr_t
+
+        if x2_t in sols:
+            sols[x2_t] = x2_t
+
+        if xpr_t in sols:
+            sols[xpr_t] = xpr_t
 
         self.symbolic_ss = {"a": make_state_matrix_A(state_vars, state_diffs, sols),  # system matrix
                             "b": make_state_matrix_B(state_diffs, input_vars, sols),  # input matrix
