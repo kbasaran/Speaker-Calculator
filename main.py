@@ -139,10 +139,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Qms",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Xmax", "Peak excursion allowed, one way",
+        form.add_row(pwi.FloatSpinBox("Xpeak", "Peak excursion allowed, one way",
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Xmax (mm)",
+                     description="Xpeak (mm)",
                      )
 
         form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itform and the air.|n(Dead mass = Mmd - coil mass)",

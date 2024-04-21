@@ -136,7 +136,7 @@ def convert_v01_to_v02(file: Path) -> dict:
     # key, old name, conversion function
     conversion = {  "fs":                       ("fs",                      lambda x: x),
                     "Qms":                      ("Qms",                     lambda x: x),
-                    "Xmax":                     ("Xmax",                    lambda x: x * 1e3),
+                    "Xpeak":                    ("Xmax",                    lambda x: x * 1e3),
                     "dead_mass":                ("dead_mass",               lambda x: x * 1e3),
                     "Sd":                       ("Sd",                      lambda x: x * 1e4),
     
