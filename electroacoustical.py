@@ -280,7 +280,7 @@ class Housing:
         return Sd**2 * settings.Kair / self.Vb
     
     def R(self, Sd, Mms, Kms):
-        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
+        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa  # need to verify calculation
 
 
 @dtc.dataclass
@@ -289,11 +289,11 @@ class ParentBody:
     k: float
     c: float
     
-    def f(self):
-        return 1 / 2 / np.pi * (self.k / self.m)**0.5
+    # def f(self):
+    #     return 1 / 2 / np.pi * (self.k / self.m)**0.5
     
-    def Q(self):
-        return (self.k * self.m)**0.5 / self.c
+    # def Q(self):
+    #     return (self.k * self.m)**0.5 / self.c
 
 
 @dtc.dataclass
@@ -308,12 +308,12 @@ class PassiveRadiator:
         # passive radiator with coupled air mass included
         return self.m + calculate_air_mass(self.Sp)
     
-    def f(self):
-        return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
+    # def f(self):
+    #     return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
 
     
-    def Q(self):
-        return (self.k * self.m_s())**0.5 / self.c
+    # def Q(self):
+    #     return (self.k * self.m_s())**0.5 / self.c
 
 
 def make_state_matrix_A(state_vars, state_diffs, sols):
