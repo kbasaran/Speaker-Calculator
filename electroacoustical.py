@@ -62,6 +62,17 @@ eg: open-circuit output voltage of source
 """
 
 
+"""
+from another source:
+    
+Ql is the system's Q at Fb due to leakage losses (sealing of the cabinet, etc.).
+
+Qa is the system's Q at Fb due to absorption losses.
+
+Qp is the system's Q at Fb due to port losses (turbulence, viscosity, etc.).
+
+"""
+
 def calculate_air_mass(Sd: float) -> float:
     """
     Air mass on diaphragm; the difference between Mms and Mmd.
