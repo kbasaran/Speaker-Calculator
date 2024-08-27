@@ -223,17 +223,16 @@ class SpeakerDriver:
     Xmax: float = None
 
     def __post_init__(self):
-        if self.motor is not None:
-            should_not_have_been_specified = ("Bl", "Re")
-            if not all([self.get(val) is None for val in should_not_have_been_specified]):
+        if isinstance(self.motor, Motor):
+            available_from_Motor_object = ("Bl", "Re")
+            if not all([self.get(val) is None for val in available_from_Motor_object]):
                 raise RuntimeError("These attributes should not be specified when motor is already specified:"
-                                   f"\n{should_not_have_been_specified}")
+                                   f"\n{available_from_Motor_object}")
             self.Bl = self.motor.coil.h_winding * self.motor.Bavg
             self.Re = self.motor.Rdc + self.Rs
 
         # derived parameters
         # Mms and Mmd
-        if self.motor is not None:
             try:
                 if "Mms" in locals().keys():
                     raise RuntimeError("Double definition. 'Mms' should not be defined in object instantiation"
@@ -256,8 +255,7 @@ class SpeakerDriver:
         self.Qes = (self.Mms * self.Kms)**0.5 / (self.Ces)
         zeta_speaker = 1 / 2 / self.Qts
         self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
-        # Lm - sensitivity per W@Re
-        self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd)
+        self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd)  # sensitivity per W@Re
         self.Vas = settings.Kair / self.Kms * self.Sd**2
     
     def get_summary(self) -> list:
