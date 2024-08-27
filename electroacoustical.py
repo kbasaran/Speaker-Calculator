@@ -279,6 +279,7 @@ class SpeakerDriver:
 
         return [summary_ace, summary_mec]
 
+
 @dtc.dataclass
 class Housing:
     Vb: float
@@ -289,7 +290,9 @@ class Housing:
         return Sd**2 * settings.Kair / self.Vb
     
     def R(self, Sd, Mms, Kms):
-        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa  # need to verify calculation
+        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
+        # need to verify Qa calculation
+        # in Unibox it causes an increase in box volume
 
 
 @dtc.dataclass
@@ -596,7 +599,7 @@ class SpeakerSystem:
         self.ss_model = self.substitute_values_into_ss_model(self.get_parameters(self.symbol_names_to_symbols))
 
     def substitute_values_into_ss_model(self, values:dict) -> signal.StateSpace:
-        print(self.symbolic_ss["a"].subs(values))
+        # print(self.symbolic_ss["a"].subs(values))
         ss_matrices = (np.array(self.symbolic_ss["a"].subs(values)).astype(float),
                         np.array(self.symbolic_ss["b"].subs(values)).astype(float),
                         np.array(self.symbolic_ss["c"].subs(values)).astype(float),
@@ -666,20 +669,29 @@ if __name__ == "__main__":
         P0: int = 101325  # atmospheric pressure
         c_air: float = (P0 * GAMMA / RHO)**0.5
     
-    settings = Settings()
-    # do test model 1
-    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    my_system = SpeakerSystem(my_speaker)
+    # settings = Settings()
+    # # do test model 1
+    # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
+    # my_system = SpeakerSystem(my_speaker)
     
-    # do test model 2
-    housing = Housing(0.01, 5)
-    parent_body = ParentBody(1, 1, 1)
-    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
+    # # do test model 2
+    # housing = Housing(0.01, 5)
+    # parent_body = ParentBody(1, 1, 1)
+    # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
+    # my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
     
-    # do test model 3
-    housing = Housing(0.01, 5)
-    parent_body = ParentBody(1, 1, 1)
-    pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
-    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing, passive_radiator=pr)
+    # # do test model 3
+    # housing = Housing(0.01, 5)
+    # parent_body = ParentBody(1, 1, 1)
+    # pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
+    # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
+    # my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing, passive_radiator=pr)
+
+
+    # do test model for unibox - Qa / Ql
+    housing = Housing(0.05, 9999)
+    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=3, Re=4, Mms=7.7e-3)
+    my_system = SpeakerSystem(my_speaker, housing=housing)
+    
+    ## to-do
+    ## SPL calculation and comparing results against Unibox, finding out the Qa Ql mystery (Qa makes large bigger)
