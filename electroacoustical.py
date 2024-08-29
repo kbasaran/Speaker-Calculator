@@ -288,7 +288,7 @@ class Housing:
     def K(self, Sd):
         global settings
         return Sd**2 * settings.Kair / self.Vb
-    
+
     def R(self, Sd, Mms, Kms):
         return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
         # need to verify Qa calculation
@@ -300,10 +300,10 @@ class ParentBody:
     m: float
     k: float
     c: float
-    
+
     # def f(self):
     #     return 1 / 2 / np.pi * (self.k / self.m)**0.5
-    
+
     # def Q(self):
     #     return (self.k * self.m)**0.5 / self.c
 
@@ -315,35 +315,52 @@ class PassiveRadiator:
     c: float
     Sp: float
     direction: int = 1
-    
+
     def m_s(self):
         # passive radiator with coupled air mass included
         return self.m + calculate_air_mass(self.Sp)
-    
+
     # def f(self):
     #     return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
 
-    
     # def Q(self):
     #     return (self.k * self.m_s())**0.5 / self.c
 
 
 def make_state_matrix_A(state_vars, state_diffs, sols):
+    # State matrix
+
     matrix = []
     for state_diff in state_diffs:
+        # Each row corresponds to the differential of a state variable
+        # as listed in state_diffs
+        # e.g. x1_t, x1_tt, x2_t, x2_tt
+
+        # find coefficients of each state variable
         if state_diff in state_vars:
             coeffs = [int(state_vars[i] == state_diff) for i in range(len(state_vars))]
         else:
             coeffs = [sols[state_diff].coeff(state_var) for state_var in state_vars]
+
         matrix.append(coeffs)
+
     return smp.Matrix(matrix)
 
 
 def make_state_matrix_B(state_diffs, input_vars, sols):
+    # Input matrix
+
     matrix = []
     for state_diff in state_diffs:
+        # Each row corresponds to the differential of a state variable
+        # as listed in state_diffs
+        # e.g. x1_t, x1_tt, x2_t, x2_tt
+
+        # find coefficients of each state variable
         coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+
         matrix.append(coeffs)
+
     return smp.Matrix(matrix)
 
 
@@ -372,11 +389,9 @@ class SpeakerSystem:
             "Bl": self.speaker.Bl,
             "Re": self.speaker.Re,
 
-
             "M2": None if self.parent_body is None else self.parent_body.m,
             "K2": None if self.parent_body is None else self.parent_body.k,
             "R2": None if self.parent_body is None else self.parent_body.c,
-
 
             "Mpr": None if self.passive_radiator is None else self.passive_radiator.m,
             "Kpr": None if self.passive_radiator is None else self.passive_radiator.k,
@@ -660,6 +675,7 @@ class SpeakerSystem:
 
         return phases
 
+
 if __name__ == "__main__":
     @dtc.dataclass
     class Settings:
@@ -668,18 +684,18 @@ if __name__ == "__main__":
         GAMMA: float = 1.401  # adiabatic index of air
         P0: int = 101325  # atmospheric pressure
         c_air: float = (P0 * GAMMA / RHO)**0.5
-    
-    # settings = Settings()
+
+    settings = Settings()
     # # do test model 1
     # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
     # my_system = SpeakerSystem(my_speaker)
-    
+
     # # do test model 2
     # housing = Housing(0.01, 5)
     # parent_body = ParentBody(1, 1, 1)
     # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
     # my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
-    
+
     # # do test model 3
     # housing = Housing(0.01, 5)
     # parent_body = ParentBody(1, 1, 1)
@@ -692,6 +708,7 @@ if __name__ == "__main__":
     housing = Housing(0.05, 9999)
     my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=3, Re=4, Mms=7.7e-3)
     my_system = SpeakerSystem(my_speaker, housing=housing)
-    
+    x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
+
     ## to-do
     ## SPL calculation and comparing results against Unibox, finding out the Qa Ql mystery (Qa makes large bigger)
