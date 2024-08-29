@@ -411,7 +411,6 @@ class SpeakerSystem:
 
         return {val: symbol_names_to_values[key] for key, val in symbol_names_to_symbols.items()}
 
-
     def _symbolic_ss_model_update(self):
         # Static symbols
         Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
@@ -420,9 +419,9 @@ class SpeakerSystem:
         P0, gamma, Vb, Qa = smp.symbols("P_0, gamma, V_b, Q_a", real=True, positive=True)
         Sd, Spr, Bl, Re, Rs_source = smp.symbols("S_d, S_pr, Bl, R_e, Rs_source", real=True, positive=True)
         dir_pr = smp.symbols("direction_pr")
-            # Direction coefficient for passive radiator
-            # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
-        
+        # Direction coefficient for passive radiator
+        # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
+
         self.symbol_names_to_symbols = {
             "Mms": Mms,
             "Kms": Kms,
@@ -437,7 +436,7 @@ class SpeakerSystem:
 
             "Rs_source": Rs_source,
             }
-        
+
         if self.parent_body is not None:
             self.symbol_names_to_symbols.update({
                 "M2": M2,
@@ -457,7 +456,7 @@ class SpeakerSystem:
                 "dir_pr": dir_pr,
                 })
 
-        if self.housing is not None:      
+        if self.housing is not None:
             self.symbol_names_to_symbols.update({
                 "Vb": Vb,
                 "Qa": Qa,
@@ -468,15 +467,14 @@ class SpeakerSystem:
         xpr = mech.dynamicsymbols("x_pr")
         Vsource = mech.dynamicsymbols("V_source", real=True)
 
-
         # Derivatives
         x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
-        
+
         # define state space system
         eqns = [
-            
+
                 (- Mms * x1_tt
                  - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
                  - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
@@ -503,7 +501,7 @@ class SpeakerSystem:
             eqns = [eqn.subs({x2: 0, x2_t: 0, x2_tt:0, }) for eqn in eqns]
         else:
             state_vars = [*state_vars, x2, x2_t]
-            
+
         if self.passive_radiator is None:
             eqns = [eqn.subs({xpr: 0, xpr_t: 0, xpr_tt:0, Spr: 1, dir_pr: 0}) for eqn in eqns]
         else:
@@ -511,11 +509,10 @@ class SpeakerSystem:
 
         if self.housing is None:
             eqns = [eqn.subs({P0: 0, gamma: 0}) for eqn in eqns]
-            
-            
+
         # define input variables
         input_vars = [Vsource]
-        
+
         # define state differentials
         state_diffs = [var.diff() for var in state_vars]
 
@@ -523,7 +520,7 @@ class SpeakerSystem:
         sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)
         if len(sols) == 0:
             raise RuntimeError("No solution found for the equation.")
-        
+
         # change some solutions into direct (must be a better way......)
         sols[x1_t] = x1_t
 
@@ -543,7 +540,7 @@ class SpeakerSystem:
     def update(self, **kwargs):
         global settings
         topology_changed = False  # to see if we need to update the state space model topology or simply change its values
-        
+
         # --- Use kwargs to update attributes of the object 'self'
         for key, val in kwargs.items():
             if key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
@@ -552,11 +549,11 @@ class SpeakerSystem:
                 setattr(self, key, val)  # set the attributes of self object with value in kwargs
             else:
                 raise KeyError("Not familiar with key '{key}'")
-                
+
         # ---- Rebuild ss model if a new topology is in place
         if topology_changed:
             self._symbolic_ss_model_update()
-            
+
         # ---- Update housing related attributes
         if self.housing is not None:
             zeta_boxed_speaker = (self.housing.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
@@ -571,7 +568,7 @@ class SpeakerSystem:
 
             self.fb = fb_undamped
             self.Qtc = np.inf if zeta_boxed_speaker == 0 else 1 / 2 / zeta_boxed_speaker
-        
+
         else:
             self.fb = None
             self.Qtc = None
