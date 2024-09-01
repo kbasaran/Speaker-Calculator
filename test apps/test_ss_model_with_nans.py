@@ -120,7 +120,40 @@ for i, state_var in enumerate(state_vars):
 symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
 
 
-# ---- Ready to substitute values into SS model
+# ---- Substitute float values into SS model
+
+# symbols_to_values = {
+#     M1: 9,
+#     K1: 1,
+#     R1: 1,
+    
+#     M2: 3,
+#     K2: 2,
+#     R2: 1,
+    
+#     K3: 2,
+#     }
+
+# ss_matrices = {
+#     "A": np.array(ss_matrices_sym["A"].subs(symbols_to_values)).astype(float),
+#     "B": np.array(ss_matrices_sym["B"].subs(symbols_to_values)).astype(float),
+#     "C": ss_matrices_sym["C"],  # no symbols here already
+#     "D": ss_matrices_sym["D"],  # no symbols here already
+#     }
+
+# ss_model = signal.StateSpace(*[ss_matrices["A"],
+#                               ss_matrices["B"],
+#                               ss_matrices["C"][x1],
+#                               ss_matrices["D"]],
+#                               )
+# freqs = np.arange(1, 100) / 100
+# w, x1 = signal.freqresp(ss_model, w=2*np.pi*freqs)
+# plt.semilogx(freqs, np.abs(x1))
+
+
+# ---- Substitute nan value into SS model
+
+# assume x2 is not mobile
 
 symbols_to_values = {
     M1: 9,
@@ -131,7 +164,7 @@ symbols_to_values = {
     K2: 2,
     R2: 1,
     
-    K3: 2,
+    K3: np.nan,  # between x2 and ground - no movement, no need to define
     }
 
 ss_matrices = {
@@ -141,12 +174,15 @@ ss_matrices = {
     "D": ss_matrices_sym["D"],  # no symbols here already
     }
 
+ss_matrices["A"][2:4, :] = 0  # fill the rows that return x2 and x2_t with zeros
+ss_matrices["A"][:, 2:4] = 0  # fill the rows that receive x2 and x2_t with zeros
 
 ss_model = signal.StateSpace(*[ss_matrices["A"],
                               ss_matrices["B"],
-                              ss_matrices["C"][x1],
+                              ss_matrices["C"][x1_t],
                               ss_matrices["D"]],
                               )
+print(ss_model)
 freqs = np.arange(1, 100) / 100
 w, x1 = signal.freqresp(ss_model, w=2*np.pi*freqs)
 plt.semilogx(freqs, np.abs(x1))
