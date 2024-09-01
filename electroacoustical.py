@@ -10,9 +10,10 @@ from functools import cached_property
 import numpy as np
 import sympy as smp
 import sympy.physics.mechanics as mech
-from sympy.abc import t
 from sympy.solvers import solve
 from scipy import signal
+from sympy.abc import t
+
 
 """
 https://www.micka.de/en/introduction.php
@@ -432,6 +433,7 @@ class SpeakerSystem:
         if len(sols) == 0:
             raise RuntimeError("No solution found for the equation.")
 
+        # correction to exact variables in solutions
         sols[x1_t] = x1_t
         sols[x2_t] = x2_t
         sols[xpr_t] = xpr_t
@@ -547,6 +549,7 @@ class SpeakerSystem:
         # ---- Subsitute new parameters into the symbolic ss model
         
         symbols_to_values = self.get_symbols_to_values()
+        print(symbols_to_values)
         
         ss_matrices = (np.array(self.symbolic_ss["a"].subs(symbols_to_values)).astype(float),
                        np.array(self.symbolic_ss["b"].subs(symbols_to_values)).astype(float),
@@ -632,9 +635,10 @@ if __name__ == "__main__":
     # # do test model 3
     housing = Housing(0.01, 5)
     parent_body = ParentBody(1, 1, 1)
-    # pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
+    pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing)
+    my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing, passive_radiator=pr)
+    x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
 
 
     # do test model for unibox - Qa / Ql
