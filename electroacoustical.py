@@ -373,13 +373,12 @@ class SpeakerSystem:
     passive_radiator: None | PassiveRadiator = None
 
     def __post_init__(self):
-        self._symbolic_ss_model_update()
-        self.update()
+        self._symbolic_ss_model_build()
+        self.update_model_parameters()
 
-    def get_parameters(self, symbol_names_to_symbols) -> dict:
+    def get_parameters(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
         "key: symbol object, val: value"
-        "An argument is required to map the symbol names to symbol objects."
 
         symbol_names_to_values = {
             "Mms": self.speaker.Mms,
@@ -409,9 +408,12 @@ class SpeakerSystem:
 
             }
 
-        return {val: symbol_names_to_values[key] for key, val in symbol_names_to_symbols.items()}
+        return symbol_names_to_values
+    
+    def get_parameters_per_symbol(self):
+        for 
 
-    def _symbolic_ss_model_update(self):
+    def _symbolic_ss_model_build(self):
         # Static symbols
         Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
         Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
@@ -421,46 +423,6 @@ class SpeakerSystem:
         dir_pr = smp.symbols("direction_pr")
         # Direction coefficient for passive radiator
         # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
-
-        self.symbol_names_to_symbols = {
-            "Mms": Mms,
-            "Kms": Kms,
-            "Rms": Rms,
-
-            "P0": P0,
-            "gamma": gamma,
-
-            "Sd": Sd,
-            "Bl": Bl,
-            "Re": Re,
-
-            "Rs_source": Rs_source,
-            }
-
-        if self.parent_body is not None:
-            self.symbol_names_to_symbols.update({
-                "M2": M2,
-                "K2": K2,
-                "R2": R2,
-                })
-
-        if self.passive_radiator is not None:
-            if self.housing is None:
-                raise RuntimeError("Not possible to have a passive radiator without a housing.")
-
-            self.symbol_names_to_symbols.update({
-                "Mpr": Mpr,
-                "Kpr": Kpr,
-                "Rpr": Rpr,
-                "Spr": Spr,
-                "dir_pr": dir_pr,
-                })
-
-        if self.housing is not None:
-            self.symbol_names_to_symbols.update({
-                "Vb": Vb,
-                "Qa": Qa,
-                })
 
         # Dynamic symbols
         x1, x2 = mech.dynamicsymbols("x(1:3)")
@@ -473,7 +435,7 @@ class SpeakerSystem:
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
 
         # define state space system
-        eqns = [
+        eqns = [    
 
                 (- Mms * x1_tt
                  - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
@@ -494,21 +456,7 @@ class SpeakerSystem:
 
                 ]
 
-        state_vars = [x1, x1_t]
-
-        # modify based on missing features
-        if self.parent_body is None:
-            eqns = [eqn.subs({x2: 0, x2_t: 0, x2_tt:0, }) for eqn in eqns]
-        else:
-            state_vars = [*state_vars, x2, x2_t]
-
-        if self.passive_radiator is None:
-            eqns = [eqn.subs({xpr: 0, xpr_t: 0, xpr_tt:0, Spr: 1, dir_pr: 0}) for eqn in eqns]
-        else:
-            state_vars = [*state_vars, xpr, xpr_t]
-
-        if self.housing is None:
-            eqns = [eqn.subs({P0: 0, gamma: 0}) for eqn in eqns]
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]
 
         # define input variables
         input_vars = [Vsource]
@@ -521,41 +469,28 @@ class SpeakerSystem:
         if len(sols) == 0:
             raise RuntimeError("No solution found for the equation.")
 
-        # change some solutions into direct (must be a better way......)
         sols[x1_t] = x1_t
-
-        if self.parent_body is not None:
-            sols[x2_t] = x2_t
-
-        if self.passive_radiator is not None:
-            sols[xpr_t] = xpr_t
-
-        # extract the matrix coefficients from the solution
+        sols[x2_t] = x2_t
+        sols[xpr_t] = xpr_t
+        
+        self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
         self.symbolic_ss = {"a": make_state_matrix_A(state_vars, state_diffs, sols),  # system matrix
                             "b": make_state_matrix_B(state_diffs, input_vars, sols),  # input matrix
                             "c": smp.Matrix(smp.eye(len(state_vars))),  # give all state vars in output
                             "d": smp.Matrix([0]*len(state_vars)),  # no feedforward
                             }
 
-    def update(self, **kwargs):
-        global settings
-        topology_changed = False  # to see if we need to update the state space model topology or simply change its values
+    def update_model_parameters(self, **kwargs):
 
         # --- Use kwargs to update attributes of the object 'self'
         for key, val in kwargs.items():
             if key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
-                if bool(val) != bool(getattr(self, key)):  # if any item in the list changes to or from 'None'
-                    topology_changed = True
                 setattr(self, key, val)  # set the attributes of self object with value in kwargs
             else:
                 raise KeyError("Not familiar with key '{key}'")
 
-        # ---- Rebuild ss model if a new topology is in place
-        if topology_changed:
-            self._symbolic_ss_model_update()
-
         # ---- Update housing related attributes
-        if self.housing is not None:
+        if isinstance(self.housing, Housing):
             zeta_boxed_speaker = (self.housing.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
                                   + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
                 / 2 / ((self.speaker.Kms+self.housing.K(self.speaker.Sd)) * self.speaker.Mms)**0.5
@@ -574,7 +509,7 @@ class SpeakerSystem:
             self.Qtc = None
 
         # ---- Update mobile parent body related attributes
-        if self.parent_body is not None:
+        if isinstance(self.parent_body, ParentBody):
             # Zeta is damping ratio. It is not damping coefficient (c) or quality factor (Q).
             # Zeta = c / 2 / (k*m)**0.5)
             # Q = (k*m)**0.5 / c
@@ -596,28 +531,26 @@ class SpeakerSystem:
 
             self.f2 = f2_undamped
             self.Q2 = q2_free
-            
+
         else:
             self.f2 = None
             self.Q2 = None
 
         # ---- Update passive radiator related attributes
-        if self.passive_radiator is not None:
+        if isinstance(self.passive_radiator, PassiveRadiator):
             print("PR calculations not ready yet")
         else:
             pass
 
         # ---- Subsitute new parameters into the symbolic ss model
-        self.ss_model = self.substitute_values_into_ss_model(self.get_parameters(self.symbol_names_to_symbols))
-
-    def substitute_values_into_ss_model(self, values:dict) -> signal.StateSpace:
-        # print(self.symbolic_ss["a"].subs(values))
+        values = self.get_parameters(self.symbol_names_to_symbols)
+        
         ss_matrices = (np.array(self.symbolic_ss["a"].subs(values)).astype(float),
-                        np.array(self.symbolic_ss["b"].subs(values)).astype(float),
-                        np.array(self.symbolic_ss["c"].subs(values)).astype(float),
-                        np.array(self.symbolic_ss["d"].subs(values)).astype(float),
-                        )
-        return signal.StateSpace(*ss_matrices)
+                       np.array(self.symbolic_ss["b"].subs(values)).astype(float),
+                       np.array(self.symbolic_ss["c"].subs(values)).astype(float),
+                       np.array(self.symbolic_ss["d"].subs(values)).astype(float),
+                       )
+        self.ss_model = signal.StateSpace(*ss_matrices)
 
     def power_at_Re(self, Vspeaker):
         # Calculation of power at Rdc for given voltage at the speaker terminals
@@ -694,18 +627,18 @@ if __name__ == "__main__":
     # my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
 
     # # do test model 3
-    # housing = Housing(0.01, 5)
-    # parent_body = ParentBody(1, 1, 1)
-    # pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
-    # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    # my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing, passive_radiator=pr)
+    housing = Housing(0.01, 5)
+    parent_body = ParentBody(1, 1, 1)
+    pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
+    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
+    my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing, passive_radiator=pr)
 
 
     # do test model for unibox - Qa / Ql
-    housing = Housing(0.05, 9999)
-    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=3, Re=4, Mms=7.7e-3)
-    my_system = SpeakerSystem(my_speaker, housing=housing)
-    x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
+    # housing = Housing(0.05, 9999)
+    # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=3, Re=4, Mms=7.7e-3)
+    # my_system = SpeakerSystem(my_speaker, housing=housing)
+    # x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
 
     ## to-do
     ## SPL calculation and comparing results against Unibox, finding out the Qa Ql mystery (Qa makes large bigger)
