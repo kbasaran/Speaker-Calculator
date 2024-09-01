@@ -104,20 +104,23 @@ if len(sols) == 0:
 sols[x1_t] = x1_t
 sols[x2_t] = x2_t
 
+# SS model with symbols
+ss_matrices_sym = {
+    "A": make_state_matrix_A(state_vars, state_diffs, sols),  # system matrix
+    "B": make_state_matrix_B(state_diffs, input_vars, sols),  # input matrix
+    "C": dict(),
+    "D": np.zeros(1),  # no feedforward
+    }
 
-ss_a = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
-ss_b = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
-ss_d = np.zeros(1)  # no feedforward
-
-symbolic_ss = list()
-ss_c_all = np.eye((len(state_vars)))
 for i, state_var in enumerate(state_vars):
-    ss_c = ss_c_all[i, :]
-    symbolic_ss.append([ss_a, ss_b, ss_c, ss_d])
+    ss_c = np.zeros(4)
+    ss_c[i] = 1
+    ss_matrices_sym["C"][state_var] = ss_c
+
+symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
 
 
-symbols = {key: val for (key, val) in locals().items()
-           if isinstance(val, smp.Symbol)}
+# ---- Ready to substitute values into SS model
 
 symbols_to_values = {
     M1: 9,
@@ -131,15 +134,19 @@ symbols_to_values = {
     K3: 2,
     }
 
-ss_matrices = [list(),]
-ss_matrices[0] = (np.array(symbolic_ss[0][0].subs(symbols_to_values)).astype(float),
-                  np.array(symbolic_ss[0][1].subs(symbols_to_values)).astype(float),
-                  symbolic_ss[0][2],
-                  symbolic_ss[0][3],
-                  )
-print(ss_matrices[0])
+ss_matrices = {
+    "A": np.array(ss_matrices_sym["A"].subs(symbols_to_values)).astype(float),
+    "B": np.array(ss_matrices_sym["B"].subs(symbols_to_values)).astype(float),
+    "C": ss_matrices_sym["C"],  # no symbols here already
+    "D": ss_matrices_sym["D"],  # no symbols here already
+    }
 
-ss_model = signal.StateSpace(*ss_matrices[0])
+
+ss_model = signal.StateSpace(*[ss_matrices["A"],
+                              ss_matrices["B"],
+                              ss_matrices["C"][x1],
+                              ss_matrices["D"]],
+                              )
 freqs = np.arange(1, 100) / 100
 w, x1 = signal.freqresp(ss_model, w=2*np.pi*freqs)
 plt.semilogx(freqs, np.abs(x1))
