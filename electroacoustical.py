@@ -313,7 +313,7 @@ class PassiveRadiator:
     m: float  # without coupled air mass
     k: float
     c: float
-    Sp: float
+    Spr: float  # surface area
     direction: int = 1
 
     def m_s(self):
@@ -374,44 +374,7 @@ class SpeakerSystem:
 
     def __post_init__(self):
         self._symbolic_ss_model_build()
-        self.update_model_parameters()
-
-    def get_parameters(self) -> dict:
-        "Get a dictionary of all the parameters related to the speaker system"
-        "key: symbol object, val: value"
-
-        symbol_names_to_values = {
-            "Mms": self.speaker.Mms,
-            "Kms": self.speaker.Kms,
-            "Rms": self.speaker.Rms,
-            "Sd": self.speaker.Sd,
-            "Bl": self.speaker.Bl,
-            "Re": self.speaker.Re,
-
-            "M2": None if self.parent_body is None else self.parent_body.m,
-            "K2": None if self.parent_body is None else self.parent_body.k,
-            "R2": None if self.parent_body is None else self.parent_body.c,
-
-            "Mpr": None if self.passive_radiator is None else self.passive_radiator.m,
-            "Kpr": None if self.passive_radiator is None else self.passive_radiator.k,
-            "Rpr": None if self.passive_radiator is None else self.passive_radiator.c,
-            "Spr": None if self.passive_radiator is None else self.passive_radiator.Sp,
-            "dir_pr": None if self.passive_radiator is None else self.passive_radiator.direction,
-
-            "Vb": None if self.housing is None else self.housing.Vb,
-            "Qa": None if self.housing is None else self.housing.Qa,
-
-            "P0": settings.P0,
-            "gamma": settings.GAMMA,
-
-            "Rs_source": self.Rs,
-
-            }
-
-        return symbol_names_to_values
-    
-    def get_parameters_per_symbol(self):
-        for 
+        self.update_ss_model()
 
     def _symbolic_ss_model_build(self):
         # Static symbols
@@ -473,14 +436,55 @@ class SpeakerSystem:
         sols[x2_t] = x2_t
         sols[xpr_t] = xpr_t
         
-        self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
         self.symbolic_ss = {"a": make_state_matrix_A(state_vars, state_diffs, sols),  # system matrix
                             "b": make_state_matrix_B(state_diffs, input_vars, sols),  # input matrix
                             "c": smp.Matrix(smp.eye(len(state_vars))),  # give all state vars in output
                             "d": smp.Matrix([0]*len(state_vars)),  # no feedforward
                             }
+        
+        self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
 
-    def update_model_parameters(self, **kwargs):
+    def get_parameter_names_to_values(self) -> dict:
+        "Get a dictionary of all the parameters related to the speaker system"
+        "key: symbol object, val: value"
+
+        parameter_names_to_values = {
+            "Mms": self.speaker.Mms,
+            "Kms": self.speaker.Kms,
+            "Rms": self.speaker.Rms,
+            "Sd": self.speaker.Sd,
+            "Bl": self.speaker.Bl,
+            "Re": self.speaker.Re,
+
+            "M2": None if self.parent_body is None else self.parent_body.m,
+            "K2": None if self.parent_body is None else self.parent_body.k,
+            "R2": None if self.parent_body is None else self.parent_body.c,
+
+            "Mpr": None if self.passive_radiator is None else self.passive_radiator.m,
+            "Kpr": None if self.passive_radiator is None else self.passive_radiator.k,
+            "Rpr": None if self.passive_radiator is None else self.passive_radiator.c,
+            "Spr": None if self.passive_radiator is None else self.passive_radiator.Spr,
+            "dir_pr": None if self.passive_radiator is None else self.passive_radiator.direction,
+
+            "Vb": None if self.housing is None else self.housing.Vb,
+            "Qa": None if self.housing is None else self.housing.Qa,
+
+            "P0": settings.P0,
+            "gamma": settings.GAMMA,
+
+            "Rs_source": self.Rs,
+
+            }
+
+        return parameter_names_to_values
+    
+    def get_symbols_to_values(self):
+        parameter_names_to_values = self.get_parameter_names_to_values()
+        print(self.symbols)
+        # print({symbol: repr(symbol) for symbol in self.symbols})
+        return {symbol: parameter_names_to_values[name] for name, symbol in self.symbols.items()}
+
+    def update_ss_model(self, **kwargs):
 
         # --- Use kwargs to update attributes of the object 'self'
         for key, val in kwargs.items():
@@ -543,12 +547,13 @@ class SpeakerSystem:
             pass
 
         # ---- Subsitute new parameters into the symbolic ss model
-        values = self.get_parameters(self.symbol_names_to_symbols)
         
-        ss_matrices = (np.array(self.symbolic_ss["a"].subs(values)).astype(float),
-                       np.array(self.symbolic_ss["b"].subs(values)).astype(float),
-                       np.array(self.symbolic_ss["c"].subs(values)).astype(float),
-                       np.array(self.symbolic_ss["d"].subs(values)).astype(float),
+        symbols_to_values = self.get_symbols_to_values()
+        
+        ss_matrices = (np.array(self.symbolic_ss["a"].subs(symbols_to_values)).astype(float),
+                       np.array(self.symbolic_ss["b"].subs(symbols_to_values)).astype(float),
+                       np.array(self.symbolic_ss["c"].subs(symbols_to_values)).astype(float),
+                       np.array(self.symbolic_ss["d"].subs(symbols_to_values)).astype(float),
                        )
         self.ss_model = signal.StateSpace(*ss_matrices)
 
