@@ -428,7 +428,7 @@ class SpeakerSystem:
         state_diffs = [var.diff() for var in state_vars]
 
         # solve for state differentials
-        sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)
+        sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
         if len(sols) == 0:
             raise RuntimeError("No solution found for the equation.")
 
@@ -456,18 +456,18 @@ class SpeakerSystem:
             "Bl": self.speaker.Bl,
             "Re": self.speaker.Re,
 
-            "M2": None if self.parent_body is None else self.parent_body.m,
-            "K2": None if self.parent_body is None else self.parent_body.k,
-            "R2": None if self.parent_body is None else self.parent_body.c,
+            "M2": np.nan if self.parent_body is None else self.parent_body.m,
+            "K2": np.nan if self.parent_body is None else self.parent_body.k,
+            "R2": np.nan if self.parent_body is None else self.parent_body.c,
 
-            "Mpr": None if self.passive_radiator is None else self.passive_radiator.m,
-            "Kpr": None if self.passive_radiator is None else self.passive_radiator.k,
-            "Rpr": None if self.passive_radiator is None else self.passive_radiator.c,
-            "Spr": None if self.passive_radiator is None else self.passive_radiator.Spr,
-            "dir_pr": None if self.passive_radiator is None else self.passive_radiator.direction,
+            "Mpr": np.nan if self.passive_radiator is None else self.passive_radiator.m,
+            "Kpr": np.nan if self.passive_radiator is None else self.passive_radiator.k,
+            "Rpr": np.nan if self.passive_radiator is None else self.passive_radiator.c,
+            "Spr": np.nan if self.passive_radiator is None else self.passive_radiator.Spr,
+            "dir_pr": np.nan if self.passive_radiator is None else self.passive_radiator.direction,
 
-            "Vb": None if self.housing is None else self.housing.Vb,
-            "Qa": None if self.housing is None else self.housing.Qa,
+            "Vb": np.nan if self.housing is None else self.housing.Vb,
+            "Qa": np.nan if self.housing is None else self.housing.Qa,
 
             "P0": settings.P0,
             "gamma": settings.GAMMA,
@@ -480,8 +480,6 @@ class SpeakerSystem:
     
     def get_symbols_to_values(self):
         parameter_names_to_values = self.get_parameter_names_to_values()
-        print(self.symbols)
-        # print({symbol: repr(symbol) for symbol in self.symbols})
         return {symbol: parameter_names_to_values[name] for name, symbol in self.symbols.items()}
 
     def update_ss_model(self, **kwargs):
@@ -503,14 +501,14 @@ class SpeakerSystem:
 
             fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
             if np.iscomplex(fb_damped):  # means overdamped I think
-                fb_damped = None
+                fb_damped = np.nan
 
             self.fb = fb_undamped
             self.Qtc = np.inf if zeta_boxed_speaker == 0 else 1 / 2 / zeta_boxed_speaker
 
         else:
-            self.fb = None
-            self.Qtc = None
+            self.fb = np.nan
+            self.Qtc = np.nan
 
         # ---- Update mobile parent body related attributes
         if isinstance(self.parent_body, ParentBody):
@@ -531,14 +529,14 @@ class SpeakerSystem:
 
             f2_damped = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
             if np.iscomplex(f2_damped):  # means overdamped I think
-                f2_damped = None
+                f2_damped = np.nan
 
             self.f2 = f2_undamped
             self.Q2 = q2_free
 
         else:
-            self.f2 = None
-            self.Q2 = None
+            self.f2 = np.nan
+            self.Q2 = np.nan
 
         # ---- Update passive radiator related attributes
         if isinstance(self.passive_radiator, PassiveRadiator):
@@ -634,9 +632,9 @@ if __name__ == "__main__":
     # # do test model 3
     housing = Housing(0.01, 5)
     parent_body = ParentBody(1, 1, 1)
-    pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
+    # pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing, passive_radiator=pr)
+    my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing)
 
 
     # do test model for unibox - Qa / Ql
