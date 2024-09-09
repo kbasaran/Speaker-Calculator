@@ -102,7 +102,18 @@ if len(sols) == 0:
 sols[x1_t] = x1_t
 sols[x2_t] = x2_t
 
-# ---- Substitute nan value into SS model
+# ---- SS model with symbols
+A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
+
+B_sym = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
+
+C = dict()
+for i, state_var in enumerate(state_vars):
+    C[state_var] = np.eye(4)[i]
+
+D = np.zeros(1)  # no feedforward
+
+# ---- SS model substituted
 symbols_to_values = {
     M1: 9,
     K1: 1,
@@ -115,33 +126,22 @@ symbols_to_values = {
     K3: np.nan,  # between x2 and ground - no movement, no need to define
     }
 
-# SS model
-A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
 A = np.array(A_sym.subs(symbols_to_values)).astype(float)
 # x2 is blocked. so make the system matrix coefficients 0 for x2
 A[2:4, :] = 0  # fill the rows that return x2 and x2_t with zeros
 A[:, 2:4] = 0  # fill the rows that receive x2 and x2_t with zeros
 
-B_sym = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
 B = np.array(B_sym.subs(symbols_to_values)).astype(float)
-
-C = dict()
-for i, state_var in enumerate(state_vars):
-    C[state_var] = np.eye(4)[i]
-
-D = np.zeros(1)  # no feedforward
 
 ss_models = dict()
 for state_var in state_vars:
-    print(state_var)
     ss_models[state_var] = signal.StateSpace(A,
                                              B,
                                              C[state_var],
                                              D,
                                              )
 
-ss_model = ss_models[x1_t]
-print(ss_model)
-freqs = np.arange(1, 100) / 100
-w, x1 = signal.freqresp(ss_model, w=2*np.pi*freqs)
-plt.semilogx(freqs, np.abs(x1))
+    ss_model = ss_models[state_var]
+    freqs = np.arange(1, 100) / 100
+    w, y = signal.freqresp(ss_model, w=2*np.pi*freqs)
+    plt.semilogx(freqs, np.abs(y))
