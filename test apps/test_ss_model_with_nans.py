@@ -85,16 +85,14 @@ eqns = [
 
 ]
 
-state_vars = [x1, x1_t, x2, x2_t]
-
-# define input variables
-input_vars = [F_in]
-
-# define state differentials
-state_diffs = [var.diff() for var in state_vars]
+state_vars = [x1, x1_t, x2, x2_t]  # state variables
+state_diffs = [var.diff() for var in state_vars]  # state differentials
+input_vars = [F_in]  # input variables
+# dictionary of all sympy symbols used in model
+symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
 
 # solve for state differentials
-# heavy task, slow
+# this is a heavy task and slow
 sols = solve(
     eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)
 if len(sols) == 0:
@@ -104,57 +102,7 @@ if len(sols) == 0:
 sols[x1_t] = x1_t
 sols[x2_t] = x2_t
 
-# SS model with symbols
-ss_matrices_sym = {
-    "A": make_state_matrix_A(state_vars, state_diffs, sols),  # system matrix
-    "B": make_state_matrix_B(state_diffs, input_vars, sols),  # input matrix
-    "C": dict(),
-    "D": np.zeros(1),  # no feedforward
-    }
-
-for i, state_var in enumerate(state_vars):
-    ss_c = np.zeros(4)
-    ss_c[i] = 1
-    ss_matrices_sym["C"][state_var] = ss_c
-
-symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
-
-
-# ---- Substitute float values into SS model
-
-# symbols_to_values = {
-#     M1: 9,
-#     K1: 1,
-#     R1: 1,
-    
-#     M2: 3,
-#     K2: 2,
-#     R2: 1,
-    
-#     K3: 2,
-#     }
-
-# ss_matrices = {
-#     "A": np.array(ss_matrices_sym["A"].subs(symbols_to_values)).astype(float),
-#     "B": np.array(ss_matrices_sym["B"].subs(symbols_to_values)).astype(float),
-#     "C": ss_matrices_sym["C"],  # no symbols here already
-#     "D": ss_matrices_sym["D"],  # no symbols here already
-#     }
-
-# ss_model = signal.StateSpace(*[ss_matrices["A"],
-#                               ss_matrices["B"],
-#                               ss_matrices["C"][x1],
-#                               ss_matrices["D"]],
-#                               )
-# freqs = np.arange(1, 100) / 100
-# w, x1 = signal.freqresp(ss_model, w=2*np.pi*freqs)
-# plt.semilogx(freqs, np.abs(x1))
-
-
 # ---- Substitute nan value into SS model
-
-# assume x2 is not mobile
-
 symbols_to_values = {
     M1: 9,
     K1: 1,
@@ -167,21 +115,32 @@ symbols_to_values = {
     K3: np.nan,  # between x2 and ground - no movement, no need to define
     }
 
-ss_matrices = {
-    "A": np.array(ss_matrices_sym["A"].subs(symbols_to_values)).astype(float),
-    "B": np.array(ss_matrices_sym["B"].subs(symbols_to_values)).astype(float),
-    "C": ss_matrices_sym["C"],  # no symbols here already
-    "D": ss_matrices_sym["D"],  # no symbols here already
-    }
+# SS model
+A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
+A = np.array(A_sym.subs(symbols_to_values)).astype(float)
+# x2 is blocked. so make the system matrix coefficients 0 for x2
+A[2:4, :] = 0  # fill the rows that return x2 and x2_t with zeros
+A[:, 2:4] = 0  # fill the rows that receive x2 and x2_t with zeros
 
-ss_matrices["A"][2:4, :] = 0  # fill the rows that return x2 and x2_t with zeros
-ss_matrices["A"][:, 2:4] = 0  # fill the rows that receive x2 and x2_t with zeros
+B_sym = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
+B = np.array(B_sym.subs(symbols_to_values)).astype(float)
 
-ss_model = signal.StateSpace(*[ss_matrices["A"],
-                              ss_matrices["B"],
-                              ss_matrices["C"][x1_t],
-                              ss_matrices["D"]],
-                              )
+C = dict()
+for i, state_var in enumerate(state_vars):
+    C[state_var] = np.eye(4)[i]
+
+D = np.zeros(1)  # no feedforward
+
+ss_models = dict()
+for state_var in state_vars:
+    print(state_var)
+    ss_models[state_var] = signal.StateSpace(A,
+                                             B,
+                                             C[state_var],
+                                             D,
+                                             )
+
+ss_model = ss_models[x1_t]
 print(ss_model)
 freqs = np.arange(1, 100) / 100
 w, x1 = signal.freqresp(ss_model, w=2*np.pi*freqs)
