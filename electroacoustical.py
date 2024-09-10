@@ -374,10 +374,10 @@ class SpeakerSystem:
     passive_radiator: None | PassiveRadiator = None
 
     def __post_init__(self):
-        self._symbolic_ss_model_build()
-        self.update_ss_model()
+        self._build__symbolic_ss_model()
+        self.substitute_values_to_ss_model()
 
-    def _symbolic_ss_model_build(self):
+    def _build__symbolic_ss_model(self):
         # Static symbols
         Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
         Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
@@ -420,15 +420,15 @@ class SpeakerSystem:
 
                 ]
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
+        input_vars = [Vsource]  # input variables
+        state_diffs = [var.diff() for var in state_vars]  # state differentials
 
-        # define input variables
-        input_vars = [Vsource]
-
-        # define state differentials
-        state_diffs = [var.diff() for var in state_vars]
-
+        # dictionary of all sympy symbols used in model
+        symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
+        
         # solve for state differentials
+        # this is a heavy task and slow
         sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
         if len(sols) == 0:
             raise RuntimeError("No solution found for the equation.")
@@ -438,14 +438,20 @@ class SpeakerSystem:
         sols[x2_t] = x2_t
         sols[xpr_t] = xpr_t
         
-        self.symbolic_ss = {"a": make_state_matrix_A(state_vars, state_diffs, sols),  # system matrix
-                            "b": make_state_matrix_B(state_diffs, input_vars, sols),  # input matrix
-                            "c": smp.Matrix(smp.eye(len(state_vars))),  # give all state vars in output
-                            "d": smp.Matrix([0]*len(state_vars)),  # no feedforward
+        # ---- SS model with symbols
+        A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
+        B_sym = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
+        C = dict()  # one per state variable -- scipy state space supports only a rank of 1 for output
+        for i, state_var in enumerate(state_vars):
+            C[state_var] = np.eye(4)[i]
+        D = np.zeros(1)  # no feedforward
+        
+        self._symbolic_ss = {"A": A_sym,  # system matrix
+                             "B": B_sym,  # input matrix
+                             "C": C,  # output matrices, one per state variable
+                             "D": D,  # feedforward
                             }
         
-        self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
-
     def get_parameter_names_to_values(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
         "key: symbol object, val: value"
@@ -484,7 +490,7 @@ class SpeakerSystem:
         parameter_names_to_values = self.get_parameter_names_to_values()
         return {symbol: parameter_names_to_values[name] for name, symbol in self.symbols.items()}
 
-    def update_ss_model(self, **kwargs):
+    def substitute_values_to_ss_model(self, **kwargs):
 
         # --- Use kwargs to update attributes of the object 'self'
         for key, val in kwargs.items():
@@ -551,10 +557,10 @@ class SpeakerSystem:
         symbols_to_values = self.get_symbols_to_values()
         print(symbols_to_values)
         
-        ss_matrices = (np.array(self.symbolic_ss["a"].subs(symbols_to_values)).astype(float),
-                       np.array(self.symbolic_ss["b"].subs(symbols_to_values)).astype(float),
-                       np.array(self.symbolic_ss["c"].subs(symbols_to_values)).astype(float),
-                       np.array(self.symbolic_ss["d"].subs(symbols_to_values)).astype(float),
+        ss_matrices = (np.array(self._symbolic_ss["a"].subs(symbols_to_values)).astype(float),
+                       np.array(self._symbolic_ss["b"].subs(symbols_to_values)).astype(float),
+                       np.array(self._symbolic_ss["c"].subs(symbols_to_values)).astype(float),
+                       np.array(self._symbolic_ss["d"].subs(symbols_to_values)).astype(float),
                        )
         self.ss_model = signal.StateSpace(*ss_matrices)
 
