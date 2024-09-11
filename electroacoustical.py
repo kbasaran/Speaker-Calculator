@@ -374,10 +374,10 @@ class SpeakerSystem:
     passive_radiator: None | PassiveRadiator = None
 
     def __post_init__(self):
-        self._build__symbolic_ss_model()
+        self._build_symbolic_ss_model()
         self.substitute_values_to_ss_model()
 
-    def _build__symbolic_ss_model(self):
+    def _build_symbolic_ss_model(self):
         # Static symbols
         Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
         Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
@@ -425,7 +425,7 @@ class SpeakerSystem:
         state_diffs = [var.diff() for var in state_vars]  # state differentials
 
         # dictionary of all sympy symbols used in model
-        symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
+        self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
         
         # solve for state differentials
         # this is a heavy task and slow
@@ -443,13 +443,14 @@ class SpeakerSystem:
         B_sym = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
         C = dict()  # one per state variable -- scipy state space supports only a rank of 1 for output
         for i, state_var in enumerate(state_vars):
-            C[state_var] = np.eye(4)[i]
+            C[state_var] = np.eye(len(state_vars))[i]
         D = np.zeros(1)  # no feedforward
         
         self._symbolic_ss = {"A": A_sym,  # system matrix
                              "B": B_sym,  # input matrix
                              "C": C,  # output matrices, one per state variable
                              "D": D,  # feedforward
+                             "state_vars": state_vars,
                             }
         
     def get_parameter_names_to_values(self) -> dict:
@@ -457,6 +458,7 @@ class SpeakerSystem:
         "key: symbol object, val: value"
 
         parameter_names_to_values = {
+
             "Mms": self.speaker.Mms,
             "Kms": self.speaker.Kms,
             "Rms": self.speaker.Rms,
@@ -485,21 +487,38 @@ class SpeakerSystem:
             }
 
         return parameter_names_to_values
-    
+
     def get_symbols_to_values(self):
+        # Dictionary with sympy symbols as keys and values as values
         parameter_names_to_values = self.get_parameter_names_to_values()
         return {symbol: parameter_names_to_values[name] for name, symbol in self.symbols.items()}
 
     def substitute_values_to_ss_model(self, **kwargs):
+        # ---- Use kwargs to update attributes of the object 'self'
+        # for key, val in kwargs.items():
+        #     if key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
+        #         setattr(self, key, val)  # set the attributes of self object with value in kwargs
+        #     else:
+        #         raise KeyError("Not familiar with key '{key}'")
 
-        # --- Use kwargs to update attributes of the object 'self'
+
+        # for key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
+        #     setattr(self, key, kwargs[key])  # set the attributes of self object with value in kwargs
+
+        
+        dataclass_field_names = [dataclass_field.name for dataclass_field in dtc.fields(self)]
         for key, val in kwargs.items():
-            if key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
+            if key in dataclass_field_names:
                 setattr(self, key, val)  # set the attributes of self object with value in kwargs
             else:
                 raise KeyError("Not familiar with key '{key}'")
 
-        # ---- Update housing related attributes
+        # ---- Substitute values into system matrix and input matrix
+        symbols_to_values = self.get_symbols_to_values()
+        A = np.array(self._symbolic_ss["A"].subs(symbols_to_values)).astype(float)
+        B = np.array(self._symbolic_ss["B"].subs(symbols_to_values)).astype(float)
+
+        # ---- Updates in relation to housing
         if isinstance(self.housing, Housing):
             zeta_boxed_speaker = (self.housing.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
                                   + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
@@ -517,8 +536,10 @@ class SpeakerSystem:
         else:
             self.fb = np.nan
             self.Qtc = np.nan
+            # Make coefficients linked to housing inner pressure 0, thus disable housing
+            # ---- code to disable housing here
 
-        # ---- Update mobile parent body related attributes
+        # ---- Updates in relation to passive radiator
         if isinstance(self.parent_body, ParentBody):
             # Zeta is damping ratio. It is not damping coefficient (c) or quality factor (Q).
             # Zeta = c / 2 / (k*m)**0.5)
@@ -545,24 +566,28 @@ class SpeakerSystem:
         else:
             self.f2 = np.nan
             self.Q2 = np.nan
+            # make system coefficients related to x2 and x2_t zero
+            A[2:4, :] = 0
+            A[:, 2:4] = 0
+            B[2:4] = 0
 
         # ---- Update passive radiator related attributes
         if isinstance(self.passive_radiator, PassiveRadiator):
-            print("PR calculations not ready yet")
+            print("PR lumped calculations not ready yet")
         else:
-            pass
+            # make system coefficients related to xpr and xpr_t zero
+            A[4:6, :] = 0
+            A[:, 4:6] = 0
+            B[4:6] = 0
 
-        # ---- Subsitute new parameters into the symbolic ss model
-        
-        symbols_to_values = self.get_symbols_to_values()
-        print(symbols_to_values)
-        
-        ss_matrices = (np.array(self._symbolic_ss["a"].subs(symbols_to_values)).astype(float),
-                       np.array(self._symbolic_ss["b"].subs(symbols_to_values)).astype(float),
-                       np.array(self._symbolic_ss["c"].subs(symbols_to_values)).astype(float),
-                       np.array(self._symbolic_ss["d"].subs(symbols_to_values)).astype(float),
-                       )
-        self.ss_model = signal.StateSpace(*ss_matrices)
+        # ---- Build ss models
+        self.ss_models = dict()
+        for state_var in self._symbolic_ss["state_vars"]:
+            self.ss_models[repr(state_var)] = signal.StateSpace(A,
+                                                                B,
+                                                                self._symbolic_ss["C"][state_var],
+                                                                self._symbolic_ss["D"],
+                                                                )
 
     def power_at_Re(self, Vspeaker):
         # Calculation of power at Rdc for given voltage at the speaker terminals
@@ -644,14 +669,17 @@ if __name__ == "__main__":
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
     my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing, passive_radiator=pr)
-    x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
-
 
     # do test model for unibox - Qa / Ql
     # housing = Housing(0.05, 9999)
     # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=3, Re=4, Mms=7.7e-3)
     # my_system = SpeakerSystem(my_speaker, housing=housing)
     # x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
+
+    freqs = np.arange(1, 100) / 100
+    w, y = signal.freqresp(my_system.ss_models["x2(t)"], w=2*np.pi*freqs)
+    import matplotlib.pyplot as plt
+    plt.semilogx(freqs, np.abs(y))
 
     ## to-do
     ## SPL calculation and comparing results against Unibox, finding out the Qa Ql mystery (Qa makes large bigger)
