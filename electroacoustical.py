@@ -452,7 +452,7 @@ class SpeakerSystem:
                              "D": D,  # feedforward
                              "state_vars": state_vars,
                             }
-        
+
     def get_parameter_names_to_values(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
         "key: symbol object, val: value"
@@ -466,18 +466,18 @@ class SpeakerSystem:
             "Bl": self.speaker.Bl,
             "Re": self.speaker.Re,
 
-            "M2": np.nan if self.parent_body is None else self.parent_body.m,
-            "K2": np.nan if self.parent_body is None else self.parent_body.k,
-            "R2": np.nan if self.parent_body is None else self.parent_body.c,
+            "M2": np.inf if self.parent_body is None else self.parent_body.m,
+            "K2": np.inf if self.parent_body is None else self.parent_body.k,
+            "R2": np.inf if self.parent_body is None else self.parent_body.c,
 
-            "Mpr": np.nan if self.passive_radiator is None else self.passive_radiator.m,
-            "Kpr": np.nan if self.passive_radiator is None else self.passive_radiator.k,
-            "Rpr": np.nan if self.passive_radiator is None else self.passive_radiator.c,
-            "Spr": np.nan if self.passive_radiator is None else self.passive_radiator.Spr,
-            "dir_pr": np.nan if self.passive_radiator is None else self.passive_radiator.direction,
+            "Mpr": np.inf if self.passive_radiator is None else self.passive_radiator.m,
+            "Kpr": np.inf if self.passive_radiator is None else self.passive_radiator.k,
+            "Rpr": np.inf if self.passive_radiator is None else self.passive_radiator.c,
+            "Spr": 0 if self.passive_radiator is None else self.passive_radiator.Spr,
+            "dir_pr": 0 if self.passive_radiator is None else self.passive_radiator.direction,
 
-            "Vb": np.nan if self.housing is None else self.housing.Vb,
-            "Qa": np.nan if self.housing is None else self.housing.Qa,
+            "Vb": np.inf if self.housing is None else self.housing.Vb,
+            "Qa": np.inf if self.housing is None else self.housing.Qa,
 
             "P0": settings.P0,
             "gamma": settings.GAMMA,
@@ -668,7 +668,11 @@ if __name__ == "__main__":
     parent_body = ParentBody(1, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    my_system = SpeakerSystem(my_speaker, parent_body=parent_body, housing=housing, passive_radiator=pr)
+    my_system = SpeakerSystem(my_speaker,
+                              parent_body=None,
+                              housing=housing,
+                              passive_radiator=None,
+                              )
 
     # do test model for unibox - Qa / Ql
     # housing = Housing(0.05, 9999)
