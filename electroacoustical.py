@@ -385,6 +385,7 @@ class SpeakerSystem:
         P0, gamma, Vb, Qa = smp.symbols("P_0, gamma, V_b, Q_a", real=True, positive=True)
         Sd, Spr, Bl, Re, Rs_source = smp.symbols("S_d, S_pr, Bl, R_e, Rs_source", real=True, positive=True)
         dir_pr = smp.symbols("direction_pr")
+        has_housing = smp.symbols("has_housing")
         # Direction coefficient for passive radiator
         # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
 
@@ -403,19 +404,19 @@ class SpeakerSystem:
 
                 (- Mms * x1_tt
                  - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
-                 - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
+                 - has_housing * P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
                  ),
 
                 (- M2 * x2_tt - R2 * x2_t - K2 * x2
                  - Rms*(x2_t - x1_t) - Kms*(x2 - x1)
-                 + P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
-                 + P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes housing
+                 + has_housing * P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
+                 + has_housing * P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes housing
                  - (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
                  ),
 
                 (- Mpr * xpr_tt - Rpr * xpr_t - Kpr * xpr
-                 - P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr
+                 - has_housing * P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr
                  ),
 
                 ]
@@ -473,11 +474,12 @@ class SpeakerSystem:
             "Mpr": np.inf if self.passive_radiator is None else self.passive_radiator.m,
             "Kpr": np.inf if self.passive_radiator is None else self.passive_radiator.k,
             "Rpr": np.inf if self.passive_radiator is None else self.passive_radiator.c,
-            "Spr": 0 if self.passive_radiator is None else self.passive_radiator.Spr,
+            "Spr": 1e-99 if self.passive_radiator is None else self.passive_radiator.Spr,
             "dir_pr": 0 if self.passive_radiator is None else self.passive_radiator.direction,
 
-            "Vb": np.inf if self.housing is None else self.housing.Vb,
-            "Qa": np.inf if self.housing is None else self.housing.Qa,
+            "Vb": 1e99 if self.housing is None else self.housing.Vb,
+            "Qa": 1e-99 if self.housing is None else self.housing.Qa,
+            "has_housing": 0 if self.housing is None else 1,
 
             "P0": settings.P0,
             "gamma": settings.GAMMA,
@@ -671,7 +673,7 @@ if __name__ == "__main__":
     my_system = SpeakerSystem(my_speaker,
                               parent_body=None,
                               housing=housing,
-                              passive_radiator=None,
+                              passive_radiator=pr,
                               )
 
     # do test model for unibox - Qa / Ql
@@ -681,7 +683,7 @@ if __name__ == "__main__":
     # x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
 
     freqs = np.arange(1, 100) / 100
-    w, y = signal.freqresp(my_system.ss_models["x2(t)"], w=2*np.pi*freqs)
+    w, y = signal.freqresp(my_system.ss_models["x_pr(t)"], w=2*np.pi*freqs)
     import matplotlib.pyplot as plt
     plt.semilogx(freqs, np.abs(y))
 
