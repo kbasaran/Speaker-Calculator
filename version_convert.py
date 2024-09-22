@@ -9,24 +9,40 @@ Created on Sat Feb 10 10:37:25 2024
 from pathlib import Path
 import pickle
 import pathlib
+import inspect
 
-# the v01 files require below classes to open. this is because I pickled their instances
-# and to load again the pickles, app needs to create instances
-# [face palm]
+# the v01 files have many custom classes pickled and to unpickle them is often not possible
+# in a system where API of these objects and the Python environment is of newer version and
+# no more compatible [face palm]
+# due to this, we need a filtered unpickling process as seen below
+
+# Define a dummy class to replace incompatible objects
+class DummyObject:
+    def __init__(self, *args, **kwargs):
+        pass  # Do nothing, just serve as a placeholder
 
 
-class SpeakerDriver():
-    pass
-
-
-class SpeakerSystem():
-    pass
+class IgnoreErrorsUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        try:
+            found_class = super().find_class(module, name)
+            
+            # Ignore paths - they caused problems
+            if inspect.isclass(found_class) and issubclass(found_class, pathlib.Path):
+                raise NotImplementedError
+            else:
+                return found_class
+        except (AttributeError, ModuleNotFoundError, NotImplementedError):
+            # Return a dummy class to handle instantiation via NEWOBJ
+            print(f"Warning: Ignoring object from {module}.{name} due to incompatibility.")
+            return DummyObject
 
 
 def convert_v01_to_v02(file: Path) -> dict:
 
     with open(file, "rb") as f:
-        form_dict = pickle.load(f)
+        print(f"Opening file: {file.name}")
+        form_dict = IgnoreErrorsUnpickler(f).load()
 
     keys_in_v01 = [
         'result_sys',
@@ -133,7 +149,7 @@ def convert_v01_to_v02(file: Path) -> dict:
             curves[i] = curve
         return curves
 
-    # key, old name, conversion function
+    # key in new version, key in old version, conversion function
     conversion = {  "fs":                       ("fs",                      lambda x: x),
                     "Qms":                      ("Qms",                     lambda x: x),
                     "Xpeak":                    ("Xmax",                    lambda x: x * 1e3),
@@ -188,17 +204,17 @@ def convert_v01_to_v02(file: Path) -> dict:
 
     missing_values = set(conversion.keys())
     state = {}
-    for key, (name_from_v01, converter) in conversion.items():
-        if name_from_v01 is None:
+    for key, (key_in_v01, converter) in conversion.items():
+        if key_in_v01 is None:
             state[key] = converter
             missing_values.remove(key)
         else:
             try:
-                value_from_v01 = form_dict[name_from_v01]
+                value_from_v01 = form_dict[key_in_v01]
                 state[key] = converter(value_from_v01)
                 missing_values.remove(key)
             except KeyError as e:
-                raise RuntimeError(f"Key error for name in v01: {name_from_v01}.\n{str(e)}")
+                print(f"KeyError for key in v01: {key_in_v01}.\n{str(e)}")
 
     if missing_values:
         print("----Missing----")
@@ -215,12 +231,13 @@ def check_all_v01_files_in_a_folder(folder_path):
     states = []
     for file in sscf_files:
         print()
-        print(file)
         states.append(convert_v01_to_v02(file))
+    return states
 
 
 if __name__ == "__main__":
     # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
-    check_all_v01_files_in_a_folder(pathlib.Path(
-        "C:\\Users\\user\\Documents\\SSC files"
+    states = check_all_v01_files_in_a_folder(pathlib.Path(
+        # "C:\\Users\\user\\Documents\\SSC files"
+        "/home/user/Documents/SSC files"
         ))
