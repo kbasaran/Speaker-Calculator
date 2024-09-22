@@ -224,8 +224,6 @@ def convert_v01_to_v02(file: Path) -> dict:
 
 
 def check_all_v01_files_in_a_folder(folder_path):
-    import warnings
-    warnings.filterwarnings("ignore")
 
     sscf_files = folder_path.glob("*.sscf")
     states = []
