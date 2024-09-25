@@ -8,10 +8,12 @@ Created on Wed Sep 25 11:56:53 2024
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+plt.rcParams["figure.dpi"] = 300
 
 
-def func(x, a, b, c, d):
-    return a * np.exp(b * (x + c)) + d
+def func(x, a):
+    return a / x + 1
+
 
 # values in Unibox for Vb acoustic for Vb of 10_000
 # keys are Qa
@@ -51,13 +53,14 @@ data_dict = {
 }
 
 xdata = np.array([int(val) for val in data_dict.keys()])
-ydata = np.array([float(val) for val in data_dict.values()])
+ydata = np.array([float(val) for val in data_dict.values()]) / 10_000
 
-bounds = [(0, -np.inf, -np.inf, -np.inf),
-          (np.inf, 0, np.inf, np.inf)
+bounds = [(0),
+          (np.inf)
           ]
 
 popt, pcov = curve_fit(func, xdata, ydata, bounds=bounds)
 
 plt.semilogx(xdata, ydata)
-plt.semilogx(xdata, func(xdata, *popt), 'r--', label='fit: a=%5.3f, b=%5.3f, c=%5.3f, d=%5.3f' % tuple(popt))
+plt.semilogx(xdata, func(xdata, *popt), 'r--', label='fit: a=%5.3f' % tuple(popt))
+print(popt)
