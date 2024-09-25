@@ -285,15 +285,17 @@ class SpeakerDriver:
 class Housing:
     Vb: float
     Qa: float
+    Ql: float = np.inf
 
     def K(self, Sd):
         global settings
         return Sd**2 * settings.Kair / self.Vb
 
     def R(self, Sd, Mms, Kms):
-        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
-        # need to verify Qa calculation
-        # in Unibox it causes an increase in box volume
+        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
+
+    def Vba(self):  # acoustical volume higher than actual due to internal damping
+        return self.Vb * (0.94/self.Qa + 1)
 
 
 @dtc.dataclass
@@ -382,7 +384,7 @@ class SpeakerSystem:
         Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
         Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
         Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
-        P0, gamma, Vb, Qa = smp.symbols("P_0, gamma, V_b, Q_a", real=True, positive=True)
+        P0, gamma, Vba, Qa, Ql = smp.symbols("P_0, gamma, V_ba, Q_a, Q_l", real=True, positive=True)
         Sd, Spr, Bl, Re, Rs_source = smp.symbols("S_d, S_pr, Bl, R_e, Rs_source", real=True, positive=True)
         dir_pr = smp.symbols("direction_pr")
         has_housing = smp.symbols("has_housing")
@@ -404,21 +406,21 @@ class SpeakerSystem:
 
                 (- Mms * x1_tt
                  - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
-                 - has_housing * P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
+                 - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
                  ),
 
                 (- M2 * x2_tt - R2 * x2_t - K2 * x2
                  - Rms*(x2_t - x1_t) - Kms*(x2 - x1)
-                 + has_housing * P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Sd
-                 + has_housing * P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes housing
+                 + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
+                 + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes housing
                  - (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
                  ),
 
                 (- Mpr * xpr_tt - Rpr * xpr_t - Kpr * xpr
-                 - has_housing * P0 * gamma / Vb * (Sd * x1 + Spr * xpr) * Spr
+                 - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
                  ),
-
+                
                 ]
 
         state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
@@ -477,8 +479,9 @@ class SpeakerSystem:
             "Spr": 1e-99 if self.passive_radiator is None else self.passive_radiator.Spr,
             "dir_pr": 0 if self.passive_radiator is None else self.passive_radiator.direction,
 
-            "Vb": 1e99 if self.housing is None else self.housing.Vb,
-            "Qa": 1e-99 if self.housing is None else self.housing.Qa,
+            "Vba": 1e99 if self.housing is None else self.housing.Vba(),
+            "Qa": 1e99 if self.housing is None else self.housing.Qa,
+            "Ql": 1e99 if self.housing is None else self.housing.Ql,
             "has_housing": 0 if self.housing is None else 1,
 
             "P0": settings.P0,
@@ -666,7 +669,7 @@ if __name__ == "__main__":
     # my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
 
     # # do test model 3
-    housing = Housing(0.01, 5)
+    housing = Housing(0.01, 10)
     parent_body = ParentBody(1, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
