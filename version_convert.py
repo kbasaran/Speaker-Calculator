@@ -46,20 +46,20 @@ def convert_v01_to_v02(file: Path) -> dict:
 
     keys_in_v01 = [
         'result_sys',
-        'user_curves',
+        'user_curves',  # list
         'fs',
         'Qms',
         'Xmax',
         'dead_mass',
         'Sd',
-        'motor_spec_type',
+        'motor_spec_type',  # dict
         'target_Rdc',
         'former_ID',
         't_former',
         'h_winding',
         'B_average',
         'N_layer_options',
-        'coil_choice_box',
+        'coil_choice_box',  # dict
         'Bl',
         'Rdc',
         'Mmd',
@@ -72,13 +72,13 @@ def convert_v01_to_v02(file: Path) -> dict:
         'k2',
         'm2',
         'c2',
-        'excitation_unit',
+        'excitation_unit',  # dict
         'excitation_value',
         'nominal_impedance',
         'box_type',
         'dof',
         'user_notes',
-        'coil_options_table',
+        'coil_options_table',  # dataframe
         ]
 
     def set_excitation_unit(value_from_v01):
@@ -161,7 +161,6 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "excitation_value":         ("excitation_value",        lambda x: x),
                     "Rnom":                     ("nominal_impedance",       lambda x: x),
             
-
                     "motor_spec_type":          ("motor_spec_type",         set_motor_spec_type),
 
                     "target_Rdc":               ("Rdc",                     lambda x: x),
@@ -185,8 +184,8 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "h_top_plate":              ("h_washer",                lambda x: x*1e3),
                     "airgap_clearance_inner":   ("airgap_clearance_inner",  lambda x: int(x*1e6)),
                     "airgap_clearance_outer":   ("airgap_clearance_outer",  lambda x: int(x*1e6)),
-                    "h_former_under_coil":      ("former_extension_under_coil",  lambda x: x*1e3),
-            
+                    "h_former_extension_under_coil":      ("former_extension_under_coil",  lambda x: x*1e3),
+
                     "box_type":                 ("box_type",                set_box_type),
                     "Vb":                       ("Vb",                      lambda x: x*1e3),
                     "Qa":                       ("Qa",                      lambda x: x),
@@ -223,7 +222,7 @@ def convert_v01_to_v02(file: Path) -> dict:
     return state
 
 
-def check_all_v01_files_in_a_folder(folder_path):
+def batch_convert_v01_files(folder_path):
 
     sscf_files = folder_path.glob("*.sscf")
     states = []
@@ -235,7 +234,7 @@ def check_all_v01_files_in_a_folder(folder_path):
 
 if __name__ == "__main__":
     # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
-    states = check_all_v01_files_in_a_folder(pathlib.Path(
+    states = batch_convert_v01_files(pathlib.Path(
         # "C:\\Users\\user\\Documents\\SSC files"
         "/home/user/Documents/SSC files"
         ))

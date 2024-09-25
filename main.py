@@ -391,7 +391,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Airgap outer clearance (\u03BCm)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("h_former_under_coil", "Extension of the coil former below the coil windings",
+        form.add_row(pwi.FloatSpinBox("h_former_extension_under_coil", "Extension of the coil former below the coil windings",
                                       coeff_for_SI=1e-3,
                                       ),
                      description="Former bottom ext. (mm)",
@@ -407,7 +407,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
             form.interactable_widgets["h_top_plate"].setEnabled(is_define_coil)
             form.interactable_widgets["airgap_clearance_inner"].setEnabled(is_define_coil)
             form.interactable_widgets["airgap_clearance_outer"].setEnabled(is_define_coil)
-            form.interactable_widgets["h_former_under_coil"].setEnabled(is_define_coil)
+            form.interactable_widgets["h_former_extension_under_coil"].setEnabled(is_define_coil)
             self.widget(0).interactable_widgets["dead_mass"].setEnabled(is_define_coil)
 
         form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(adjust_form_for_calc_type)

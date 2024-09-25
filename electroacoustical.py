@@ -687,5 +687,5 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     plt.semilogx(freqs, np.abs(y))
 
-    ## to-do
-    ## SPL calculation and comparing results against Unibox, finding out the Qa Ql mystery (Qa makes large bigger)
+    # to-do
+    # SPL calculation and comparing results against Unibox, finding out the Qa Ql mystery (Qa makes large bigger)
