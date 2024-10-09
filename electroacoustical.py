@@ -283,6 +283,7 @@ class SpeakerDriver:
 
 @dtc.dataclass
 class Housing:
+    # All units are SI
     Vb: float
     Qa: float
     Ql: float = np.inf
@@ -300,6 +301,7 @@ class Housing:
 
 @dtc.dataclass
 class ParentBody:
+    # All units are SI
     m: float
     k: float
     c: float
@@ -313,6 +315,7 @@ class ParentBody:
 
 @dtc.dataclass
 class PassiveRadiator:
+    # All units are SI
     m: float  # without coupled air mass
     k: float
     c: float
@@ -648,7 +651,8 @@ class SpeakerSystem:
         return phases
 
 
-if __name__ == "__main__":
+def tests():
+    global settings
     @dtc.dataclass
     class Settings:
         RHO: float = 1.1839  # density of air at 25 degrees celcius
@@ -658,6 +662,21 @@ if __name__ == "__main__":
         c_air: float = (P0 * GAMMA / RHO)**0.5
 
     settings = Settings()
+
+    def generate_freq_list(freq_start, freq_end, ppo):
+        """
+        Create a numpy array for frequencies to use in calculation.
+    
+        ppo means points per octave
+        """
+        numStart = np.floor(np.log2(freq_start/1000)*ppo)
+        numEnd = np.ceil(np.log2(freq_end/1000)*ppo)
+        freq_array = 1000*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
+        return freq_array
+    
+    freqs = generate_freq_list(10, 1500, 48*8)
+
+
     # # do test model 1
     # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
     # my_system = SpeakerSystem(my_speaker)
@@ -669,15 +688,16 @@ if __name__ == "__main__":
     # my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
 
     # # do test model 3
-    housing = Housing(0.01, 10)
+    housing = Housing(0.01, 99999)
     parent_body = ParentBody(1, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
-    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
+    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=0.008423724385892528)
     my_system = SpeakerSystem(my_speaker,
                               parent_body=None,
-                              housing=housing,
-                              passive_radiator=pr,
+                              housing=None,
+                              passive_radiator=None,
                               )
+
 
     # do test model for unibox - Qa / Ql
     # housing = Housing(0.05, 9999)
@@ -685,10 +705,17 @@ if __name__ == "__main__":
     # my_system = SpeakerSystem(my_speaker, housing=housing)
     # x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
 
-    freqs = np.arange(1, 100) / 100
-    w, y = signal.freqresp(my_system.ss_models["x_pr(t)"], w=2*np.pi*freqs)
+    w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
     import matplotlib.pyplot as plt
-    plt.semilogx(freqs, np.abs(y))
+    y_for_1Vrms = np.abs(y) * 2**0.5
+    y_rms_for_1Vrms = np.abs(y)
+    plt.semilogx(freqs, y_for_1Vrms)
+    print(freqs[0], y_rms_for_1Vrms[0] * 1e3, "mm RMS")
+    return my_system
 
     # to-do
     # SPL calculation and comparing results against Unibox, finding out the Qa Ql mystery (Qa makes large bigger)
+
+
+if __name__ == "__main__":
+    test_result = tests()
