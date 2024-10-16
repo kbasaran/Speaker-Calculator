@@ -296,7 +296,7 @@ class Housing:
         return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
 
     def Vba(self):  # acoustical volume higher than actual due to internal damping
-        return self.Vb * (0.94/self.Qa + 1)
+        return self.Vb * (0.94/self.Qa + 1)  # based on calculation results in UniBox. Original source of formula not found.
 
 
 @dtc.dataclass
@@ -688,13 +688,13 @@ def tests():
     # my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
 
     # # do test model 3
-    housing = Housing(0.01, 99999)
+    housing = Housing(0.001, 1e99, 19)
     parent_body = ParentBody(1, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=0.008423724385892528)
     my_system = SpeakerSystem(my_speaker,
                               parent_body=None,
-                              housing=None,
+                              housing=housing,
                               passive_radiator=None,
                               )
 
