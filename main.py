@@ -444,19 +444,29 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Box internal volume (l)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker, mechanical part due to losses in box",
+        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the box."
+                                      + "\n**This value also affects effective box volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
                                       decimals=1
                                       ),
                      description="Qa - box absorption",
                      )
-        
+
+        form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of box",
+                                      decimals=1
+                                      ),
+                     description="Ql - box losses",
+                     )
+
+
         # ---- Form logic
         def adjust_form_for_enclosure_type(toggled_id, checked):
             form.interactable_widgets["Vb"].setEnabled(toggled_id == 1 and checked is True)
             form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
+            form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
+
 
         form.interactable_widgets["box_type"].idToggled.connect(adjust_form_for_enclosure_type)
-        # adjustment at start
+        # instantiate
         adjust_form_for_enclosure_type(0, True)
 
         return form

@@ -296,6 +296,7 @@ class Housing:
         return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
 
     def Vba(self):  # acoustical volume higher than actual due to internal damping
+        # this calculation is referenced in GUI tooltip. Update tooltip if modifiying.
         return self.Vb * (0.94/self.Qa + 1)
 
 
