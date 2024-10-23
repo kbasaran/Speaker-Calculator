@@ -671,7 +671,7 @@ class MainWindow(qtw.QMainWindow):
         
         state["user_notes"] = self.notes_textbox.toPlainText()
 
-        print(f"Get states returning states dictionary:\n{state}")
+        logger.debug(f"Get states returning states dictionary:\n{state}")
         return state
 
     def save_state_to_file(self, state=None):
@@ -729,7 +729,7 @@ class MainWindow(qtw.QMainWindow):
             raise FileNotFoundError(file)
 
         # if you reached here, file is ready as Path object
-        print(f"Loading file '{file.name}'")
+        logger.info(f"Loading file '{file.name}'")
 
         settings.update("last_used_folder", str(file.parent))
 
@@ -973,7 +973,7 @@ def create_sound_engine(app):
     sound_engine.moveToThread(sound_engine_thread)
     sound_engine_thread.start(qtc.QThread.HighPriority)
 
-    # ---- Connect
+    # ---- Connections
     app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.exit)
 
