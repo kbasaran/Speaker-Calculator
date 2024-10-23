@@ -32,6 +32,7 @@ import logging
 from pathlib import Path
 import matplotlib as mpl
 from functools import partial
+import electroacoustical as ac
 
 app_definitions = {"app_name": "Speaker Stuff Calculator",
                    "version": "0.2.0",
@@ -944,6 +945,21 @@ class SpeakerSystem():
     pass
 
 
+def build_speaker_model(mw: MainWindow) -> ac.SpeakerSystem:
+    "Create the loudspeaker model based on the values provided in the widget."
+    vals = mw.get_state()
+    if vals["motor_spec_type"]["current_data"] == "define_coil":
+
+        coil = 
+        wire = 
+
+        motor = ac.Motor(coil, vals["B_average"])
+        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+                                          Sd=vals["Sd"],
+                                          Qms=vals["Qms"],
+                                          )
+
+
 def parse_args(app_definitions):
     import argparse
 
@@ -1041,6 +1057,7 @@ def main():
     else:
         new_window()
 
+    build_speaker_model(windows[0])  # for testing
     app.exec()
 
 
