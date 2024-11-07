@@ -239,6 +239,6 @@ def batch_convert_v01_files(folder_path):
 if __name__ == "__main__":
     # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
     states = batch_convert_v01_files(pathlib.Path(
-        "C:\\Users\\kerem.basaran\\OneDrive - PremiumSoundSolutions\\Documents\\SSC files"
-        # "/home/kerem/Dropbox/Documents/Python/PSS Work/SSC files"
+        # "C:\\Users\\kerem.basaran\\OneDrive - PremiumSoundSolutions\\Documents\\SSC files"
+        "/home/kerem/Dropbox/Documents/Python/PSS Work/SSC files"
         ))
