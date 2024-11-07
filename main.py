@@ -1,4 +1,4 @@
-# Speaker Stuff Calculator - Loudspeaker design and calculations tool
+# Speaker Calculator - Loudspeaker design and calculations tool
 # Copyright (C) 2024 - Kerem Basaran
 # https://github.com/kbasaran
 __email__ = "kbasaran@gmail.com"
@@ -34,7 +34,7 @@ import matplotlib as mpl
 from functools import partial
 import electroacoustical as ac
 
-app_definitions = {"app_name": "Speaker Stuff Calculator",
+app_definitions = {"app_name": "Speaker Calculator",
                    "version": "0.2.0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Loudspeaker design and calculations",
@@ -679,14 +679,14 @@ class MainWindow(qtw.QMainWindow):
         global app_definitions
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
                                                           dir=settings.last_used_folder,
-                                                          filter='Speaker stuff files (*.ssf)',
+                                                          filter='Speaker calculator files (*.scf)',
                                                           )
 
         try:
             file_raw = path_unverified[0]
             if file_raw:
-                file = Path(file_raw + ".ssf" if file_raw[-4:] != ".ssf" else file_raw)
-                # filter not working as expected, saves files without file extension ssf
+                file = Path(file_raw + ".scf" if file_raw[-4:] != ".scf" else file_raw)
+                # filter not working as expected, saves files without file extension scf
                 # therefore above logic
                 assert file.parent.is_dir()
             else:
@@ -714,7 +714,7 @@ class MainWindow(qtw.QMainWindow):
         if file is None:
             path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
                                                               dir=settings.last_used_folder,
-                                                              filter='Speaker stuff files (*.ssf *.sscf)',
+                                                              filter='Speaker calculator files (*.scf *.sscf)',
                                                               )
 
             # Check file
@@ -741,7 +741,7 @@ class MainWindow(qtw.QMainWindow):
             state = convert_v01_to_v02(file)
             self.set_state(state)
             
-        elif suffix == ".ssf":
+        elif suffix == ".scf":
             with open(file, "rt") as f:
                 state = json.load(f)
             self.set_state(state)
@@ -758,7 +758,7 @@ class MainWindow(qtw.QMainWindow):
             relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
             input_form_widget.update_form_values(relevant_states)
 
-        self.notes_textbox.setPlainText(state.get("user_notes", "[No notes could be loaded.]"))
+        self.notes_textbox.setPlainText(state.get("user_notes", "Error: User notes could not be loaded."))
 
         self.signal_good_beep.emit()
 
@@ -783,7 +783,7 @@ class MainWindow(qtw.QMainWindow):
 
     def open_about_menu(self):
         result_text = "\n".join([
-            "Speaker Stuff Calculator - Loudspeaker design and calculations tool",
+            "Speaker Calculator - Loudspeaker design and calculations tool",
             f"Version: {app_definitions['version']}",
             "",
             f"{app_definitions['copyright']}",
@@ -976,7 +976,7 @@ def parse_args(app_definitions):
                                      )
 
     parser.add_argument('infile', nargs='?', type=Path,
-                        help="Path to a '*.ssf' file. This will open with preset values.")
+                        help="Path to a '*.scf' file. This will open with preset values.")
     parser.add_argument('-d', '--debuglevel', nargs="?", default="warning",
                         help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 

@@ -26,9 +26,6 @@ rename project to speaker calculator
 
 
 
-
-
-
 --latest work--
 working on 'build_speaker_model' function in main module. it is being run on module start now.
 the coil definition needs to come from the dropdown box. to be able to do this, dropdown box needs to be populated first.
