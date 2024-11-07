@@ -297,7 +297,7 @@ class Housing:
 
     def Vba(self):  # acoustical volume higher than actual due to internal damping
         # this calculation is referenced in GUI tooltip. Update tooltip if modifiying.
-        return self.Vb * (0.94/self.Qa + 1)
+        return self.Vb * (0.94/self.Qa + 1)  # based on calculation results in UniBox. Original source of formula not found.
 
 
 @dtc.dataclass
@@ -689,13 +689,13 @@ def tests():
     # my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
 
     # # do test model 3
-    housing = Housing(0.01, 99999)
+    housing = Housing(0.001, 1e99, 99999)
     parent_body = ParentBody(1, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
-    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=0.008423724385892528)
+    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
     my_system = SpeakerSystem(my_speaker,
                               parent_body=None,
-                              housing=None,
+                              housing=housing,
                               passive_radiator=None,
                               )
 
@@ -708,10 +708,12 @@ def tests():
 
     w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
     import matplotlib.pyplot as plt
-    y_for_1Vrms = np.abs(y) * 2**0.5
-    y_rms_for_1Vrms = np.abs(y)
-    plt.semilogx(freqs, y_for_1Vrms)
-    print(freqs[0], y_rms_for_1Vrms[0] * 1e3, "mm RMS")
+    y_for_10Vrms = np.abs(y) * 2**0.5 * 10
+    y_rms_for_10Vrms = np.abs(y) * 10
+    plt.semilogx(freqs, y_for_10Vrms)
+    for i, freq in enumerate(freqs):
+        if int(freq) == 200:
+            print(f"{freqs[i]:.5g}Hz: {y_rms_for_10Vrms[i] * 1e3:.5g}mm RMS")
     return my_system
 
     # to-do
