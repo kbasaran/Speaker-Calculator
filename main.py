@@ -33,6 +33,7 @@ from pathlib import Path
 import matplotlib as mpl
 from functools import partial
 import electroacoustical as ac
+import pandas as pd
 
 app_definitions = {"app_name": "Speaker Calculator",
                    "version": "0.2.0",
@@ -945,19 +946,29 @@ class SpeakerSystem():
     pass
 
 
+def read_wire_table(wire_table: Path) -> pd.DataFrame:
+    if not wire_table.exists():
+        raise FileNotFoundError(f"Wire table file not found: {Path}")
+    df = pd.read_excel(wire_table, "Sheet1", skiprows=range(2), index_col=0)
+    if not df.index.is_unique:
+        raise IndexError("Wire names in the imported table are not unique.")
+    
+    return df.T.to_dict()
+
+
 def build_speaker_model(mw: MainWindow) -> ac.SpeakerSystem:
     "Create the loudspeaker model based on the values provided in the widget."
     vals = mw.get_state()
     if vals["motor_spec_type"]["current_data"] == "define_coil":
 
-        coil = 
-        wire = 
+        wire_name = vals["coil_options"]["current_data"]["wire_type"]
+        # coil = ac.wind_coil(wire, N_layers, w_stacking_coef, carrier_OD, h_winding_target)
 
-        motor = ac.Motor(coil, vals["B_average"])
-        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
-                                          Sd=vals["Sd"],
-                                          Qms=vals["Qms"],
-                                          )
+        # motor = ac.Motor(coil, vals["B_average"])
+        # speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+        #                                   Sd=vals["Sd"],
+        #                                   Qms=vals["Qms"],
+                                           # )
 
 
 def parse_args(app_definitions):
