@@ -103,8 +103,8 @@ def calculate_coil_to_bottom_plate_clearance(Xpeak):
 @dtc.dataclass
 class Wire:
     name: str
-    w_nom: float
-    h_nom: float
+    w_avg: float
+    h_avg: float
     w_max: float
     resistance: float  # ohm/m
     mass_density: float  # kg/m
@@ -217,14 +217,15 @@ class SpeakerDriver:
     Qms: float
     Bl: float = None  # provide only if motor is None
     Re: float = None  # provide only if motor is None
-    Mms: float = None  # provide only if motor is None
+    Mms: float = None  # provide only if motor is None and Mmd is None
+    Mmd: float = None  # provide only if motor is None and Mms is None
     motor: None | Motor = None  # None of 'Motor' instance
     dead_mass: float = None  # provide only if motor is 'Motor' instance
     Rs: float = 0  # resistance between the coil and the speaker terminals (leadwire etc.)
-    Xmax: float = None
+    Xpeak: float = None
 
     def __post_init__(self):
-        if isinstance(self.motor, Motor):
+        if isinstance(self.motor, Motor) and self.dead_mass is not None:
             available_from_Motor_object = ("Bl", "Re")
             if not all([self.get(val) is None for val in available_from_Motor_object]):
                 raise RuntimeError("These attributes should not be specified when motor is already specified:"
@@ -242,12 +243,14 @@ class SpeakerDriver:
                 self.Mms = self.Mmd + calculate_air_mass(self.Sd)
             except NameError:
                 print("Unable to calculate 'Mms' and/or 'Mmd' with known parameters.")
+        elif self.Mms is not None:
+            if self.Mmd is not None:
+                raise RuntimeError("Not allowed to define both Mmd and Mms in 'SpeakerDriver' object instantion.")
+            self.Mmd = self.Mms - calculate_air_mass(self.Sd)
+        elif self.Mmd is not None:
+            self.Mms = self.Mmd + calculate_air_mass(self.Sd)
         else:
-            # only Mmd
-            try:
-                self.Mmd = self.Mms - calculate_air_mass(self.Sd)
-            except NameError:
-                print("Unable to calculate 'Mmd' with known parameters.")
+            raise ValueError("Insufficient parameters. Define [motor, dead_mass], Mmd or Mms.")
 
         self.Kms = self.Mms * (self.fs * 2 * np.pi)**2
         self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
@@ -270,7 +273,7 @@ class SpeakerDriver:
         if self.motor is not None:
             summary_ace += f"\nMmd: {self.Mmd*1000:.4g} g    Windings: {self.coil_mass*1000:.2f} g"
 
-        summary_ace += f"\nXmax: {self.Xmax*1000:.2f} mm    Bl² / Re: {self.Bl**2 / self.Re:.3g} N²/W"
+        summary_ace += f"\nXpeak: {self.Xpeak*1000:.2f} mm    Bl² / Re: {self.Bl**2 / self.Re:.3g} N²/W"
 
         # Make a string for mechanical summary
         summary_mec = ""
