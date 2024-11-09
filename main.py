@@ -952,23 +952,63 @@ def read_wire_table(wire_table: Path) -> pd.DataFrame:
     df = pd.read_excel(wire_table, "Sheet1", skiprows=range(2), index_col=0)
     if not df.index.is_unique:
         raise IndexError("Wire names in the imported table are not unique.")
-    
-    return df.T.to_dict()
+    return df
 
 
-def build_speaker_model(mw: MainWindow) -> ac.SpeakerSystem:
+def construct_Wire(df: pd.DataFrame, name: str) -> ac.Wire:
+    if name not in df.index:
+        raise ValueError(f"Wire {name} is not available in wire table.")
+    wire_data = df.loc[name]
+    wire = ac.Wire(name,
+                   wire_data["w_avg"],
+                   wire_data["h_avg"],
+                   wire_data["w_max"],
+                   wire_data["resistance"],
+                   wire_data["mass_density"],
+                   )
+    return wire
+
+
+def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:
     "Create the loudspeaker model based on the values provided in the widget."
+    global wire_table, logger
     vals = mw.get_state()
+    
     if vals["motor_spec_type"]["current_data"] == "define_coil":
-
-        wire_name = vals["coil_options"]["current_data"]["wire_type"]
-        # coil = ac.wind_coil(wire, N_layers, w_stacking_coef, carrier_OD, h_winding_target)
-
-        # motor = ac.Motor(coil, vals["B_average"])
-        # speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
-        #                                   Sd=vals["Sd"],
-        #                                   Qms=vals["Qms"],
-                                           # )
+        coil = vals["coil_options"]["current_data"]["coil"]
+        motor = ac.Motor(coil, vals["B_average"])
+        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+                                          Sd=vals["Sd"],
+                                          Qms=vals["Qms"],
+                                          motor=motor,
+                                          dead_mass=vals["dead_mass"],
+                                          Rs=vals["Rs_leadwire"],
+                                          Xpeak=vals["Xpeak"],
+                                          )
+        
+    elif vals["motor_spec_type"]["current_data"] == "define_Bl_Re_Mmd":
+        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+                                          Sd=vals["Sd"],
+                                          Qms=vals["Qms"],
+                                          Bl=vals["Bl"],
+                                          Re=vals["Re"],
+                                          Mmd=vals["Mmd"],
+                                          Rs=vals["Rs_leadwire"],
+                                          Xpeak=vals["Xpeak"],
+                                          )
+        
+    elif vals["motor_spec_type"]["current_data"] == "define_Bl_Re_Mms":
+        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+                                          Sd=vals["Sd"],
+                                          Qms=vals["Qms"],
+                                          Bl=vals["Bl"],
+                                          Re=vals["Re"],
+                                          Mms=vals["Mms"],
+                                          Rs=vals["Rs_leadwire"],
+                                          Xpeak=vals["Xpeak"],
+                                          )
+    else:
+        raise ValueError("Invalid motor specification type.")
 
 
 def parse_args(app_definitions):
@@ -1027,11 +1067,13 @@ def setup_logging(args):
 
 
 def main():
-    global settings, app_definition, logger, create_sound_engine, Settings
+    global settings, app_definition, logger, create_sound_engine, Settings, wire_table
 
     args = parse_args(app_definitions)
     logger = setup_logging(args)
     settings = Settings(app_definitions["app_name"])
+    wire_table_path = Path.cwd().joinpath("SC_data", "wire table.ods")
+    wire_table = read_wire_table(wire_table_path)
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
@@ -1068,7 +1110,7 @@ def main():
     else:
         new_window()
 
-    build_speaker_model(windows[0])  # for testing
+    # construct_SpeakerSystem(windows[0])  # for testing
     app.exec()
 
 
