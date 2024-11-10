@@ -120,11 +120,11 @@ class Coil:
     def length_of_one_turn(self, i_layer):
         """Calculate the length of one turn of wire on a given coil layer."""
         if i_layer == 1:
-            turn_radius_wire_center_to_axis = self.carrier_OD/2 + self.wire.w_nom/2
+            turn_radius_wire_center_to_axis = self.carrier_OD/2 + self.wire.w_avg/2
         if i_layer > 1:
             turn_radius_wire_center_to_axis = (self.carrier_OD/2
-                                               + self.wire.w_nom/2
-                                               + (self.w_stacking_coef * (i_layer - 1) * self.wire.w_nom)
+                                               + self.wire.w_avg/2
+                                               + (self.w_stacking_coef * (i_layer - 1) * self.wire.w_avg)
                                                )
         # pi/4 is stacking coefficient for ideal circular wire
         return 2 * np.pi * turn_radius_wire_center_to_axis
@@ -136,7 +136,7 @@ class Coil:
     def __post_init__(self):
         assert all([i > 0 for i in self.N_windings])
         self.N_layers = len(self.N_windings)
-        self.h_winding = self.wire.h_nom * self.N_windings[0]
+        self.h_winding = self.wire.h_avg * self.N_windings[0]
         self.mass = self.total_wire_length() * self.wire.mass_density
         self.Rdc = self.total_wire_length() * self.wire.resistance
         self.w_max = self.wire.w_max * (1 + (self.N_layers - 1) * self.w_stacking_coef)
