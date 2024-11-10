@@ -969,6 +969,64 @@ def construct_Wire(df: pd.DataFrame, name: str) -> ac.Wire:
     return wire
 
 
+def find_feasible_coils(vals):
+    """Scan best matching speaker coil options."""
+    try:  # try to read the N_layer_options string
+        layer_options = [int(str) for str in vals["N_layer_options"].replace(" ", "").split(",")]
+        if not layer_options:
+            raise ValueError("At least one option needs to be provided for number of winding layers.")
+    except Exception:
+        raise ValueError("Invalid input in number of layer options")
+
+    # Make a dataframe to store viable winding options
+    table_columns = ["name", "wire", "N_layers", "Bl", "Rdc", "Lm", "Qts", "carrier_OD",
+                     "h_winding", "N_windings", "total_wire_length", "coil_w_max", "coil_mass"]
+    coil_options_table = pd.DataFrame(columns=table_columns, indexcol="name")
+
+    # Scan through winding options
+    winding = Record()
+    for k in ["target_Rdc", "former_ID", "t_former", "h_winding"]:
+        setattr(winding, k, self.get_value(k))
+
+    for N_layers in layer_options:
+        for wire_type, row in cons.VC_TABLE.iterrows():
+            Rdc, N_windings, l_wire, coil_w_max, coil_mass = calculate_windings(wire_type,
+                                                                                N_layers,
+                                                                                winding.former_ID + winding.t_former * 2,
+                                                                                winding.h_winding)
+    # if Rdc is usable, add to DataFrame
+            if winding.target_Rdc / 1.1 < Rdc < winding.target_Rdc * 1.15 and all(i > 0 for i in N_windings):
+                winding_name = (str(N_layers) + "x " + wire_type).strip()
+                winding_data = {}
+                for k in ["wire_type", "N_layers", "Rdc", "N_windings", "l_wire", "coil_w_max", "coil_mass"]:
+                    winding_data[k] = locals()[k]
+                coil_choice = (winding_name, winding_data)
+                speaker = SpeakerDriver(coil_choice)
+                self.coil_options_table.loc[winding_name] = [getattr(speaker, i) for i in table_columns]  # add all the parameters of this speaker to a new dataframe row
+    self.coil_options_table.sort_values("Lm", ascending=False)
+
+    # Add the coils in dataframe to the combobox (with their userData)
+    for winding_name in self.coil_options_table.index:
+        # Make a string for the text to show on the combo box
+        Rdc_string = "Rdc=%.2f, " % self.coil_options_table.Rdc[winding_name]
+        Lm_string = "Lm=%.2f, " % self.coil_options_table.Lm[winding_name]
+        Qes_string = "Qts=%.2f" % self.coil_options_table.Qts[winding_name]
+        name_in_combo_box = winding_name + ", " + Rdc_string + Lm_string + Qes_string
+        userData = self.coil_options_table.to_dict("index")[winding_name]
+        self.coil_choice_box["obj"].addItem(name_in_combo_box, userData)
+    # if nothing to add to combobox
+    if self.coil_choice_box["obj"].count() == 0:
+        beep_bad()
+        self.coil_choice_box["obj"].addItem("--no solution found--")
+    else:
+        beep()
+
+
+def update_coil_options_combobox(mw):
+    mw.coil_choice_box["obj"].clear()
+    pass
+
+
 def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:
     "Create the loudspeaker model based on the values provided in the widget."
     global wire_table, logger
