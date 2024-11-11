@@ -129,7 +129,6 @@ class Coil:
         # pi/4 is stacking coefficient for ideal circular wire
         return 2 * np.pi * turn_radius_wire_center_to_axis
 
-    @cached_property
     def total_wire_length(self):
         return sum([self.length_of_one_turn(i) * self.N_windings[i] for i in range(self.N_layers)])
 
@@ -229,11 +228,11 @@ class SpeakerDriver:
     def __post_init__(self):
         if isinstance(self.motor, Motor) and self.dead_mass is not None:
             available_from_Motor_object = ("Bl", "Re")
-            if not all([self.get(val) is None for val in available_from_Motor_object]):
+            if not all([getattr(self, val) is None for val in available_from_Motor_object]):
                 raise RuntimeError("These attributes should not be specified when motor is already specified:"
                                    f"\n{available_from_Motor_object}")
             self.Bl = self.motor.coil.h_winding * self.motor.Bavg
-            self.Re = self.motor.Rdc + self.Rs
+            self.Re = self.motor.coil.Rdc + self.Rs
 
         # derived parameters
         # Mms and Mmd
