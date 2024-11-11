@@ -120,12 +120,11 @@ class Coil:
 
     def length_of_one_turn(self, i_layer):
         """Calculate the length of one turn of wire on a given coil layer."""
-        if i_layer == 1:
+        if i_layer == 0:
             turn_radius_wire_center_to_axis = self.carrier_OD/2 + self.wire.w_avg/2
-        if i_layer > 1:
-            turn_radius_wire_center_to_axis = (self.carrier_OD/2
-                                               + self.wire.w_avg/2
-                                               + (self.w_stacking_coef * (i_layer - 1) * self.wire.w_avg)
+        else:
+            turn_radius_wire_center_to_axis = (self.carrier_OD/2 + self.wire.w_avg/2
+                                               + (self.w_stacking_coef * i_layer * self.wire.w_avg)
                                                )
         # pi/4 is stacking coefficient for ideal circular wire
         return 2 * np.pi * turn_radius_wire_center_to_axis
@@ -136,12 +135,12 @@ class Coil:
 
     def __post_init__(self):
         assert all([i > 0 for i in self.N_windings])
-        self.name = (str(self.N_layers) + "x " + self.wire.name).strip()
         self.N_layers = len(self.N_windings)
         self.h_winding = self.wire.h_avg * self.N_windings[0]
         self.mass = self.total_wire_length() * self.wire.mass_density
         self.Rdc = self.total_wire_length() * self.wire.resistance
         self.w_max = self.wire.w_max * (1 + (self.N_layers - 1) * self.w_stacking_coef)
+        self.name = (str(self.N_layers) + "x " + self.wire.name).strip()
 
 
 def wind_coil(wire: Wire, N_layers: int, w_stacking_coef: float, carrier_OD: float, h_winding_target: float) -> Coil:
@@ -154,7 +153,7 @@ def wind_coil(wire: Wire, N_layers: int, w_stacking_coef: float, carrier_OD: flo
         return round(n_winding)
 
     N_windings = [N_winding_for_single_layer(i_layer) for i_layer in range(N_layers)]
-    if any([n < 1 for n in N_windings]):
+    if any([N_winding < 1 for N_winding in N_windings]):
         raise ValueError("Some layers were impossible")
 
     return Coil(carrier_OD, wire, N_windings, w_stacking_coef)
