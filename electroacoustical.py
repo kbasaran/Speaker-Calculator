@@ -12,6 +12,7 @@ import sympy as smp
 import sympy.physics.mechanics as mech
 from sympy.solvers import solve
 from scipy import signal
+import pandas as pd
 from sympy.abc import t
 
 
@@ -113,7 +114,7 @@ class Wire:
 @dtc.dataclass
 class Coil:
     carrier_OD: float
-    wire: Wire
+    wire: Wire | pd.Series
     N_windings: tuple
     w_stacking_coef: float
 
@@ -135,6 +136,7 @@ class Coil:
 
     def __post_init__(self):
         assert all([i > 0 for i in self.N_windings])
+        self.name = (str(self.N_layers) + "x " + self.wire.name).strip()
         self.N_layers = len(self.N_windings)
         self.h_winding = self.wire.h_avg * self.N_windings[0]
         self.mass = self.total_wire_length() * self.wire.mass_density
@@ -142,12 +144,13 @@ class Coil:
         self.w_max = self.wire.w_max * (1 + (self.N_layers - 1) * self.w_stacking_coef)
 
 
-def wind_coil(wire, N_layers, w_stacking_coef, carrier_OD, h_winding_target):
+def wind_coil(wire: Wire, N_layers: int, w_stacking_coef: float, carrier_OD: float, h_winding_target: float) -> Coil:
     "Create coil object based on given data."
 
     def N_winding_for_single_layer(i_layer: int) -> int:
         "Calculate the number of windings that fit on one layer of coil."
-        n_winding = h_winding_target / wire.h_nom - i_layer * 1  # 1 winding less on each stacked layer
+        # 1 winding less on each stacked layer if stacking coefficient is less than or equal to 0.9
+        n_winding = h_winding_target / wire.h_avg - i_layer * 1 * (w_stacking_coef <= 0.9)
         return round(n_winding)
 
     N_windings = [N_winding_for_single_layer(i_layer) for i_layer in range(N_layers)]
@@ -217,8 +220,8 @@ class SpeakerDriver:
     Qms: float
     Bl: float = None  # provide only if motor is None
     Re: float = None  # provide only if motor is None
-    Mms: float = None  # provide only if motor is None and Mmd is None
-    Mmd: float = None  # provide only if motor is None and Mms is None
+    Mms: float = None  # provide only if both motor and Mmd are None
+    Mmd: float = None  # provide only if both motor and Mms are None
     motor: None | Motor = None  # None of 'Motor' instance
     dead_mass: float = None  # provide only if motor is 'Motor' instance
     Rs: float = 0  # resistance between the coil and the speaker terminals (leadwire etc.)

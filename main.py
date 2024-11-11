@@ -50,6 +50,7 @@ app_definitions = {"app_name": "Speaker Calculator",
 
 @dataclass
 class Settings:
+    """Settings will be stored in SI units"""
     global logger
     app_name: str = app_definitions["app_name"]
     author: str = app_definitions["author"]
@@ -118,10 +119,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
         forms["Enclosure"] = self._make_form_for_enclosure_tab()
         forms["System"] = self._make_form_for_system_tab()
 
-        # self.interactable_widgets = {}
+        self.interactable_widgets = {}
         for name, form in forms.items():
             self.addTab(form, name)
-            # self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets}
+            self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets}
 
     def _make_form_for_general_tab(self):
         form = pwi.UserForm()
@@ -260,19 +261,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      into_form=motor_definition_p1,
                      )
 
-        form.add_row(pwi.FloatSpinBox("w_stacking_coef",
-                                      "Stacking coefficient for additional winding layers put on."
-                                      "\nE.g. if this is set to 0.8 and the wire nominal thickness is 1mm"
-                                      "\nnominal thickness of windings that are 1,2,3 layers will be"
-                                      "\n1mm,1.8mm,2.6mm, respectively."
-                                      "\nFor stacking of ideal circular wires this value is 'sin(60)=0.5'"
-                                      "\nHas no effect on the height of the winding.",
-                                      min_max=(0, 1),
-                                      ),
-                     description="Stacking coeff. for additional layers",
-                     into_form=motor_definition_p1,
-                     )
-
         form.add_row(pwi.FloatSpinBox("Rs_leadwire",
                                       "Resistance between the coil and the speaker terminals, e.g. leadwire",
                                       min_max=(0, form.interactable_widgets["h_winding_target"].maximum()),
@@ -287,9 +275,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.FloatSpinBox("B_average", "Average B field across the coil windings."
                                       "\nNeeds to be calculated separately and input here.",
                                       decimals=3,
-                                      coeff_for_SI=1e-3,
+                                      coeff_for_SI=1,
+                                      min_max=(0, 9999.99),
                                       ),
-                     description="Average B field on coil (mT)",
+                     description="Average B field on coil (T)",
                      into_form=motor_definition_p1,
                      )
 
@@ -297,6 +286,20 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                      "\nUse integers with a comma in between, e.g.: '2, 4'",
                                      ),
                      description="Number of layer options",
+                     into_form=motor_definition_p1,
+                     )
+
+        form.add_row(pwi.FloatSpinBox("w_stacking_coef",
+                                      "Stacking coefficient for additional winding layers put on."
+                                      "\nE.g. if this is set to 0.8 and the wire nominal thickness is 1mm"
+                                      "\nnominal thickness of windings that are 1,2,3 layers will be"
+                                      "\n1mm,1.8mm,2.6mm, respectively."
+                                      "\nFor stacking of ideal circular wires this value is 'sin(60)=0.5'"
+                                      "\nHas no effect on the total height of the winding."
+                                      "\nBut if it is 0.9 or less, each layer will have one less winding then the previous.",
+                                      min_max=(0, 1),
+                                      ),
+                     description="Stacking coeff. for additional layers",
                      into_form=motor_definition_p1,
                      )
 
@@ -536,6 +539,7 @@ class MainWindow(qtw.QMainWindow):
         self._create_menu_bar()
         self._create_widgets()
         self._place_widgets()
+        self._connect_widgets()
         # self._add_status_bar()
         if user_form_dict:
             self.set_state(user_form_dict)
@@ -660,6 +664,10 @@ class MainWindow(qtw.QMainWindow):
         self._rh_layout.addWidget(self._graph_buttons)
         self.graph_data_choice.layout().setContentsMargins(-1, 0, -1, 0)
         self._rh_layout.addLayout(self.textboxes_layout, 2)
+
+    def _connect_widgets(self):
+        self.input_form.interactable_widgets["update_coil_choices"]\
+                .clicked.connect(self.update_coil_choices_button_clicked)
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
@@ -818,6 +826,10 @@ class MainWindow(qtw.QMainWindow):
                                       )
         message_box.setStandardButtons(qtw.QMessageBox.Ok)
         message_box.exec()
+    
+    def update_coil_choices_button_clicked(self):
+        speaker_options = find_feasible_coils(self.get_state(), wire_table)
+        update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], speaker_options)
 
 
 class SettingsDialog(qtw.QDialog):
@@ -969,7 +981,7 @@ def construct_Wire(df: pd.DataFrame, name: str) -> ac.Wire:
     return wire
 
 
-def find_feasible_coils(vals):
+def find_feasible_coils(vals, wire_table):
     """Scan best matching speaker coil options."""
     try:  # try to read the N_layer_options string
         layer_options = [int(str) for str in vals["N_layer_options"].replace(" ", "").split(",")]
@@ -979,52 +991,93 @@ def find_feasible_coils(vals):
         raise ValueError("Invalid input in number of layer options")
 
     # Make a dataframe to store viable winding options
-    table_columns = ["name", "wire", "N_layers", "Bl", "Rdc", "Lm", "Qts", "carrier_OD",
-                     "h_winding", "N_windings", "total_wire_length", "coil_w_max", "coil_mass"]
-    coil_options_table = pd.DataFrame(columns=table_columns, indexcol="name")
-
-    # Scan through winding options
-    winding = Record()
-    for k in ["target_Rdc", "former_ID", "t_former", "h_winding"]:
-        setattr(winding, k, self.get_value(k))
-
+    # table_columns = ["name", "wire", "N_layers", "Bl", "Rdc", "Lm", "Qts", "carrier_OD",
+    #                  "h_winding", "N_windings", "total_wire_length", "coil_w_max", "coil_mass", "coil"]
+    # coil_options_table = pd.DataFrame(columns=table_columns, indexcol="name")
+    speaker_options = []
+    
     for N_layers in layer_options:
-        for wire_type, row in cons.VC_TABLE.iterrows():
-            Rdc, N_windings, l_wire, coil_w_max, coil_mass = calculate_windings(wire_type,
-                                                                                N_layers,
-                                                                                winding.former_ID + winding.t_former * 2,
-                                                                                winding.h_winding)
-    # if Rdc is usable, add to DataFrame
-            if winding.target_Rdc / 1.1 < Rdc < winding.target_Rdc * 1.15 and all(i > 0 for i in N_windings):
-                winding_name = (str(N_layers) + "x " + wire_type).strip()
-                winding_data = {}
-                for k in ["wire_type", "N_layers", "Rdc", "N_windings", "l_wire", "coil_w_max", "coil_mass"]:
-                    winding_data[k] = locals()[k]
-                coil_choice = (winding_name, winding_data)
-                speaker = SpeakerDriver(coil_choice)
-                self.coil_options_table.loc[winding_name] = [getattr(speaker, i) for i in table_columns]  # add all the parameters of this speaker to a new dataframe row
-    self.coil_options_table.sort_values("Lm", ascending=False)
+        for wire_name, wire in wire_table.iterrows():
+            try:
+                coil = ac.wind_coil(wire,
+                                    N_layers,
+                                    vals["w_stacking_coef"],
+                                    vals["former_ID"] + 2 * vals["t_former"],  # carrier_OD
+                                    vals["h_winding_target"],
+                                    )
+            except ValueError:
+                continue
+            print()
+            print(coil)
+            
+            if vals["target_Rdc"] / 1.15 < coil.Rdc < vals["target_Rdc"] * 1.2:
+                motor = ac.Motor(coil, vals["Baverage"])
+                speaker = ac.SpeakerDriver(vals["fs"],
+                                           vals["Sd"],
+                                           vals["Qms"],
+                                           motor=motor,
+                                           dead_mass=vals["dead_mass"],
+                                           )
+                speaker_options.append(speaker)
 
-    # Add the coils in dataframe to the combobox (with their userData)
-    for winding_name in self.coil_options_table.index:
+    # Sort the viable coil options
+    speaker_options.sort(key=lambda x: x.Lm, reverse=True)
+    
+    return speaker_options  # each speaker object has attribute motor that has attribute coil that has attribute wire
+            
+
+    # # if Rdc is usable, add to DataFrame
+    #         if winding.target_Rdc / 1.1 < Rdc < winding.target_Rdc * 1.15 and all(i > 0 for i in N_windings):
+    #             winding_name = (str(N_layers) + "x " + wire_type).strip()
+    #             winding_data = {}
+    #             for k in ["wire_type", "N_layers", "Rdc", "N_windings", "l_wire", "coil_w_max", "coil_mass"]:
+    #                 winding_data[k] = locals()[k]
+    #             coil_choice = (winding_name, winding_data)
+    #             speaker = SpeakerDriver(coil_choice)
+    #             self.coil_options_table.loc[winding_name] = [getattr(speaker, i) for i in table_columns]  # add all the parameters of this speaker to a new dataframe row
+    # self.coil_options_table.sort_values("Lm", ascending=False)
+
+
+    
+    
+    
+    
+    # for coil_name in self.coil_options_table.index:
+    #     # Make a string for the text to show on the combo box
+    #     Rdc_string = "Rdc=%.2f, " % self.coil_options_table.Rdc[winding_name]
+    #     Lm_string = "Lm=%.2f, " % self.coil_options_table.Lm[winding_name]
+    #     Qes_string = "Qts=%.2f" % self.coil_options_table.Qts[winding_name]
+    #     name_in_combo_box = winding_name + ", " + Rdc_string + Lm_string + Qes_string
+    #     userData = self.coil_options_table.to_dict("index")[winding_name]
+    #     self.coil_choice_box["obj"].addItem(name_in_combo_box, userData)
+    # # if nothing to add to combobox
+    # if self.coil_choice_box["obj"].count() == 0:
+    #     beep_bad()
+    #     self.coil_choice_box["obj"].addItem("--no solution found--")
+    # else:
+    #     beep()
+
+
+def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, speaker_options):
+    combo_box.clear()
+    # Add the coils to the combobox (with their userData)
+    for speaker in speaker_options:
         # Make a string for the text to show on the combo box
-        Rdc_string = "Rdc=%.2f, " % self.coil_options_table.Rdc[winding_name]
-        Lm_string = "Lm=%.2f, " % self.coil_options_table.Lm[winding_name]
-        Qes_string = "Qts=%.2f" % self.coil_options_table.Qts[winding_name]
-        name_in_combo_box = winding_name + ", " + Rdc_string + Lm_string + Qes_string
-        userData = self.coil_options_table.to_dict("index")[winding_name]
-        self.coil_choice_box["obj"].addItem(name_in_combo_box, userData)
+        name_shown_in_combobox = speaker.motor.coil.name + f"Rdc={speaker.Rdc:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
+        # Rdc_string = "Rdc=%.2f, " % self.coil_options_table.Rdc[winding_name]
+        # Lm_string = "Lm=%.2f, " % self.coil_options_table.Lm[winding_name]
+        # Qes_string = "Qts=%.2f" % self.coil_options_table.Qts[winding_name]
+        # name_in_combo_box = winding_name + ", " + Rdc_string + Lm_string + Qes_string
+        # userData = self.coil_options_table.to_dict("index")[winding_name]
+        combo_box.addItem(name_shown_in_combobox, speaker)
+    
     # if nothing to add to combobox
-    if self.coil_choice_box["obj"].count() == 0:
-        beep_bad()
-        self.coil_choice_box["obj"].addItem("--no solution found--")
+    if combo_box.count() == 0:
+        mw.signal_bad_beep.emit()
+        combo_box.addItem("--no solution found--")
+    
     else:
-        beep()
-
-
-def update_coil_options_combobox(mw):
-    mw.coil_choice_box["obj"].clear()
-    pass
+        mw.signal_good_beep.emit()
 
 
 def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:

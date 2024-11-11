@@ -150,14 +150,14 @@ def convert_v01_to_v02(file: Path) -> dict:
         return curves
 
     # key in new version, key in old version, conversion function
-    # in the old version, values were stored in SI units
-    # in this version, values on the widget will are stored as is
+    # values are always stored in SI units
+    # if key in v01 is None, do not give a converter function but directly a value
 
     conversion = {  "fs":                       ("fs",                      lambda x: x),
                     "Qms":                      ("Qms",                     lambda x: x),
-                    "Xpeak":                    ("Xmax",                    lambda x: x * 1e3),
-                    "dead_mass":                ("dead_mass",               lambda x: x * 1e3),
-                    "Sd":                       ("Sd",                      lambda x: x * 1e4),
+                    "Xpeak":                    ("Xmax",                    lambda x: x),
+                    "dead_mass":                ("dead_mass",               lambda x: x),
+                    "Sd":                       ("Sd",                      lambda x: x),
     
                     "Rs_source":                (None,                      0.),
                     "excitation_unit":          ("excitation_unit",         translate_excitation_unit),
@@ -167,9 +167,9 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "motor_spec_type":          ("motor_spec_type",         translate_motor_spec_type),
 
                     "target_Rdc":               ("Rdc",                     lambda x: x),
-                    "former_ID":                ("former_ID",               lambda x: x*1e3),
-                    "t_former":                 ("t_former",                lambda x: int(x*1e6)),
-                    "h_winding_target":         ("h_winding",               lambda x: x*1e3),
+                    "former_ID":                ("former_ID",               lambda x: x),
+                    "t_former":                 ("t_former",                lambda x: x),
+                    "h_winding_target":         ("h_winding",               lambda x: x),
                     "w_stacking_coef":          (None,                      0.9),
                     "Rs_leadwire":              (None,                      0.),
                     "B_average":                ("B_average",               lambda x: x),
@@ -178,25 +178,25 @@ def convert_v01_to_v02(file: Path) -> dict:
 
                     "Bl_p2":                    ("Bl",                      lambda x: x),
                     "Rdc_p2":                   ("Rdc",                     lambda x: x),
-                    "Mmd_p2":                   ("Mmd",                     lambda x: x*1e3),
+                    "Mmd_p2":                   ("Mmd",                     lambda x: x),
 
                     "Bl_p3":                    (None,                      0.),
                     "Rdc_p3":                   (None,                      0.),
                     "Mms_p3":                   (None,                      0.),
             
-                    "h_top_plate":              ("h_washer",                lambda x: x*1e3),
-                    "airgap_clearance_inner":   ("airgap_clearance_inner",  lambda x: int(x*1e6)),
-                    "airgap_clearance_outer":   ("airgap_clearance_outer",  lambda x: int(x*1e6)),
-                    "h_former_extension_under_coil":      ("former_extension_under_coil",  lambda x: x*1e3),
+                    "h_top_plate":              ("h_washer",                lambda x: x),
+                    "airgap_clearance_inner":   ("airgap_clearance_inner",  lambda x: x),
+                    "airgap_clearance_outer":   ("airgap_clearance_outer",  lambda x: x),
+                    "h_former_extension_under_coil":      ("former_extension_under_coil",  lambda x: x),
 
                     "box_type":                 ("box_type",                translate_box_type),
-                    "Vb":                       ("Vb",                      lambda x: x*1e3),
+                    "Vb":                       ("Vb",                      lambda x: x),
                     "Qa":                       ("Qa",                      lambda x: x),
                     "Ql":                       (None,                      9999.),
             
                     "parent_body":              ("dof",                     translate_parent_body),
-                    "k2":                       ("k2",                      lambda x: x*1e-3),
-                    "m2":                       ("m2",                      lambda x: x*1e3),
+                    "k2":                       ("k2",                      lambda x: x),
+                    "m2":                       ("m2",                      lambda x: x),
                     "c2":                       ("c2",                      lambda x: x),
             
                     "user_curves":              ("user_curves",             translate_user_curves),
