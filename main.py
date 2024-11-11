@@ -962,6 +962,13 @@ def read_wire_table(wire_table: Path) -> pd.DataFrame:
     if not wire_table.exists():
         raise FileNotFoundError(f"Wire table file not found: {Path}")
     df = pd.read_excel(wire_table, "Sheet1", skiprows=range(2), index_col=0)
+    coeff_for_SI = {"w_avg": 1e-6,
+                    "h_avg": 1e-6,
+                    "w_max": 1e-6,
+                    "mass_density": 1e-3,
+                    }
+    for key, coeff in coeff_for_SI.items():
+        df[key] = coeff * df[key]
     if not df.index.is_unique:
         raise IndexError("Wire names in the imported table are not unique.")
     return df
@@ -995,7 +1002,7 @@ def find_feasible_coils(vals, wire_table):
     #                  "h_winding", "N_windings", "total_wire_length", "coil_w_max", "coil_mass", "coil"]
     # coil_options_table = pd.DataFrame(columns=table_columns, indexcol="name")
     speaker_options = []
-    
+
     for N_layers in layer_options:
         for wire_name, wire in wire_table.iterrows():
             try:
@@ -1005,11 +1012,12 @@ def find_feasible_coils(vals, wire_table):
                                     vals["former_ID"] + 2 * vals["t_former"],  # carrier_OD
                                     vals["h_winding_target"],
                                     )
-            except ValueError:
+            except ValueError as e:
+                logger.debug(f"Could not wind coil for {wire_name}: {e}")
                 continue
             print()
             print(coil)
-            
+
             if vals["target_Rdc"] / 1.15 < coil.Rdc < vals["target_Rdc"] * 1.2:
                 motor = ac.Motor(coil, vals["Baverage"])
                 speaker = ac.SpeakerDriver(vals["fs"],
