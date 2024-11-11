@@ -1015,11 +1015,9 @@ def find_feasible_coils(vals, wire_table):
             except ValueError as e:
                 logger.debug(f"Could not wind coil for {wire_name}: {e}")
                 continue
-            print()
-            print(coil)
 
             if vals["target_Rdc"] / 1.15 < coil.Rdc < vals["target_Rdc"] * 1.2:
-                motor = ac.Motor(coil, vals["Baverage"])
+                motor = ac.Motor(coil, vals["B_average"])
                 speaker = ac.SpeakerDriver(vals["fs"],
                                            vals["Sd"],
                                            vals["Qms"],
