@@ -20,13 +20,5 @@ make the size of textedit boxes larger. text is being snipped.
 Adding a series resistor into model
 Tooltip for dead weight should be added
 Separate target winding height from calculated winding height. Show calculated one in results.
-N_winding should reduce 1 per layer
 "analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
-rename project to speaker calculator
-
-
-
---latest work--
-working on 'build_speaker_model' function in main module. it is being run on module start now.
-the coil definition needs to come from the dropdown box. to be able to do this, dropdown box needs to be populated first.
-first step to be able to populate is to improve the translate_coil_options method in version_convert
+add coil inductance
