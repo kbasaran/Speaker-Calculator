@@ -83,10 +83,10 @@ def calculate_air_mass(Sd: float) -> float:
     return 1.13*(Sd)**(3/2)
 
 
-def calculate_Lm(Bl, Re, Mms, Sd):
+def calculate_Lm(Bl, Re, Mms, Sd, RHO=1.1839, c_air=(101325 * 1.401 / 1.1839)**0.5):
     "Calculate Lm@Re, 1W, 1m."
     w_ref = 10**-12
-    I_1W_per_m2 = settings.RHO * Bl**2 * Sd**2 / settings.c_air / Re / Mms**2 / 2 / np.pi
+    I_1W_per_m2 = RHO * Bl**2 * Sd**2 / c_air / Re / Mms**2 / 2 / np.pi
     P_over_I_half_space = 1/2/np.pi  # m²
     return 10 * np.log10(I_1W_per_m2 * P_over_I_half_space / w_ref)
 
@@ -213,6 +213,7 @@ class SpeakerDriver:
     Mostly to carry data. It also does some Thiele & Small calculations.
     Does not make frequency dependent calculations such as SPL, Impedance.
     """
+    settings: object
     fs: float
     Sd: float
     Qms: float
@@ -260,9 +261,9 @@ class SpeakerDriver:
         self.Qes = (self.Mms * self.Kms)**0.5 / (self.Ces)
         zeta_speaker = 1 / 2 / self.Qts
         self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
-        self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd)  # sensitivity per W@Re
-        self.Vas = settings.Kair / self.Kms * self.Sd**2
-    
+        self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd, self.settings.RHO, self.settings.c_air)  # sensitivity per W@Re
+        self.Vas = self.settings.Kair / self.Kms * self.Sd**2
+
     def get_summary(self) -> list:
         "Give a summary for acoustical and mechanical properties as two items of a list."
         # Make a string for acoustical summary
@@ -288,13 +289,13 @@ class SpeakerDriver:
 @dtc.dataclass
 class Housing:
     # All units are SI
+    settings: object
     Vb: float
     Qa: float
     Ql: float = np.inf
 
     def K(self, Sd):
-        global settings
-        return Sd**2 * settings.Kair / self.Vb
+        return Sd**2 * self.settings.Kair / self.Vb
 
     def R(self, Sd, Mms, Kms):
         return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
@@ -386,6 +387,7 @@ class SpeakerSystem:
     def __post_init__(self):
         self._build_symbolic_ss_model()
         self.substitute_values_to_ss_model()
+        self.settings = self.speaker.settings
 
     def _build_symbolic_ss_model(self):
         # Static symbols
@@ -492,8 +494,8 @@ class SpeakerSystem:
             "Ql": 1e99 if self.housing is None else self.housing.Ql,
             "has_housing": 0 if self.housing is None else 1,
 
-            "P0": settings.P0,
-            "gamma": settings.GAMMA,
+            "P0": self.settings.P0,
+            "gamma": self.settings.GAMMA,
 
             "Rs_source": self.Rs,
 
@@ -657,7 +659,6 @@ class SpeakerSystem:
 
 
 def tests():
-    global settings
     @dtc.dataclass
     class Settings:
         RHO: float = 1.1839  # density of air at 25 degrees celcius
@@ -696,7 +697,7 @@ def tests():
     housing = Housing(0.001, 1e99, 99999)
     parent_body = ParentBody(1, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
-    my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
+    my_speaker = SpeakerDriver(settings, 100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
     my_system = SpeakerSystem(my_speaker,
                               parent_body=None,
                               housing=housing,
