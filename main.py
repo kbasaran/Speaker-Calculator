@@ -1018,7 +1018,8 @@ def find_feasible_coils(vals, wire_table):
 
             if vals["target_Rdc"] / 1.15 < coil.Rdc < vals["target_Rdc"] * 1.2:
                 motor = ac.Motor(coil, vals["B_average"])
-                speaker = ac.SpeakerDriver(vals["fs"],
+                speaker = ac.SpeakerDriver(settings,
+                                           vals["fs"],
                                            vals["Sd"],
                                            vals["Qms"],
                                            motor=motor,
@@ -1094,7 +1095,8 @@ def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:
     if vals["motor_spec_type"]["current_data"] == "define_coil":
         coil = vals["coil_options"]["current_data"]["coil"]
         motor = ac.Motor(coil, vals["B_average"])
-        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+        speaker_driver = ac.SpeakerDriver(settings,
+                                          fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
                                           motor=motor,
@@ -1104,7 +1106,8 @@ def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:
                                           )
         
     elif vals["motor_spec_type"]["current_data"] == "define_Bl_Re_Mmd":
-        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+        speaker_driver = ac.SpeakerDriver(settings,
+                                          fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
                                           Bl=vals["Bl"],
@@ -1115,7 +1118,8 @@ def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:
                                           )
         
     elif vals["motor_spec_type"]["current_data"] == "define_Bl_Re_Mms":
-        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+        speaker_driver = ac.SpeakerDriver(settings,
+                                          fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
                                           Bl=vals["Bl"],
