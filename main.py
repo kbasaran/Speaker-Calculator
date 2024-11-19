@@ -533,7 +533,7 @@ class MainWindow(qtw.QMainWindow):
     signal_bad_beep = qtc.Signal()
     signal_user_settings_changed = qtc.Signal()  # settings from  menu bar changed, such as graph type
 
-    def __init__(self, settings, sound_engine, user_form_dict=None, open_user_file=None):
+    def __init__(self, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
         self.setWindowTitle(app_definitions["app_name"])
         self._create_menu_bar()
@@ -917,7 +917,7 @@ class SettingsDialog(qtw.QDialog):
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
             self.reject)
         button_group.buttons()["save_pushbutton"].clicked.connect(
-            partial(self._save_and_close,  user_form.interactable_widgets, settings))
+            partial(self._save_and_close,  user_form.interactable_widgets, settings))  # why not use global settings here?
 
     def _save_and_close(self, user_input_widgets, settings):
         mpl_styles = [
@@ -1156,6 +1156,7 @@ def parse_args(app_definitions):
 
 
 def create_sound_engine(app):
+    global settings
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
@@ -1188,7 +1189,7 @@ def setup_logging(args):
 
 
 def main():
-    global settings, app_definition, logger, create_sound_engine, Settings, wire_table
+    global settings, app_definition, logger, create_sound_engine, wire_table
 
     args = parse_args(app_definitions)
     logger = setup_logging(args)
@@ -1214,7 +1215,7 @@ def main():
     windows = []  # if you don't store them they get garbage collected once new_window terminates
 
     def new_window(**kwargs):
-        mw = MainWindow(settings, sound_engine, **kwargs)
+        mw = MainWindow(sound_engine, **kwargs)
         windows.append(mw)
         mw.signal_new_window.connect(lambda kwargs: new_window(**kwargs))
         mw.signal_bad_beep.connect(sound_engine.bad_beep)

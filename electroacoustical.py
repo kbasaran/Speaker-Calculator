@@ -385,9 +385,9 @@ class SpeakerSystem:
     passive_radiator: None | PassiveRadiator = None
 
     def __post_init__(self):
+        self.settings = self.speaker.settings
         self._build_symbolic_ss_model()
         self.substitute_values_to_ss_model()
-        self.settings = self.speaker.settings
 
     def _build_symbolic_ss_model(self):
         # Static symbols
@@ -658,15 +658,16 @@ class SpeakerSystem:
         return phases
 
 
-def tests():
-    @dtc.dataclass
-    class Settings:
-        RHO: float = 1.1839  # density of air at 25 degrees celcius
-        Kair: float = 101325. * RHO
-        GAMMA: float = 1.401  # adiabatic index of air
-        P0: int = 101325  # atmospheric pressure
-        c_air: float = (P0 * GAMMA / RHO)**0.5
+@dtc.dataclass
+class Settings:
+    RHO: float = 1.1839  # density of air at 25 degrees celcius
+    Kair: float = 101325. * RHO
+    GAMMA: float = 1.401  # adiabatic index of air
+    P0: int = 101325  # atmospheric pressure
+    c_air: float = (P0 * GAMMA / RHO)**0.5
 
+
+def tests():
     settings = Settings()
 
     def generate_freq_list(freq_start, freq_end, ppo):
