@@ -917,9 +917,9 @@ class SettingsDialog(qtw.QDialog):
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
             self.reject)
         button_group.buttons()["save_pushbutton"].clicked.connect(
-            partial(self._save_and_close,  user_form.interactable_widgets, settings))  # why not use global settings here?
+            partial(self._save_and_close,  user_form.interactable_widgets))
 
-    def _save_and_close(self, user_input_widgets, settings):
+    def _save_and_close(self, user_input_widgets):
         mpl_styles = [
             style_name for style_name in mpl.style.available if style_name[0] != "_"]
         if user_input_widgets["matplotlib_style"].currentIndex() != mpl_styles.index(settings.matplotlib_style):
