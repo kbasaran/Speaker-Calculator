@@ -1070,7 +1070,7 @@ def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, speak
     # Add the coils to the combobox (with their userData)
     for speaker in speaker_options:
         # Make a string for the text to show on the combo box
-        name_shown_in_combobox = speaker.motor.coil.name + f"Rdc={speaker.Rdc:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
+        name_shown_in_combobox = speaker.motor.coil.name + f", Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
         # Rdc_string = "Rdc=%.2f, " % self.coil_options_table.Rdc[winding_name]
         # Lm_string = "Lm=%.2f, " % self.coil_options_table.Lm[winding_name]
         # Qes_string = "Qts=%.2f" % self.coil_options_table.Qts[winding_name]
