@@ -1024,6 +1024,7 @@ def find_feasible_coils(vals, wire_table):
                                            vals["Qms"],
                                            motor=motor,
                                            dead_mass=vals["dead_mass"],
+                                           Rs=vals["Rs_leadwire"],
                                            )
                 speaker_options.append(speaker)
 
@@ -1070,7 +1071,7 @@ def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, speak
     # Add the coils to the combobox (with their userData)
     for speaker in speaker_options:
         # Make a string for the text to show on the combo box
-        name_shown_in_combobox = speaker.motor.coil.name + f", Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
+        name_shown_in_combobox = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
         # Rdc_string = "Rdc=%.2f, " % self.coil_options_table.Rdc[winding_name]
         # Lm_string = "Lm=%.2f, " % self.coil_options_table.Lm[winding_name]
         # Qes_string = "Qts=%.2f" % self.coil_options_table.Qts[winding_name]
@@ -1227,7 +1228,7 @@ def main():
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
         mw.status_bar().show_message(f"Opened file '{args.infile.name}'", 5000)
-    elif (default_file := Path.cwd().joinpath("default.sscf")).is_file():
+    elif (default_file := Path.cwd().joinpath("default.scf")).is_file():
         new_window(open_user_file=default_file)
     else:
         new_window()

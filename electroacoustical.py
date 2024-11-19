@@ -139,7 +139,7 @@ class Coil:
         self.mass = self.total_wire_length() * self.wire.mass_density
         self.Rdc = self.total_wire_length() * self.wire.resistance
         self.w_max = self.wire.w_max * (1 + (self.N_layers - 1) * self.w_stacking_coef)
-        self.name = (str(self.N_layers) + "x " + self.wire.name).strip()
+        self.name = (str(self.N_layers) + "L " + self.wire.name).strip()
 
 
 def wind_coil(wire: Wire, N_layers: int, w_stacking_coef: float, carrier_OD: float, h_winding_target: float) -> Coil:
@@ -221,7 +221,7 @@ class SpeakerDriver:
     Re: float = None  # provide only if motor is None
     Mms: float = None  # provide only if both motor and Mmd are None
     Mmd: float = None  # provide only if both motor and Mms are None
-    motor: None | Motor = None  # None of 'Motor' instance
+    motor: None | Motor = None  # None or 'Motor' instance
     dead_mass: float = None  # provide only if motor is 'Motor' instance
     Rs: float = 0  # resistance between the coil and the speaker terminals (leadwire etc.)
     Xpeak: float = None
