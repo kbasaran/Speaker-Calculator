@@ -22,3 +22,5 @@ Tooltip for dead weight should be added
 Separate target winding height from calculated winding height. Show calculated one in results.
 "analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
 add coil inductance
+add a menu item to show app installation folder
+
