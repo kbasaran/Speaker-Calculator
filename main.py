@@ -261,16 +261,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      into_form=motor_definition_p1,
                      )
 
-        form.add_row(pwi.FloatSpinBox("Rs_leadwire",
-                                      "Resistance between the coil and the speaker terminals, e.g. leadwire",
-                                      min_max=(0, form.interactable_widgets["h_winding_target"].maximum()),
-                                      # took the automatically assigned maximum from another widget
-                                      # instead of typing n an arbitrary number
-                                      # 'None' was not expected by the underlying 'setRange' method
-                                      ),
-                     description="Leadwire resistance (ohm)",
-                     into_form=motor_definition_p1,
-                     )
 
         form.add_row(pwi.FloatSpinBox("B_average", "Average B field across the coil windings."
                                       "\nNeeds to be calculated separately and input here.",
@@ -302,6 +292,28 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Stacking coeff. for additional layers",
                      into_form=motor_definition_p1,
                      )
+
+        form.add_row(pwi.FloatSpinBox("Rs_leadwire",
+                                      "Resistance between the coil and the speaker terminals, e.g. leadwire",
+                                      min_max=(0, form.interactable_widgets["h_winding_target"].maximum()),
+                                      # took the automatically assigned maximum from another widget
+                                      # instead of typing n an arbitrary number
+                                      # 'None' was not expected by the underlying 'setRange' method
+                                      ),
+                     description="Leadwire resistance (ohm)",
+                     into_form=motor_definition_p1,
+                     )
+
+        form.add_row(pwi.FloatSpinBox("reduce_per_layer",
+                                    ("Reduce the number of windings on each layer by this number."
+                                     "\nFor round coils suggested value is 1.5. For rectangular coils suggested value is 0.5."),
+                                      min_max=(0, 99.9),
+                                      decimals=1,
+                                    ),
+                     description="Reduce windings per layer",
+                     into_form=motor_definition_p1,
+                     )
+
 
         update_coil_choices_button = pwi.PushButton("update_coil_choices",
                                                     "Update coil choices",
@@ -1011,6 +1023,7 @@ def find_feasible_coils(vals, wire_table):
                                     vals["w_stacking_coef"],
                                     vals["former_ID"] + 2 * vals["t_former"],  # carrier_OD
                                     vals["h_winding_target"],
+                                    vals["reduce_per_layer"],
                                     )
             except ValueError as e:
                 logger.debug(f"Could not wind coil for {wire_name}: {e}")
