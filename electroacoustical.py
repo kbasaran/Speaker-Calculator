@@ -195,7 +195,6 @@ def calculate_voltage(excitation_value, excitation_type, Rdc=None, Rnom=None):
 class Motor:
     coil: Coil
     Bavg: float
-    Xpeak: float = None
     h_top_plate: float = None
     airgap_clearance_inner: float = None
     airgap_clearance_outer: float = None
@@ -265,7 +264,7 @@ class SpeakerDriver:
         self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
         self.Ces = self.Bl**2 / self.Re
         self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Ces)
-        self.Qes = (self.Mms * self.Kms)**0.5 / (self.Ces)
+        self.Qes = (self.Mms * self.Kms)**0.5 / self.Ces
         zeta_speaker = 1 / 2 / self.Qts
         self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
         self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd, self.settings.RHO, self.settings.c_air)  # sensitivity per W@Re
@@ -273,24 +272,25 @@ class SpeakerDriver:
 
     def get_summary(self) -> list:
         "Give a summary for acoustical and mechanical properties as two items of a list."
+        
         # Make a string for acoustical summary
         summary_ace = f"Rdc: {self.Re:.2f} ohm    Lm: {self.Lm:.2f} dBSPL    Bl: {self.Bl:.4g} Tm"
         summary_ace += f"\nQts: {self.Qts:.3g}    Qes: {self.Qes:.3g}"
         if np.iscomplex(self.fs_damped):
             summary_ace += "    (overdamped)"
-        summary_ace += f"\nKms: {self.Kms / 1000:.4g} N/mm    Rms: {self.Rms:.3g} kg/s    Mms: {self.Mms*1000:.4g} g"
+        summary_ace += f"\nKms: {self.Kms / 1000:.4g} N/mm    Rms: {self.Rms:.3g} kg/s    Mms/Mmd: {self.Mms*1000:.4g}/{self.Mmd*1000:.4g} g"
         if self.motor is not None:
-            summary_ace += f"\nMmd: {self.Mmd*1000:.4g} g    Windings: {self.coil_mass*1000:.2f} g"
+            summary_ace += f"\nWindings: {self.motor.coil.mass*1000:.2f} g"
 
-        summary_ace += f"\nXpeak: {self.Xpeak*1000:.2f} mm    Bl² / Re: {self.Bl**2 / self.Re:.3g} N²/W"
+        summary_ace += f"\nXpeak: {self.Xpeak*1000:.2f} mm    Bl² / Re: {self.Bl**2/self.Re:.3g} N²/W"
 
         # Make a string for mechanical summary
         summary_mec = ""
         if self.motor is not None:
-            Xmech = calculate_coil_to_bottom_plate_clearance(self.motor.Xpeak)
+            Xmech = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
             summary_mec = f"Minimum {Xmech*1000:.2f} mm clearance under coil recommended"
 
-        return [summary_ace, summary_mec]
+        return "\n\n".join(["<b>Speaker driver</b>\n", summary_ace, summary_mec])
 
 
 @dtc.dataclass
