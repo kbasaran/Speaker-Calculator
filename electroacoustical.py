@@ -109,6 +109,7 @@ class Wire:
     w_max: float
     resistance: float  # ohm/m
     mass_density: float  # kg/m
+    reduce_per_layer: float = 0
 
 
 @dtc.dataclass
@@ -142,13 +143,19 @@ class Coil:
         self.name = (str(self.N_layers) + "L " + self.wire.name).strip()
 
 
-def wind_coil(wire: Wire, N_layers: int, w_stacking_coef: float, carrier_OD: float, h_winding_target: float) -> Coil:
+def wind_coil(wire: Wire,
+              N_layers: int,
+              w_stacking_coef: float,
+              carrier_OD: float,
+              h_winding_target: float,
+              reduce_per_layer: float,
+              ) -> Coil:
     "Create coil object based on given data."
 
     def N_winding_for_single_layer(i_layer: int) -> int:
         "Calculate the number of windings that fit on one layer of coil."
         # 1 winding less on each stacked layer if stacking coefficient is less than or equal to 0.9
-        n_winding = h_winding_target / wire.h_avg - i_layer * 1 * (w_stacking_coef <= 0.9)
+        n_winding = h_winding_target / wire.h_avg - i_layer * reduce_per_layer
         return round(n_winding)
 
     N_windings = [N_winding_for_single_layer(i_layer) for i_layer in range(N_layers)]

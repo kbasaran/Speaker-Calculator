@@ -175,6 +175,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "B_average":                ("B_average",               lambda x: x),
                     "N_layer_options":          ("N_layer_options",         lambda x: x),
                     "coil_options":             ("coil_choice_box",         translate_coil_options),
+                    "reduce_per_layer":         (None,                      1.5),
 
                     "Bl_p2":                    ("Bl",                      lambda x: x),
                     "Rdc_p2":                   ("Rdc",                     lambda x: x),

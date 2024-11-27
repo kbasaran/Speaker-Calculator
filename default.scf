@@ -53,6 +53,7 @@
     "B_average": 1.0,
     "N_layer_options": "2",
     "w_stacking_coef": 0.9,
+    "reduce_per_layer": 1,
     "coil_options": {
         "items": [
             [
