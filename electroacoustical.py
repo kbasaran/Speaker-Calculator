@@ -274,21 +274,21 @@ class SpeakerDriver:
         "Give a summary for acoustical and mechanical properties as two items of a list."
         
         # Make a string for acoustical summary
-        summary_ace = f"Rdc: {self.Re:.2f} ohm    Lm: {self.Lm:.2f} dBSPL    Bl: {self.Bl:.4g} Tm"
+        summary_ace = f"Rdc: {self.Re:.3g} ohm    Lm: {self.Lm:.2f} dBSPL    Bl: {self.Bl:.4g} Tm"
         summary_ace += f"\nQts: {self.Qts:.3g}    Qes: {self.Qes:.3g}"
         if np.iscomplex(self.fs_damped):
             summary_ace += "    (overdamped)"
         summary_ace += f"\nKms: {self.Kms / 1000:.4g} N/mm    Rms: {self.Rms:.3g} kg/s    Mms/Mmd: {self.Mms*1000:.4g}/{self.Mmd*1000:.4g} g"
         if self.motor is not None:
-            summary_ace += f"\nWindings: {self.motor.coil.mass*1000:.2f} g"
+            summary_ace += f"\nWindings: {self.motor.coil.mass*1000:.4g} g"
 
-        summary_ace += f"\nXpeak: {self.Xpeak*1000:.2f} mm    Bl² / Re: {self.Bl**2/self.Re:.3g} N²/W"
+        summary_ace += f"\nXpeak: {self.Xpeak*1000:.3g} mm    Bl²/Re: {self.Bl**2/self.Re:.3g} N²/W"
 
         # Make a string for mechanical summary
         summary_mec = ""
         if self.motor is not None:
             Xmech = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary_mec = f"Minimum {Xmech*1000:.2f} mm clearance under coil recommended"
+            summary_mec = f"Minimum {Xmech*1000:.3g} mm clearance under coil recommended"
 
         return "\n\n".join(["<b>Speaker driver</b>\n", summary_ace, summary_mec])
 
