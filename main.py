@@ -584,7 +584,7 @@ class MainWindow(qtw.QMainWindow):
 
         # Graph
         self.graph = MatplotlibWidget(settings)
-        self.graph_data_choice = pwi.ChoiceButtonGroup("_graph_buttons",
+        self.graph_data_choice = pwi.ChoiceButtonGroup("graph_data_choice",
 
                                                        {0: "SPL",
                                                         1: "Impedance",
@@ -606,7 +606,7 @@ class MainWindow(qtw.QMainWindow):
 
                                                        # Graph buttons
                                                        )
-        self._graph_buttons = pwi.PushButtonGroup({"update_results": "Update results",
+        self.graph_pushbuttons = pwi.PushButtonGroup({"update_results": "Update results",
                                                    "export_curve": "Export curve",
                                                    "export_quick": "Quick export",
                                                    "import_curve": "Import curve",
@@ -621,7 +621,7 @@ class MainWindow(qtw.QMainWindow):
                                                   )
 
         # Make buttons under the graph larger
-        for button in self._graph_buttons.buttons().values():
+        for button in self.graph_pushbuttons.buttons().values():
             font_pixel_size = button.font().pixelSize()
             button.setMinimumHeight(48)
 
@@ -673,13 +673,15 @@ class MainWindow(qtw.QMainWindow):
             qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
 
         self._rh_layout.addWidget(self.graph_data_choice)
-        self._rh_layout.addWidget(self._graph_buttons)
+        self._rh_layout.addWidget(self.graph_pushbuttons)
         self.graph_data_choice.layout().setContentsMargins(-1, 0, -1, 0)
         self._rh_layout.addLayout(self.textboxes_layout, 2)
 
     def _connect_widgets(self):
         self.input_form.interactable_widgets["update_coil_choices"]\
-                .clicked.connect(self.update_coil_choices_button_clicked)
+            .clicked.connect(self.update_coil_choices_button_clicked)
+        self.graph_pushbuttons.buttons()["update_results_pushbutton"]\
+            .clicked.connect(self.update_model_button_clicked)
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
@@ -842,6 +844,9 @@ class MainWindow(qtw.QMainWindow):
     def update_coil_choices_button_clicked(self):
         speaker_options = find_feasible_coils(self.get_state(), wire_table)
         update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], speaker_options)
+
+    def update_model_button_clicked(self):
+        construct_SpeakerSystem(self)
 
 
 class SettingsDialog(qtw.QDialog):
@@ -1047,49 +1052,12 @@ def find_feasible_coils(vals, wire_table):
     return speaker_options  # each speaker object has attribute motor that has attribute coil that has attribute wire
             
 
-    # # if Rdc is usable, add to DataFrame
-    #         if winding.target_Rdc / 1.1 < Rdc < winding.target_Rdc * 1.15 and all(i > 0 for i in N_windings):
-    #             winding_name = (str(N_layers) + "x " + wire_type).strip()
-    #             winding_data = {}
-    #             for k in ["wire_type", "N_layers", "Rdc", "N_windings", "l_wire", "coil_w_max", "coil_mass"]:
-    #                 winding_data[k] = locals()[k]
-    #             coil_choice = (winding_name, winding_data)
-    #             speaker = SpeakerDriver(coil_choice)
-    #             self.coil_options_table.loc[winding_name] = [getattr(speaker, i) for i in table_columns]  # add all the parameters of this speaker to a new dataframe row
-    # self.coil_options_table.sort_values("Lm", ascending=False)
-
-
-    
-    
-    
-    
-    # for coil_name in self.coil_options_table.index:
-    #     # Make a string for the text to show on the combo box
-    #     Rdc_string = "Rdc=%.2f, " % self.coil_options_table.Rdc[winding_name]
-    #     Lm_string = "Lm=%.2f, " % self.coil_options_table.Lm[winding_name]
-    #     Qes_string = "Qts=%.2f" % self.coil_options_table.Qts[winding_name]
-    #     name_in_combo_box = winding_name + ", " + Rdc_string + Lm_string + Qes_string
-    #     userData = self.coil_options_table.to_dict("index")[winding_name]
-    #     self.coil_choice_box["obj"].addItem(name_in_combo_box, userData)
-    # # if nothing to add to combobox
-    # if self.coil_choice_box["obj"].count() == 0:
-    #     beep_bad()
-    #     self.coil_choice_box["obj"].addItem("--no solution found--")
-    # else:
-    #     beep()
-
-
 def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, speaker_options):
     combo_box.clear()
     # Add the coils to the combobox (with their userData)
     for speaker in speaker_options:
         # Make a string for the text to show on the combo box
         name_shown_in_combobox = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
-        # Rdc_string = "Rdc=%.2f, " % self.coil_options_table.Rdc[winding_name]
-        # Lm_string = "Lm=%.2f, " % self.coil_options_table.Lm[winding_name]
-        # Qes_string = "Qts=%.2f" % self.coil_options_table.Qts[winding_name]
-        # name_in_combo_box = winding_name + ", " + Rdc_string + Lm_string + Qes_string
-        # userData = self.coil_options_table.to_dict("index")[winding_name]
         combo_box.addItem(name_shown_in_combobox, speaker)
     
     # if nothing to add to combobox
@@ -1105,45 +1073,58 @@ def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:
     "Create the loudspeaker model based on the values provided in the widget."
     global wire_table, logger
     vals = mw.get_state()
+    motor_spec_type = vals["motor_spec_type"]["current_data"]
     
-    if vals["motor_spec_type"]["current_data"] == "define_coil":
-        coil = vals["coil_options"]["current_data"]["coil"]
+    if motor_spec_type == "define_coil":
+        try:
+            coil = vals["coil_options"]["current_data"].motor.coil
+        except AttributeError:  # doesn't have motor attribute
+            mw.signal_bad_beep.emit()
+            raise TypeError("Invalid coil object in speaker.")
         motor = ac.Motor(coil, vals["B_average"])
         speaker_driver = ac.SpeakerDriver(settings,
                                           fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
+
                                           motor=motor,
                                           dead_mass=vals["dead_mass"],
+
                                           Rs=vals["Rs_leadwire"],
                                           Xpeak=vals["Xpeak"],
                                           )
         
-    elif vals["motor_spec_type"]["current_data"] == "define_Bl_Re_Mmd":
+    elif motor_spec_type == "define_Bl_Re_Mmd":
         speaker_driver = ac.SpeakerDriver(settings,
                                           fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
+
                                           Bl=vals["Bl"],
                                           Re=vals["Re"],
                                           Mmd=vals["Mmd"],
+
                                           Rs=vals["Rs_leadwire"],
                                           Xpeak=vals["Xpeak"],
                                           )
         
-    elif vals["motor_spec_type"]["current_data"] == "define_Bl_Re_Mms":
+    elif motor_spec_type == "define_Bl_Re_Mms":
         speaker_driver = ac.SpeakerDriver(settings,
                                           fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
+
                                           Bl=vals["Bl"],
                                           Re=vals["Re"],
                                           Mms=vals["Mms"],
+
                                           Rs=vals["Rs_leadwire"],
                                           Xpeak=vals["Xpeak"],
                                           )
     else:
-        raise ValueError("Invalid motor specification type.")
+        raise ValueError(f"Motor specification type is invalid: {vals['motor_spec_type']}")
+    
+    print(speaker_driver.get_summary())
 
 
 def parse_args(app_definitions):
