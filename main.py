@@ -857,9 +857,9 @@ class MainWindow(qtw.QMainWindow):
             self.update_results_based_on_new_speaker_model()
             self.signal_good_beep.emit()
         except Exception as e:
+            print(e)
             logger.debug(e)
             self.signal_bad_beep.emit()
-
 
     def update_results_based_on_new_speaker_model(self):
         self.graph.clear_graph()
