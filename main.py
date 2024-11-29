@@ -166,14 +166,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.Title("Electrical Input"))
 
-        form.add_row(pwi.FloatSpinBox("Rs_source",
-                                      "The resistance between the speaker terminal and the voltage source."
-                                      "\nMay be due to cables, connectors etc."
-                                      "\nCauses resistive loss before arrival at the speaker terminals.",
-                                      min_max=(0, 1e6),
-                                      ),
-                     description="Source resistance",
-                     )
 
         form.add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
                                   [("Volts", "V"),
@@ -193,6 +185,15 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
                                       ),
                      description="Nominal impedance",
+                     )
+
+        form.add_row(pwi.FloatSpinBox("Rs_source",
+                                      "The resistance between the speaker terminal and the voltage source."
+                                      "\nMay be due to cables, connectors etc."
+                                      "\nCauses resistive loss before arrival at the speaker terminals.",
+                                      min_max=(0, 1e6),
+                                      ),
+                     description="Source resistance",
                      )
         
         # ---- Form logic
@@ -463,13 +464,15 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the box."
                                       + "\n**This value also affects effective box volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
-                                      decimals=1
+                                      decimals=1,
+                                      min_max=(0.1, 9999.9),
                                       ),
                      description="Qa - box absorption",
                      )
 
         form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of box",
-                                      decimals=1
+                                      decimals=1,
+                                      min_max=(0.1, 9999.9),
                                       ),
                      description="Ql - box losses",
                      )
@@ -557,6 +560,7 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(user_form_dict)
         elif open_user_file:
             self.load_state_from_file(open_user_file)
+        self._update_model_button_clicked()
 
     def _create_menu_bar(self):
         menu_bar = self.menuBar()
@@ -681,7 +685,7 @@ class MainWindow(qtw.QMainWindow):
         self.input_form.interactable_widgets["update_coil_choices"]\
             .clicked.connect(self.update_coil_choices_button_clicked)
         self.graph_pushbuttons.buttons()["update_results_pushbutton"]\
-            .clicked.connect(self.update_model_button_clicked)
+            .clicked.connect(self._update_model_button_clicked)
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
@@ -845,9 +849,22 @@ class MainWindow(qtw.QMainWindow):
         speaker_options = find_feasible_coils(self.get_state(), wire_table)
         update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], speaker_options)
 
-    def update_model_button_clicked(self):
-        construct_SpeakerSystem(self)
+    def _update_model_button_clicked(self):
+        try:
+            vals = self.get_state()
+            speaker_driver = construct_SpeakerDriver(vals)
+            self.speaker_model = construct_SpeakerSystem(vals, speaker_driver)
+            self.update_results_based_on_new_speaker_model()
+            self.signal_good_beep.emit()
+        except Exception as e:
+            logger.debug(e)
+            self.signal_bad_beep.emit()
 
+
+    def update_results_based_on_new_speaker_model(self):
+        self.graph.clear_graph()
+        self.graph.add_line2d(0, "Test new line", ((20, 200, 2000), (70, 90, 93)))
+    
 
 class SettingsDialog(qtw.QDialog):
     global settings
@@ -964,17 +981,6 @@ class SettingsDialog(qtw.QDialog):
         self.accept()
 
 
-# the v01 files require below classes to open. this is because I pickled their instances
-# and to load them again, app needs to create instances of these classes
-# [face palm]
-class SpeakerDriver():
-    pass
-
-
-class SpeakerSystem():
-    pass
-
-
 def read_wire_table(wire_table: Path) -> pd.DataFrame:
     if not wire_table.exists():
         raise FileNotFoundError(f"Wire table file not found: {Path}")
@@ -1069,17 +1075,15 @@ def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, speak
         mw.signal_good_beep.emit()
 
 
-def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:
+def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
     "Create the loudspeaker model based on the values provided in the widget."
     global wire_table, logger
-    vals = mw.get_state()
     motor_spec_type = vals["motor_spec_type"]["current_data"]
     
     if motor_spec_type == "define_coil":
         try:
             coil = vals["coil_options"]["current_data"].motor.coil
         except AttributeError:  # doesn't have motor attribute
-            mw.signal_bad_beep.emit()
             raise TypeError("Invalid coil object in speaker.")
         motor = ac.Motor(coil, vals["B_average"])
         speaker_driver = ac.SpeakerDriver(settings,
@@ -1124,7 +1128,40 @@ def construct_SpeakerSystem(mw: MainWindow) -> ac.SpeakerSystem:
     else:
         raise ValueError(f"Motor specification type is invalid: {vals['motor_spec_type']}")
     
-    print(speaker_driver.get_summary())
+    return speaker_driver
+
+
+def construct_SpeakerSystem(vals, speaker: ac.SpeakerDriver) -> ac.SpeakerSystem:    
+    if vals["box_type"] == 1:
+        housing = ac.Housing(speaker.settings,
+                             vals["Vb"],
+                             vals["Qa"],
+                             vals["Qa"],
+                             )
+    else:
+        housing = None
+        
+    if vals["parent_body"] == 1:
+        parent_body = ac.ParentBody(vals["m2"],
+                                    vals["k2"],
+                                    vals["c2"],
+                                    )
+    else:
+        parent_body = None
+        
+    if False:  # passive radiator not implemented yet
+        pass
+    else:
+        passive_radiator = None
+    
+    speaker_system = ac.SpeakerSystem(speaker,
+                                      vals["Rs_source"],
+                                      housing,
+                                      parent_body,
+                                      passive_radiator,
+                                      )
+    
+    return speaker_system
 
 
 def parse_args(app_definitions):
@@ -1211,7 +1248,7 @@ def main():
 
     def new_window(**kwargs):
         mw = MainWindow(sound_engine, **kwargs)
-        windows.append(mw)
+        windows.append(mw)  # needs to be addressed otherwise it gets deleted from memory.
         mw.signal_new_window.connect(lambda kwargs: new_window(**kwargs))
         mw.signal_bad_beep.connect(sound_engine.bad_beep)
         mw.signal_good_beep.connect(sound_engine.good_beep)

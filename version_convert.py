@@ -193,11 +193,11 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "box_type":                 ("box_type",                translate_box_type),
                     "Vb":                       ("Vb",                      lambda x: x),
                     "Qa":                       ("Qa",                      lambda x: x),
-                    "Ql":                       (None,                      9999.),
+                    "Ql":                       (None,                      9999.9),
             
                     "parent_body":              ("dof",                     translate_parent_body),
-                    "k2":                       ("k2",                      lambda x: x),
                     "m2":                       ("m2",                      lambda x: x),
+                    "k2":                       ("k2",                      lambda x: x),
                     "c2":                       ("c2",                      lambda x: x),
             
                     "user_curves":              ("user_curves",             translate_user_curves),
