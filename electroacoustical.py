@@ -386,7 +386,8 @@ def make_state_matrix_B(state_diffs, input_vars, sols):
 @dtc.dataclass
 class SpeakerSystem:
     speaker: SpeakerDriver
-    Rs: float = 0  # series electrical resistance to the speaker terminals
+    Rs: float = 0  # series electrical resistance to the speaker terminals.
+                    # may be inside the amp or in the cables to the speaker terminals
     housing: None | Housing = None
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
