@@ -24,6 +24,7 @@ from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
+from generictools import signal_tools
 from generictools.graphing_widget import MatplotlibWidget
 import generictools.personalized_widgets as pwi
 from version_convert import convert_v01_to_v02
@@ -31,6 +32,7 @@ from version_convert import convert_v01_to_v02
 import logging
 from pathlib import Path
 import matplotlib as mpl
+import numpy as np
 from functools import partial
 import electroacoustical as ac
 import pandas as pd
@@ -169,7 +171,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
                                   [("Volts", "V"),
-                                   ("Watts @Rdc", "W"),
+                                   ("Watts @Re", "W"),
                                       ("Watts @Rnom", "Wn")
                                    ],
                                   ),
@@ -214,8 +216,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # Motor spec type
         form.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
                                   [("Define Coil Dimensions and Average B", "define_coil"),
-                                   ("Define Bl, Rdc, Mmd", "define_Bl_Re_Mmd"),
-                                   ("Define Bl, Rdc, Mms", "define_Bl_Re_Mms"),
+                                   ("Define Bl, Re, Mmd", "define_Bl_Re_Mmd"),
+                                   ("Define Bl, Re, Mms", "define_Bl_Re_Mms"),
                                    ],
                                   ))
         form.interactable_widgets["motor_spec_type"].setStyleSheet(
@@ -234,9 +236,9 @@ class InputSectionTabWidget(qtw.QTabWidget):
         motor_definition_p1 = pwi.SubForm()
         form.motor_definition_stacked.addWidget(motor_definition_p1)
 
-        form.add_row(pwi.FloatSpinBox("target_Rdc", "Rdc value that needs to be approached while calculating an appropriate coil and winding",
+        form.add_row(pwi.FloatSpinBox("target_Re", "Re value that needs to be approached while calculating an appropriate coil and winding",
                                       ),
-                     description="Target Rdc (ohm)",
+                     description="Target Re (ohm)",
                      into_form=motor_definition_p1,
                      )
 
@@ -327,14 +329,14 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
 
         form.add_row(pwi.ComboBox("coil_options", "Select coil winding to be used for calculations",
-                                  [("SV", {"current_text": "4x CCAW230, Rdc=4.18, Lm=87.19, Qts=0.59", "current_data": {}}),
+                                  [("SV", {"current_text": "4x CCAW230, Re=4.18, Lm=87.19, Qts=0.59", "current_data": {}}),
                                    ("CCAW", {"current_text": "current text"}),
                                    ("MEGA", {"current_text": "current text"}), ],
                                   ),
                      into_form=motor_definition_p1,
                      )
 
-        # ---- Second page: "Define Bl, Rdc, Mmd"
+        # ---- Second page: "Define Bl, Re, Mmd"
         motor_definition_p2 = pwi.SubForm()
         form.motor_definition_stacked.addWidget(motor_definition_p2)
 
@@ -344,9 +346,9 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      into_form=motor_definition_p2,
                      )
 
-        form.add_row(pwi.FloatSpinBox("Rdc_p2", "DC resistance",
+        form.add_row(pwi.FloatSpinBox("Re_p2", "DC resistance",
                                     ),
-                     description="Rdc (ohm)",
+                     description="Re (ohm)",
                      into_form=motor_definition_p2,
                      )
 
@@ -359,7 +361,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      into_form=motor_definition_p2,
                      )
 
-        # ---- Third page: "Define Bl, Rdc, Mms"
+        # ---- Third page: "Define Bl, Re, Mms"
         motor_definition_p3 = pwi.SubForm()
         form.motor_definition_stacked.addWidget(motor_definition_p3)
 
@@ -370,10 +372,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      into_form=motor_definition_p3,
                      )
 
-        form.add_row(pwi.FloatSpinBox("Rdc_p3",
+        form.add_row(pwi.FloatSpinBox("Re_p3",
                                     "DC resistance",
                                     ),
-                     description="Rdc (ohm)",
+                     description="Re (ohm)",
                      into_form=motor_definition_p3,
                      )
 
@@ -699,7 +701,8 @@ class MainWindow(qtw.QMainWindow):
         
         state["user_notes"] = self.notes_textbox.toPlainText()
 
-        logger.debug(f"Get states returning states dictionary:\n{state}")
+        logger.debug("Get states returning dictionary with following types:\n"\
+                     + repr({key: type(val) for key, val in state.items()}))
         return state
 
     def save_state_to_file(self, state=None):
@@ -854,16 +857,18 @@ class MainWindow(qtw.QMainWindow):
             vals = self.get_state()
             speaker_driver = construct_SpeakerDriver(vals)
             self.speaker_model = construct_SpeakerSystem(vals, speaker_driver)
-            self.update_results_based_on_new_speaker_model()
+            self.update_results_based_on_new_speaker_model(self.speaker_model)
             self.signal_good_beep.emit()
         except Exception as e:
-            print(e)
             logger.debug(e)
             self.signal_bad_beep.emit()
 
-    def update_results_based_on_new_speaker_model(self):
+    def update_results_based_on_new_speaker_model(self, speaker_model):
         self.graph.clear_graph()
-        self.graph.add_line2d(0, "Test new line", ((20, 200, 2000), (70, 90, 93)))
+        freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
+        disps = speaker_model.get_displacements(freqs)
+        for name, y in disps.items():            
+            self.graph.add_line2d(0, name, (freqs, np.abs(y)))
     
 
 class SettingsDialog(qtw.QDialog):
@@ -1021,7 +1026,7 @@ def find_feasible_coils(vals, wire_table):
         raise ValueError("Invalid input in number of layer options")
 
     # Make a dataframe to store viable winding options
-    # table_columns = ["name", "wire", "N_layers", "Bl", "Rdc", "Lm", "Qts", "carrier_OD",
+    # table_columns = ["name", "wire", "N_layers", "Bl", "Re", "Lm", "Qts", "carrier_OD",
     #                  "h_winding", "N_windings", "total_wire_length", "coil_w_max", "coil_mass", "coil"]
     # coil_options_table = pd.DataFrame(columns=table_columns, indexcol="name")
     speaker_options = []
@@ -1040,7 +1045,7 @@ def find_feasible_coils(vals, wire_table):
                 logger.debug(f"Could not wind coil for {wire_name}: {e}")
                 continue
 
-            if vals["target_Rdc"] / 1.15 < coil.Rdc < vals["target_Rdc"] * 1.2:
+            if vals["target_Re"] / 1.15 < coil.Re < vals["target_Re"] * 1.2:
                 motor = ac.Motor(coil, vals["B_average"])
                 speaker = ac.SpeakerDriver(settings,
                                            vals["fs"],
@@ -1104,9 +1109,9 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
 
-                                          Bl=vals["Bl"],
-                                          Re=vals["Re"],
-                                          Mmd=vals["Mmd"],
+                                          Bl=vals["Bl_p2"],
+                                          Re=vals["Re_p2"],
+                                          Mmd=vals["Mmd_p2"],
 
                                           Rs=vals["Rs_leadwire"],
                                           Xpeak=vals["Xpeak"],
@@ -1118,9 +1123,9 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
 
-                                          Bl=vals["Bl"],
-                                          Re=vals["Re"],
-                                          Mms=vals["Mms"],
+                                          Bl=vals["Bl_p3"],
+                                          Re=vals["Re_p3"],
+                                          Mms=vals["Mms_p3"],
 
                                           Rs=vals["Rs_leadwire"],
                                           Xpeak=vals["Xpeak"],
@@ -1207,7 +1212,12 @@ def setup_logging(args):
     else:
         log_level = logging.INFO
     log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
-    logging.basicConfig(filename=log_filename,
+
+    file_handler = logging.FileHandler(filename=log_filename)
+    stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    handlers = [file_handler, stdout_handler]
+
+    logging.basicConfig(handlers=handlers,
                         level=log_level,
                         format="%(asctime)s %(levelname)s - %(funcName)s: %(message)s",
                         force=True,
