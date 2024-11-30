@@ -866,7 +866,7 @@ class MainWindow(qtw.QMainWindow):
     def update_results_based_on_new_speaker_model(self, speaker_model):
         self.graph.clear_graph()
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
-        disps = speaker_model.get_velocities(freqs)
+        disps = speaker_model.get_displacements(1, freqs)
         for i, (name, y) in enumerate(disps.items()):
             self.graph.add_line2d(i, name, (freqs, np.abs(y)))
 
@@ -1113,7 +1113,6 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           Re=vals["Re_p2"],
                                           Mmd=vals["Mmd_p2"],
 
-                                          Rs=vals["Rs_leadwire"],
                                           Xpeak=vals["Xpeak"],
                                           )
         
@@ -1127,7 +1126,6 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           Re=vals["Re_p3"],
                                           Mms=vals["Mms_p3"],
 
-                                          Rs=vals["Rs_leadwire"],
                                           Xpeak=vals["Xpeak"],
                                           )
     else:
