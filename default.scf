@@ -12,7 +12,7 @@
                 "V"
             ],
             [
-                "Watts @Rdc",
+                "Watts @Re",
                 "W"
             ],
             [
@@ -33,11 +33,11 @@
                 "define_coil"
             ],
             [
-                "Define Bl, Rdc, Mmd",
+                "Define Bl, Re, Mmd",
                 "define_Bl_Re_Mmd"
             ],
             [
-                "Define Bl, Rdc, Mms",
+                "Define Bl, Re, Mms",
                 "define_Bl_Re_Mms"
             ]
         ],
@@ -45,7 +45,7 @@
         "current_data": "define_coil",
         "current_text": "Define Coil Dimensions and Average B"
     },
-    "target_Rdc": 4.0,
+    "target_Re": 4.0,
     "former_ID": 0.025,
     "t_former": 9.999999999999999e-05,
     "h_winding_target": 0.008,
@@ -60,7 +60,7 @@
                 "SV",
                 {
                     "current_data": {},
-                    "current_text": "4x CCAW230, Rdc=4.18, Lm=87.19, Qts=0.59"
+                    "current_text": "4x CCAW230, Re=4.18, Lm=87.19, Qts=0.59"
                 }
             ],
             [
@@ -79,15 +79,15 @@
         "current_index": 0,
         "current_data": {
             "current_data": {},
-            "current_text": "4x CCAW230, Rdc=4.18, Lm=87.19, Qts=0.59"
+            "current_text": "4x CCAW230, Re=4.18, Lm=87.19, Qts=0.59"
         },
         "current_text": "SV"
     },
     "Bl_p2": 0.01,
-    "Rdc_p2": 0.01,
+    "Re_p2": 0.01,
     "Mmd_p2": 1e-05,
     "Bl_p3": 0.01,
-    "Rdc_p3": 0.01,
+    "Re_p3": 0.01,
     "Mms_p3": 1e-05,
     "h_top_plate": 0.003,
     "airgap_clearance_inner": 0.0003,

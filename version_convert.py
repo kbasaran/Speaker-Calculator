@@ -89,10 +89,10 @@ def convert_v01_to_v02(file: Path) -> dict:
             case "Volts":
                 current_text = "Volts"
 
-            case "W@Rdc":
-                current_text = "Watts @Rdc"
-            case "Watt@Rdc":
-                current_text = "Watts @Rdc"
+            case "W@Re":
+                current_text = "Watts @Re"
+            case "Watt@Re":
+                current_text = "Watts @Re"
 
             case "W@Rnom":
                 current_text = "Watts @Rnom"
@@ -121,7 +121,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                        "current_data": "define_coil",
                        }
             case "define_Bl_Re":
-               return {"current_text": "Define Bl, Rdc, Mmd",
+               return {"current_text": "Define Bl, Re, Mmd",
                        "current_data": "define_Bl_Re_Mmd",
                        }
             case _:
@@ -166,7 +166,7 @@ def convert_v01_to_v02(file: Path) -> dict:
             
                     "motor_spec_type":          ("motor_spec_type",         translate_motor_spec_type),
 
-                    "target_Rdc":               ("Rdc",                     lambda x: x),
+                    "target_Re":               ("Rdc",                     lambda x: x),
                     "former_ID":                ("former_ID",               lambda x: x),
                     "t_former":                 ("t_former",                lambda x: x),
                     "h_winding_target":         ("h_winding",               lambda x: x),
@@ -178,11 +178,11 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "reduce_per_layer":         (None,                      1.5),
 
                     "Bl_p2":                    ("Bl",                      lambda x: x),
-                    "Rdc_p2":                   ("Rdc",                     lambda x: x),
+                    "Re_p2":                   ("Rdc",                     lambda x: x),
                     "Mmd_p2":                   ("Mmd",                     lambda x: x),
 
                     "Bl_p3":                    (None,                      0.),
-                    "Rdc_p3":                   (None,                      0.),
+                    "Re_p3":                   (None,                      0.),
                     "Mms_p3":                   (None,                      0.),
             
                     "h_top_plate":              ("h_washer",                lambda x: x),
