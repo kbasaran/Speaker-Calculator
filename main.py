@@ -132,7 +132,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # ---- General specs
         form.add_row(pwi.Title("General speaker specifications"))
 
-        form.add_row(pwi.FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
+        form.add_row(pwi.FloatSpinBox("fs", "Resonance frequency (undamped natural frequency) of the speaker in free-air condition",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
@@ -169,7 +169,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.Title("Electrical Input"))
 
 
-        form.add_row(pwi.ComboBox("excitation_unit", "Choose which type of input excitation you want to define.",
+        form.add_row(pwi.ComboBox("excitation_type", "Choose which type of input excitation you want to define.",
                                   [("Volts", "V"),
                                    ("Watts @Re", "W"),
                                       ("Watts @Rnom", "Wn")
@@ -199,14 +199,14 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
         
         # ---- Form logic
-        def adjust_form_for_excitation_unit(chosen_index):
+        def adjust_form_for_excitation_type(chosen_index):
             is_Wn = \
-                form.interactable_widgets["excitation_unit"].itemData(chosen_index) == "Wn"
+                form.interactable_widgets["excitation_type"].itemData(chosen_index) == "Wn"
             form.interactable_widgets["Rnom"].setEnabled(is_Wn)
 
-        form.interactable_widgets["excitation_unit"].currentIndexChanged.connect(adjust_form_for_excitation_unit)
+        form.interactable_widgets["excitation_type"].currentIndexChanged.connect(adjust_form_for_excitation_type)
         # adjustment at start
-        adjust_form_for_excitation_unit(form.interactable_widgets["excitation_unit"].currentIndex())
+        adjust_form_for_excitation_type(form.interactable_widgets["excitation_type"].currentIndex())
         
         return form
 
@@ -489,7 +489,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
 
         form.interactable_widgets["box_type"].idToggled.connect(adjust_form_for_enclosure_type)
-        # instantiate
+        # adjustment at start
         adjust_form_for_enclosure_type(0, True)
 
         return form
@@ -858,16 +858,21 @@ class MainWindow(qtw.QMainWindow):
             vals = self.get_state()
             speaker_driver = construct_SpeakerDriver(vals)
             self.speaker_model = construct_SpeakerSystem(vals, speaker_driver)
-            self.update_results_based_on_new_speaker_model(self.speaker_model)
+            self.update_results_based_on_new_speaker_model(vals, self.speaker_model)
             self.signal_good_beep.emit()
         except Exception as e:
             logger.debug(e)
             self.signal_bad_beep.emit()
 
-    def update_results_based_on_new_speaker_model(self, speaker_model):
+    def update_results_based_on_new_speaker_model(self, vals, speaker_model):
         self.graph.clear_graph()
+        V_source = ac.calculate_voltage(vals["excitation_value"],
+                                        vals["excitation_type"]["current_data"],
+                                        Re=speaker_model.speaker.Re,
+                                        Rnom=vals["Rnom"],
+                                        )
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
-        disps = speaker_model.get_Z(freqs)
+        disps = speaker_model.get_displacements(V_source, freqs)
         for i, (name, y) in enumerate(disps.items()):
             self.graph.add_line2d(i, name, (freqs, np.abs(y)))
 

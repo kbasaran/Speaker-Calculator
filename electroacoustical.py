@@ -167,7 +167,6 @@ def wind_coil(wire: Wire,
 
 def calculate_voltage(excitation_value, excitation_type, Re=None, Rnom=None):
     "Simplify electrical input definition to a voltage value."
-
     match excitation_type:
 
         case "Wn":
@@ -624,17 +623,17 @@ class SpeakerSystem:
         disps = dict()
         w = 2 * np.pi * np.array(freqs)
 
-        _, x1 = signal.freqresp(self.ss_models["x1(t)"], w=w) * V_source
+        x1 = signal.freqresp(self.ss_models["x1(t)"], w=w)[1] * V_source
         disps["Diaphragm, RMS, absolute (mm)"] = x1 * 1e3
         disps["Diaphragm, peak, absolute (mm)"] = x1 * 2**0.5 * 1e3
 
         if self.parent_body is not None:  # in fact, better return these even when no parnt_body, and filter in plotting
-            _, x2 = signal.freqresp(self.ss_models["x2(t)"], w=w) * V_source
+            x2 = signal.freqresp(self.ss_models["x2(t)"], w=w)[1] * V_source
             disps["Parent body, RMS, absolute (mm)"] = x2 * 1e3
             disps["Parent body, peak, absolute (mm)"] = x2 * 2**0.5 * 1e3
 
         if self.passive_radiator is not None:  # remove later and return always
-            _, xpr = signal.freqresp(self.ss_models["x_pr(t)"], w=w) * V_source
+            xpr = signal.freqresp(self.ss_models["x_pr(t)"], w=w)[1] * V_source
             disps["PR/vent, RMS, absolute (mm)"] = xpr * 1e3
             disps["PR/vent, peak, absolute (mm)"] = xpr * 2**0.5 * 1e3
         
@@ -645,15 +644,15 @@ class SpeakerSystem:
         velocs = dict()
         w = 2 * np.pi * np.array(freqs)
 
-        _, x1_t = signal.freqresp(self.ss_models["Derivative(x1(t), t)"], w=w) * V_source
+        x1_t = signal.freqresp(self.ss_models["Derivative(x1(t), t)"], w=w)[1] * V_source
         velocs["Diaphragm, RMS, absolute (m/s)"] = x1_t
 
         if self.parent_body is not None:  # remove later and return always
-            _, x2_t = signal.freqresp(self.ss_models["Derivative(x2(t), t)"], w=w) * V_source
+            x2_t = signal.freqresp(self.ss_models["Derivative(x2(t), t)"], w=w)[1] * V_source
             velocs["Parent body, RMS, absolute (m/s)"] = x2_t
 
         if self.passive_radiator is not None:  # remove later and return always
-            _, xpr_t = signal.freqresp(self.ss_models["Derivative(x_pr(t), t)"], w=w) * V_source
+            xpr_t = signal.freqresp(self.ss_models["Derivative(x_pr(t), t)"], w=w)[1] * V_source
             velocs["PR/vent, RMS, absolute (m/s)"] = xpr_t
         
         return velocs
