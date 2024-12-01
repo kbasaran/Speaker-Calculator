@@ -134,7 +134,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("fs", "Undamped resonance frequency of the speaker in free-air condition",
                                       decimals=1,
-                                      min_max=(0.1, 1e6),
+                                      min_max=(0.1, None),
                                       ),
                      description="fs (Hz)",
                      )
@@ -193,7 +193,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "The resistance between the speaker terminal and the voltage source."
                                       "\nMay be due to cables, connectors etc."
                                       "\nCauses resistive loss before arrival at the speaker terminals.",
-                                      min_max=(0, 1e6),
+                                      min_max=(0, None),
                                       ),
                      description="Source resistance",
                      )
@@ -251,7 +251,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.IntSpinBox("t_former", "Thickness of the coil former",
                                     coeff_for_SI=1e-6,
-                                      min_max=(0, 1e6)
+                                      min_max=(0, None)
                                     ),
                      description="Former thickness (\u03BCm)",
                      into_form=motor_definition_p1,
@@ -269,7 +269,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\nNeeds to be calculated separately and input here.",
                                       decimals=3,
                                       coeff_for_SI=1,
-                                      min_max=(0, 9999.99),
+                                      min_max=(0, None),
                                       ),
                      description="Average B field on coil (T)",
                      into_form=motor_definition_p1,
@@ -298,7 +298,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("Rs_leadwire",
                                       "Resistance between the coil and the speaker terminals, e.g. leadwire",
-                                      min_max=(0, form.interactable_widgets["h_winding_target"].maximum()),
+                                      min_max=(0, None),
                                       # took the automatically assigned maximum from another widget
                                       # instead of typing n an arbitrary number
                                       # 'None' was not expected by the underlying 'setRange' method
@@ -310,7 +310,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.FloatSpinBox("reduce_per_layer",
                                     ("Reduce the number of windings on each layer by this number."
                                      "\nFor round coils suggested value is 1.5. For rectangular coils suggested value is 0.5."),
-                                      min_max=(0, 99.9),
+                                      min_max=(0, None),
                                       decimals=1,
                                     ),
                      description="Reduce windings per layer",
@@ -413,6 +413,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("h_former_extension_under_coil", "Extension of the coil former below the coil windings",
                                       coeff_for_SI=1e-3,
+                                      min_max=(0, None),
                                       ),
                      description="Former bottom ext. (mm)",
                      )
@@ -467,14 +468,14 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the box."
                                       + "\n**This value also affects effective box volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
                                       decimals=1,
-                                      min_max=(0.1, 9999.9),
+                                      min_max=(0.1, None),
                                       ),
                      description="Qa - box absorption",
                      )
 
         form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of box",
                                       decimals=1,
-                                      min_max=(0.1, 9999.9),
+                                      min_max=(0.1, None),
                                       ),
                      description="Ql - box losses",
                      )
