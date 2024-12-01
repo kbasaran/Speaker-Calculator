@@ -23,4 +23,4 @@ Separate target winding height from calculated winding height. Show calculated o
 "analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
 add coil inductance
 add a menu item to show app installation folder
-
+don't construct speaker model each time, only substitute values into ss model
