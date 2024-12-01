@@ -81,7 +81,7 @@ def convert_v01_to_v02(file: Path) -> dict:
         'coil_options_table',  # dataframe
         ]
 
-    def translate_excitation_unit(value_v01):
+    def translate_excitation_type(value_v01):
         match value_v01["name"]:
 
             case "Volt":
@@ -102,10 +102,10 @@ def convert_v01_to_v02(file: Path) -> dict:
             case _:
                 raise ValueError(f"No case matches: {value_v01}")
 
-        excitation_unit_combobox_setting = {"current_text": current_text,
+        excitation_type_combobox_setting = {"current_text": current_text,
                                             "current_data": value_v01["userData"],
                                             }
-        return excitation_unit_combobox_setting
+        return excitation_type_combobox_setting
 
     def translate_coil_options(value_v01):
         coil_choice_box_setting = {"current_text": value_v01["name"],
@@ -160,7 +160,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "Sd":                       ("Sd",                      lambda x: x),
     
                     "Rs_source":                (None,                      0.),
-                    "excitation_unit":          ("excitation_unit",         translate_excitation_unit),
+                    "excitation_type":          ("excitation_unit",         translate_excitation_type),
                     "excitation_value":         ("excitation_value",        lambda x: x),
                     "Rnom":                     ("nominal_impedance",       lambda x: x),
             
