@@ -874,6 +874,7 @@ class MainWindow(qtw.QMainWindow):
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
         disps = speaker_model.get_displacements(V_source, freqs)
         for i, (name, y) in enumerate(disps.items()):
+            self.graph.set_y_limits_policy(None)
             self.graph.add_line2d(i, name, (freqs, np.abs(y)))
 
 
