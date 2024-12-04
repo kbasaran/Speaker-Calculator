@@ -637,7 +637,8 @@ class MainWindow(qtw.QMainWindow):
                 button.setEnabled(False)
 
         # Text boxes
-        self.results_textbox = qtw.QPlainTextEdit()
+        self.results_textbox = qtw.QTextEdit()
+        self.results_textbox.setReadOnly(True)
         self.notes_textbox = qtw.QPlainTextEdit()
         self.textboxes_layout = qtw.QHBoxLayout()
 
@@ -689,6 +690,9 @@ class MainWindow(qtw.QMainWindow):
             .clicked.connect(self.update_coil_choices_button_clicked)
         self.graph_pushbuttons.buttons()["update_results_pushbutton"]\
             .clicked.connect(self._update_model_button_clicked)
+        for button in self.graph_data_choice.buttons():
+            button_id = self.graph_data_choice.button_group.id(button) 
+            button.pressed.connect(lambda: self.update_graph(button_id))
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
@@ -857,26 +861,50 @@ class MainWindow(qtw.QMainWindow):
         try:
             vals = self.get_state()
             speaker_driver = construct_SpeakerDriver(vals)
-            self.speaker_model = construct_SpeakerSystem(vals, speaker_driver)
-            self.update_results_based_on_new_speaker_model(vals, self.speaker_model)
+            speaker_system = construct_SpeakerSystem(vals, speaker_driver)
+            V_source = ac.calculate_voltage(vals["excitation_value"],
+                                            vals["excitation_type"]["current_data"],
+                                            Re=speaker_driver.Re,
+                                            Rnom=vals["Rnom"],
+                                            )
+
+            self.speaker_model_state = {"vals": vals,
+                                        "driver": speaker_driver,
+                                        "system": speaker_system,
+                                        "V_source": V_source,
+                                        }
+            
+            self.update_all_results()
             self.signal_good_beep.emit()
         except Exception as e:
             logger.debug(e)
             self.signal_bad_beep.emit()
 
-    def update_results_based_on_new_speaker_model(self, vals, speaker_model):
+    def update_graph(self, checked_id):
         self.graph.clear_graph()
-        V_source = ac.calculate_voltage(vals["excitation_value"],
-                                        vals["excitation_type"]["current_data"],
-                                        Re=speaker_model.speaker.Re,
-                                        Rnom=vals["Rnom"],
-                                        )
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
-        disps = speaker_model.get_displacements(V_source, freqs)
-        for i, (name, y) in enumerate(disps.items()):
-            self.graph.set_y_limits_policy(None)
-            self.graph.add_line2d(i, name, (freqs, np.abs(y)))
+        # checked_id = self.graph_data_choice.button_group.checkedId()
+        
+        if checked_id == 0:
+            print("Not ready")
 
+        elif checked_id == 1:
+            curves = self.speaker_model_state["system"].get_displacements(self.speaker_model_state["V_source"],
+                                                                          freqs,
+                                                                          )
+            self.graph.set_y_limits_policy(None)
+        else:
+            raise ValueError("Checked id not recognized.")
+
+        if "curves" in locals():
+            for i, (name, y) in enumerate(curves.items()):
+                self.graph.add_line2d(i, name, (freqs, np.abs(y)))
+        
+    def update_all_results(self):
+        checked_id = self.graph_data_choice.button_group.checkedId()
+        self.update_graph(checked_id)
+        self.results_textbox.setMarkdown("### Test\nSome text")
+        
 
 class SettingsDialog(qtw.QDialog):
     global settings
