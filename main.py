@@ -882,16 +882,34 @@ class MainWindow(qtw.QMainWindow):
 
     def update_graph(self, checked_id):
         self.graph.clear_graph()
+        spk_sys, V_source= self.speaker_model_state["system"], self.speaker_model_state["V_source"]
+        curves = {}
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
-        # checked_id = self.graph_data_choice.button_group.checkedId()
-        
+
         if checked_id == 0:
-            print("Not ready")
+            velocs = spk_sys.get_velocities(V_source, freqs)
+            _, SPL = ac.calculate_SPL(settings,
+                                      (freqs, velocs["Diaphragm, RMS, absolute (m/s)"]),
+                                      spk_sys.speaker.Sd,
+                                      )
+            w = 2 * np.pi * freqs
+            Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (-1j * w)
+            _, SPL_Xmax_limited = ac.calculate_SPL(settings,
+                                                   (freqs, Xmax_limited_velocities),
+                                                   spk_sys.speaker.Sd,
+                                                   )
+
+            curves.update({"SPL, piston mode": SPL,
+                           "SPL, piston mode, Xpeak limited": SPL_Xmax_limited,
+                           })
+
+            self.graph.set_title("SPL@1m, Half-space, %.2f Volt, %.2f Watt@R_sys"
+                                 % (V_source, V_source**2 / spk_sys.R_sys))
 
         elif checked_id == 1:
-            curves = self.speaker_model_state["system"].get_displacements(self.speaker_model_state["V_source"],
-                                                                          freqs,
-                                                                          )
+            curves.update(self.speaker_model_state["system"].velocities(self.speaker_model_state["V_source"],
+                                                                        freqs,
+                                                                        ))
             self.graph.set_y_limits_policy(None)
         else:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
