@@ -691,8 +691,8 @@ class MainWindow(qtw.QMainWindow):
         self.graph_pushbuttons.buttons()["update_results_pushbutton"]\
             .clicked.connect(self._update_model_button_clicked)
         for button in self.graph_data_choice.buttons():
-            button_id = self.graph_data_choice.button_group.id(button) 
-            button.pressed.connect(lambda: self.update_graph(button_id))
+            button_id = self.graph_data_choice.button_group.id(button)
+            button.pressed.connect(lambda arg1=button_id: self.update_graph(arg1))
 
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
@@ -894,7 +894,7 @@ class MainWindow(qtw.QMainWindow):
                                                                           )
             self.graph.set_y_limits_policy(None)
         else:
-            raise ValueError("Checked id not recognized.")
+            raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
 
         if "curves" in locals():
             for i, (name, y) in enumerate(curves.items()):
