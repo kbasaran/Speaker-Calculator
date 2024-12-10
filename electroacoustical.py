@@ -101,6 +101,17 @@ def calculate_coil_to_bottom_plate_clearance(Xpeak):
     return Xpeak + proposed_clearance
 
 
+def calculate_SPL(settings: object, xty: tuple, Sd: float):
+    # SPL calculation with simplified radiation impedance * acceleration
+    # xy: RMS velocities per frequency
+    a = np.sqrt(Sd/np.pi)  # piston radius
+    freqs = np.array(xty[0]).flatten()
+    p0 = 0.5 * 1j * freqs*2*np.pi * settings.RHO * a**2 * np.array(xty[1]).flatten()
+    pref = 2e-5
+    SPL = 20*np.log10(np.abs(p0)/pref)
+    return freqs, SPL
+
+
 @dtc.dataclass
 class Wire:
     name: str
@@ -618,7 +629,7 @@ class SpeakerSystem:
         # Calculation of power at Re for given voltage at the speaker terminals
         return Vspeaker**2 / self.Re
     
-    def get_displacements(self, V_source, freqs: np.array) -> tuple:
+    def get_displacements(self, V_source, freqs: np.array) -> dict:
         # Both voltage and displacements given in RMS
         disps = dict()
         w = 2 * np.pi * np.array(freqs)
