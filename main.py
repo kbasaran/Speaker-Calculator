@@ -916,7 +916,7 @@ class MainWindow(qtw.QMainWindow):
 
         if "curves" in locals():
             for i, (name, y) in enumerate(curves.items()):
-                self.graph.add_line2d(i, name, (freqs, np.abs(y)))
+                self.graph.add_line2d(i, name, (freqs, y))
         
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
