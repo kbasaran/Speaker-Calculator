@@ -191,11 +191,11 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("Rs_source",
                                       "The resistance between the speaker terminal and the voltage source."
-                                      "\nMay be due to cables, connectors etc."
+                                      "\nMay be due to cables, connectors, amplifier etc."
                                       "\nCauses resistive loss before arrival at the speaker terminals.",
                                       min_max=(0, None),
                                       ),
-                     description="Source resistance",
+                     description="External resistance",
                      )
         
         # ---- Form logic
@@ -885,6 +885,8 @@ class MainWindow(qtw.QMainWindow):
         spk_sys, V_source= self.speaker_model_state["system"], self.speaker_model_state["V_source"]
         curves = {}
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
+        R_spk = spk_sys.speaker.Re
+        W_spk = (V_source / spk_sys.R_sys * R_spk)**2 / R_spk
 
         if checked_id == 0:
             velocs = spk_sys.get_velocities(V_source, freqs)
@@ -903,14 +905,21 @@ class MainWindow(qtw.QMainWindow):
                            "SPL, piston mode, Xpeak limited": SPL_Xmax_limited,
                            })
 
-            self.graph.set_title("SPL@1m, Half-space, %.2f Volt, %.2f Watt@R_sys"
-                                 % (V_source, V_source**2 / spk_sys.R_sys))
+            # self.graph.set_y_limits_policy("SPL")
+            self.graph.set_title(f"SPL@1m, Half-space, {V_source:.3g} Volt, {W_spk:.3g} Watt@Re")
 
         elif checked_id == 1:
-            curves.update(self.speaker_model_state["system"].velocities(self.speaker_model_state["V_source"],
-                                                                        freqs,
-                                                                        ))
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
+            self.graph.set_y_limits_policy("SPL")
+
+        elif checked_id == 2:
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_displacements(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
+
+        elif checked_id == 3:
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
+            self.graph.set_y_limits_policy("SPL")
+
         else:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
 
