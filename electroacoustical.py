@@ -680,7 +680,7 @@ class SpeakerSystem:
             _, x2_t_1V = signal.freqresp(self.ss_models["Derivative(x2(t), t)"], w=w)
             x1t_relative_x2t = x1_t_1V - x2_t_1V
 
-        imps["Impedance speaker (ohm)"] = self.R_sys / (1 - self.speaker.Bl * x1t_relative_x2t) - self.Rs
+        imps["Impedance speaker (ohm)"] = self.R_sys / (1 - self.speaker.Bl * x1t_relative_x2t) - self.Rs  # speaker only
         if self.Rs > 0:  # remove later and return always
             imps["Impedance incl. source, cables (ohm)"] = imps["Impedance speaker (ohm)"] + self.Rs
     
