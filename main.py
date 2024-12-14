@@ -487,7 +487,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
             form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
             form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
 
-
         form.interactable_widgets["box_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start
         adjust_form_for_enclosure_type(0, True)
@@ -891,7 +890,7 @@ class MainWindow(qtw.QMainWindow):
         if checked_id == 0:
             velocs = spk_sys.get_velocities(V_source, freqs)
             _, SPL = ac.calculate_SPL(settings,
-                                      (freqs, velocs["Diaphragm, RMS, absolute (m/s)"]),
+                                      (freqs, velocs["Diaphragm, RMS, absolute"]),
                                       spk_sys.speaker.Sd,
                                       )
             w = 2 * np.pi * freqs
@@ -907,18 +906,25 @@ class MainWindow(qtw.QMainWindow):
 
             # self.graph.set_y_limits_policy("SPL")
             self.graph.set_title(f"SPL@1m, Half-space, {V_source:.3g} Volt, {W_spk:.3g} Watt@Re")
+            self.graph.ax.set_ylabel("dBSPL")
 
         elif checked_id == 1:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
             self.graph.set_y_limits_policy("SPL")
+            self.graph.set_title("Electrical impedance - no inductance")
+            self.graph.ax.set_ylabel("ohm")
 
         elif checked_id == 2:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_displacements(V_source, freqs).items()})
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_displacements(V_source, freqs).items() if "absolute" in key})
             self.graph.set_y_limits_policy(None)
+            self.graph.set_title("Displacements")
+            self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 3:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
-            self.graph.set_y_limits_policy("SPL")
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_displacements(V_source, freqs).items() if "relative" in key})
+            self.graph.set_y_limits_policy(None)
+            self.graph.set_title("Displacements")
+            self.graph.ax.set_ylabel("mm")
 
         else:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")

@@ -631,40 +631,49 @@ class SpeakerSystem:
     
     def get_displacements(self, V_source, freqs: np.array) -> dict:
         # Both voltage and displacements given in RMS
+        # outputs in mm
         disps = dict()
         w = 2 * np.pi * np.array(freqs)
 
         x1 = signal.freqresp(self.ss_models["x1(t)"], w=w)[1] * V_source
-        disps["Diaphragm, RMS, absolute (mm)"] = x1 * 1e3
-        disps["Diaphragm, peak, absolute (mm)"] = x1 * 2**0.5 * 1e3
+
+        disps["Diaphragm, RMS, absolute"] = x1 * 1e3
+        disps["Diaphragm, peak, absolute"] = x1 * 2**0.5 * 1e3
 
         if self.parent_body is not None:  # in fact, better return these even when no parnt_body, and filter in plotting
             x2 = signal.freqresp(self.ss_models["x2(t)"], w=w)[1] * V_source
-            disps["Parent body, RMS, absolute (mm)"] = x2 * 1e3
-            disps["Parent body, peak, absolute (mm)"] = x2 * 2**0.5 * 1e3
+            disps["Parent body, RMS, absolute"] = x2 * 1e3
+            disps["Diaphragm, RMS, relative to parent"] = (x1 - x2) * 1e3
+            disps["Diaphragm, peak, relative to parent"] = (x1 - x2) * 2**0.5 * 1e3
+            # disps["Parent body, peak, absolute"] = x2 * 2**0.5 * 1e3
 
         if self.passive_radiator is not None:  # remove later and return always
             xpr = signal.freqresp(self.ss_models["x_pr(t)"], w=w)[1] * V_source
-            disps["PR/vent, RMS, absolute (mm)"] = xpr * 1e3
-            disps["PR/vent, peak, absolute (mm)"] = xpr * 2**0.5 * 1e3
-        
+            disps["PR/vent, RMS, absolute"] = xpr * 1e3
+            disps["PR/vent, peak, absolute"] = xpr * 2**0.5 * 1e3
+            if self.parent_body is not None:
+                disps["PR/vent, RMS, relative to parent"] = (xpr - x2) * 1e3
+                disps["PR/vent, peak, relative to parent"] = (xpr - x2) * 2**0.5 * 1e3
+                
+
         return disps
 
     def get_velocities(self, V_source, freqs: np.array) -> tuple:
         # Both voltage and velocities given in RMS
+        # outputs in m/s
         velocs = dict()
         w = 2 * np.pi * np.array(freqs)
 
         x1_t = signal.freqresp(self.ss_models["Derivative(x1(t), t)"], w=w)[1] * V_source
-        velocs["Diaphragm, RMS, absolute (m/s)"] = x1_t
+        velocs["Diaphragm, RMS, absolute"] = x1_t
 
         if self.parent_body is not None:  # remove later and return always
             x2_t = signal.freqresp(self.ss_models["Derivative(x2(t), t)"], w=w)[1] * V_source
-            velocs["Parent body, RMS, absolute (m/s)"] = x2_t
+            velocs["Parent body, RMS, absolute"] = x2_t
 
         if self.passive_radiator is not None:  # remove later and return always
             xpr_t = signal.freqresp(self.ss_models["Derivative(x_pr(t), t)"], w=w)[1] * V_source
-            velocs["PR/vent, RMS, absolute (m/s)"] = xpr_t
+            velocs["PR/vent, RMS, absolute"] = xpr_t
         
         return velocs
     
@@ -680,9 +689,9 @@ class SpeakerSystem:
             _, x2_t_1V = signal.freqresp(self.ss_models["Derivative(x2(t), t)"], w=w)
             x1t_relative_x2t = x1_t_1V - x2_t_1V
 
-        imps["Impedance speaker (ohm)"] = self.R_sys / (1 - self.speaker.Bl * x1t_relative_x2t) - self.Rs  # speaker only
+        imps["Impedance speaker"] = self.R_sys / (1 - self.speaker.Bl * x1t_relative_x2t) - self.Rs  # speaker only
         if self.Rs > 0:  # remove later and return always
-            imps["Impedance incl. source, cables (ohm)"] = imps["Impedance speaker (ohm)"] + self.Rs
+            imps["Impedance incl. source, cables"] = imps["Impedance speaker"] + self.Rs
     
         return imps
 
