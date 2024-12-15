@@ -931,6 +931,12 @@ class MainWindow(qtw.QMainWindow):
             self.graph.set_y_limits_policy(None)
             self.graph.set_title("Forces")
             self.graph.ax.set_ylabel("N")
+            
+        elif checked_id == 5:
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()})
+            self.graph.set_y_limits_policy(None)
+            self.graph.set_title("Velocities")
+            self.graph.ax.set_ylabel("m/s")
 
         else:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
