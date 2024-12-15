@@ -589,7 +589,7 @@ class MainWindow(qtw.QMainWindow):
         self._rh_widget = qtw.QWidget()
 
         # Graph
-        self.graph = MatplotlibWidget(settings)
+        self.graph = MatplotlibWidget(settings, layout_engine="tight")
         self.graph_data_choice = pwi.ChoiceButtonGroup("graph_data_choice",
                                                        
                                                        {0: "SPL",
