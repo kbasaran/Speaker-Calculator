@@ -591,7 +591,7 @@ class MainWindow(qtw.QMainWindow):
         # Graph
         self.graph = MatplotlibWidget(settings)
         self.graph_data_choice = pwi.ChoiceButtonGroup("graph_data_choice",
-
+                                                       
                                                        {0: "SPL",
                                                         1: "Impedance",
                                                         2: "Displacements",
@@ -610,8 +610,9 @@ class MainWindow(qtw.QMainWindow):
                                                            6: "/",
                                                         },
 
-                                                       # Graph buttons
                                                        )
+        self.graph_data_choice.buttons()[3].setEnabled(False)
+
         self.graph_pushbuttons = pwi.PushButtonGroup({"update_results": "Update results",
                                                    "export_curve": "Export curve",
                                                    "export_quick": "Quick export",
@@ -692,7 +693,11 @@ class MainWindow(qtw.QMainWindow):
         for button in self.graph_data_choice.buttons():
             button_id = self.graph_data_choice.button_group.id(button)
             button.pressed.connect(lambda arg1=button_id: self.update_graph(arg1))
-
+        
+        # disable the relative plots
+        self.input_form.interactable_widgets["parent_body"].buttons()[1].toggled.connect(
+            self.graph_data_choice.buttons()[3].setEnabled)
+        
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
         self.statusBar().showMessage("Test", 2000)
@@ -881,7 +886,13 @@ class MainWindow(qtw.QMainWindow):
 
     def update_graph(self, checked_id):
         self.graph.clear_graph()
-        spk_sys, V_source= self.speaker_model_state["system"], self.speaker_model_state["V_source"]
+
+        if not hasattr(self, "speaker_model_state"):
+            self.signal_bad_beep.emit()
+            return
+        else:
+            spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
+
         curves = dict()
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
         R_spk = spk_sys.speaker.Re
