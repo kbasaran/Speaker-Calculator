@@ -611,7 +611,7 @@ class MainWindow(qtw.QMainWindow):
                                                         },
 
                                                        )
-        self.graph_data_choice.buttons()[3].setEnabled(False)
+        self.graph_data_choice.buttons()[3].setEnabled(False)  # the relative button is disabled at start
 
         self.graph_pushbuttons = pwi.PushButtonGroup({"update_results": "Update results",
                                                    "export_curve": "Export curve",
@@ -915,8 +915,8 @@ class MainWindow(qtw.QMainWindow):
                            "SPL piston mode, Xpeak limited": SPL_Xmax_limited,
                            })
 
-            # self.graph.set_y_limits_policy("SPL")
-            self.graph.set_title(f"SPL@1m, Half-space, {V_source:.4g} Volt, {W_spk:.4g} Watt@Re")
+            self.graph.set_y_limits_policy("SPL")
+            self.graph.set_title(f"SPL@1m, Half-space, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
             self.graph.ax.set_ylabel("dBSPL")
 
         elif checked_id == 1:
