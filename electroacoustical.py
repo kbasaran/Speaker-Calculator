@@ -745,16 +745,20 @@ class SpeakerSystem:
 
         return forces
 
-    def get_phases_for_displacements(self) -> dict:
-        phases = {}
-        phases["Speaker diaphragm"] = np.angle(self.x1, deg=True)
+    def get_phases(self, freqs: np.array) -> dict:
+        # Phase for displacements
+        # output in degrees
+        phases = dict()
+        disps = self.get_displacements(1, freqs)
+
+        phases["Diaphragm, absolute"] = np.angle(disps["Diaphragm, RMS, absolute"], deg=True)
 
         if self.parent_body is not None:
-            phases["Parent body"] = np.angle(self.x2, deg=True)
+            phases["Parent body, absolute"] = np.angle(disps["Parent body, RMS, absolute"], deg=True)
 
         if self.passive_radiator is not None:
-            phases["Passive radiator"] = np.angle(self.x3, deg=True)
-
+            phases["PR/vent, absolute"] = np.angle(disps["PR/vent, RMS, absolute"], deg=True)
+            
         return phases
 
 
