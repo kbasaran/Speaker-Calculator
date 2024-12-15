@@ -594,10 +594,10 @@ class MainWindow(qtw.QMainWindow):
 
                                                        {0: "SPL",
                                                         1: "Impedance",
-                                                        2: "Displacement",
+                                                        2: "Displacements",
                                                         3: "Relative",
                                                         4: "Forces",
-                                                        5: "Accelerations",
+                                                        5: "Velocities",
                                                         6: "Phase",
                                                         },
 
@@ -882,7 +882,7 @@ class MainWindow(qtw.QMainWindow):
     def update_graph(self, checked_id):
         self.graph.clear_graph()
         spk_sys, V_source= self.speaker_model_state["system"], self.speaker_model_state["V_source"]
-        curves = {}
+        curves = dict()
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
         R_spk = spk_sys.speaker.Re
         W_spk = (V_source / spk_sys.R_sys * R_spk)**2 / R_spk
@@ -894,7 +894,7 @@ class MainWindow(qtw.QMainWindow):
                                       spk_sys.speaker.Sd,
                                       )
             w = 2 * np.pi * freqs
-            Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (-1j * w)
+            Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
             _, SPL_Xmax_limited = ac.calculate_SPL(settings,
                                                    (freqs, Xmax_limited_velocities),
                                                    spk_sys.speaker.Sd,
@@ -910,18 +910,24 @@ class MainWindow(qtw.QMainWindow):
 
         elif checked_id == 1:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
-            self.graph.set_y_limits_policy("SPL")
+            self.graph.set_y_limits_policy("impedance")
             self.graph.set_title("Electrical impedance - no inductance")
             self.graph.ax.set_ylabel("ohm")
 
         elif checked_id == 2:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_displacements(V_source, freqs).items() if "absolute" in key})
+            for key, val in spk_sys.get_displacements(V_source, freqs).items():
+                if "absolute" in key: 
+                    curves[key] = np.abs(val)
+
             self.graph.set_y_limits_policy(None)
             self.graph.set_title("Displacements")
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 3:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_displacements(V_source, freqs).items() if "relative" in key})
+            for key, val in spk_sys.get_displacements(V_source, freqs).items():
+                if "relative" in key: 
+                    curves[key] = np.abs(val)
+
             self.graph.set_y_limits_policy(None)
             self.graph.set_title("Displacements")
             self.graph.ax.set_ylabel("mm")
@@ -937,6 +943,12 @@ class MainWindow(qtw.QMainWindow):
             self.graph.set_y_limits_policy(None)
             self.graph.set_title("Velocities")
             self.graph.ax.set_ylabel("m/s")
+
+        elif checked_id == 6:
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_phases(freqs).items()})
+            self.graph.set_y_limits_policy("phase")
+            self.graph.set_title("Phase, displacements")
+            self.graph.ax.set_ylabel("degrees")
 
         else:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
