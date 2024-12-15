@@ -740,6 +740,9 @@ class SpeakerSystem:
             forces["Reaction force from reference frame"] += force_pr
             forces["Inertial force from passive radiator"] = - force_pr
 
+
+        forces["Reaction force from reference frame"] = forces.pop("Reaction force from reference frame")  # move to end
+
         return forces
 
     def get_phases_for_displacements(self) -> dict:
