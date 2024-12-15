@@ -416,7 +416,7 @@ class SpeakerSystem:
         Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
         Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
         P0, gamma, Vba, Qa, Ql = smp.symbols("P_0, gamma, V_ba, Q_a, Q_l", real=True, positive=True)
-        Sd, Spr, Bl, Re, Rs_source = smp.symbols("S_d, S_pr, Bl, R_e, Rs_source", real=True, positive=True)
+        Sd, Spr, Bl, Re, R_serial = smp.symbols("S_d, S_pr, Bl, R_e, R_serial", real=True, positive=True)
         dir_pr = smp.symbols("direction_pr")
         has_housing = smp.symbols("has_housing")
         # Direction coefficient for passive radiator
@@ -438,14 +438,14 @@ class SpeakerSystem:
                 (- Mms * x1_tt
                  - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
                  - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
-                 + (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
+                 + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
                 (- M2 * x2_tt - R2 * x2_t - K2 * x2
                  - Rms*(x2_t - x1_t) - Kms*(x2 - x1)
                  + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes housing
-                 - (Vsource - Bl*(x1_t - x2_t)) / (Rs_source + Re) * Bl
+                 - (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
                 (- Mpr * xpr_tt - Rpr * xpr_t - Kpr * xpr
@@ -482,7 +482,7 @@ class SpeakerSystem:
         
         self._symbolic_ss = {"A": A_sym,  # system matrix
                              "B": B_sym,  # input matrix
-                             "C": C,  # output matrices, one per state variable
+                             "C": C,  # output matrices dictionary, one per state variable
                              "D": D,  # feedforward
                              "state_vars": state_vars,
                             }
@@ -518,7 +518,7 @@ class SpeakerSystem:
             "P0": self.settings.P0,
             "gamma": self.settings.GAMMA,
 
-            "Rs_source": self.Rs,
+            "R_serial": self.Rs,
 
             }
 
@@ -630,7 +630,7 @@ class SpeakerSystem:
         return Vspeaker**2 / self.Re
     
     def get_displacements(self, V_source, freqs: np.array) -> dict:
-        # Both voltage and displacements given in RMS
+        # Voltage argument given in RMS
         # outputs in mm
         disps = dict()
         w = 2 * np.pi * np.array(freqs)
@@ -655,11 +655,10 @@ class SpeakerSystem:
                 disps["PR/vent, RMS, relative to parent"] = (xpr - x2) * 1e3
                 disps["PR/vent, peak, relative to parent"] = (xpr - x2) * 2**0.5 * 1e3
                 
-
         return disps
 
-    def get_velocities(self, V_source, freqs: np.array) -> tuple:
-        # Both voltage and velocities given in RMS
+    def get_velocities(self, V_source, freqs: np.array) -> dict:
+        # Voltage argument given in RMS
         # outputs in m/s
         velocs = dict()
         w = 2 * np.pi * np.array(freqs)
@@ -670,24 +669,38 @@ class SpeakerSystem:
         if self.parent_body is not None:  # remove later and return always
             x2_t = signal.freqresp(self.ss_models["Derivative(x2(t), t)"], w=w)[1] * V_source
             velocs["Parent body, RMS, absolute"] = x2_t
+            velocs["Diaphragm, RMS, relative to parent"] = x1_t - x2_t
 
         if self.passive_radiator is not None:  # remove later and return always
             xpr_t = signal.freqresp(self.ss_models["Derivative(x_pr(t), t)"], w=w)[1] * V_source
             velocs["PR/vent, RMS, absolute"] = xpr_t
+            if self.parent_body is not None:
+                velocs["PR/vent, RMS, relative to parent"] = xpr_t - x2_t
         
         return velocs
+
+    def get_accelerations(self, V_source, freqs: np.array) -> dict:
+        # Voltage argument given in RMS
+        # outputs in m/s
+        accs = dict()
+        velocs = self.get_velocities(V_source, freqs)
+        w = 2 * np.pi * np.array(freqs)
+        
+        for key, val in velocs.items():
+            acc_val = val.flatten() * 1j * w
+            accs[key] = acc_val
+
+        return accs
     
     def get_Z(self, freqs):
         imps = dict()
-        w = 2 * np.pi * np.array(freqs)
-        _, x1_t_1V = signal.freqresp(self.ss_models["Derivative(x1(t), t)"], w=w)
+        velocs = self.get_velocities(1, freqs)
 
         # relative velocity of coil (x1) to magnetic field (parent body, x2)
         if self.parent_body is None:
-            x1t_relative_x2t = x1_t_1V
+            x1t_relative_x2t = velocs["Diaphragm, RMS, absolute"]
         else:
-            _, x2_t_1V = signal.freqresp(self.ss_models["Derivative(x2(t), t)"], w=w)
-            x1t_relative_x2t = x1_t_1V - x2_t_1V
+            x1t_relative_x2t = velocs["Diaphragm, RMS, relative to parent"]
 
         imps["Impedance speaker"] = self.R_sys / (1 - self.speaker.Bl * x1t_relative_x2t) - self.Rs  # speaker only
         if self.Rs > 0:  # remove later and return always
@@ -695,25 +708,37 @@ class SpeakerSystem:
     
         return imps
 
-    def get_forces(self, V_source, freqs) -> dict:
+    def get_forces(self, V_source, freqs: np.array) -> dict:
+        # Voltage argument given in RMS
         # force coil means force generated by coil
         # force speaker means force generated by speaker (inertial forces)
-        force_coil = self.speaker.Bl * np.real(self.calculate_Vcoil() / self.speaker.Re)
-        force_speaker = - self.x1_tt * self.speaker.Mms  # inertial force
-        force_parent_body = - self.x2tt * self.M2  # inertial force
-        force_pr = - self.x3tt * self.parent_body["m"]  # inertial force
+        forces = dict()
+        velocs = self.get_velocities(V_source, freqs)
+        accs = self.get_velocities(V_source, freqs)
+
+        # relative velocity of coil (x1) to magnetic field (parent body, x2)
+        if self.parent_body is None:
+            x1t_relative_x2t = velocs["Diaphragm, RMS, absolute"]
+        else:
+            x1t_relative_x2t = velocs["Diaphragm, RMS, relative to parent"]
+
+        force_coil = self.speaker.Bl * np.real(V_source - self.speaker.Bl * x1t_relative_x2t) / self.R_sys
+        force_speaker = - accs["Diaphragm, RMS, absolute"] * self.speaker.Mms  # inertial force
 
         forces = {}
         forces["Lorentz force"] = force_coil
-        forces["Inertial force from speaker diaphragm"] = - force_speaker
+        forces["Inertial force from speaker"] = - force_speaker
+        forces["Reaction force from reference frame"] = force_speaker
 
         if self.parent_body is not None:
+            force_parent_body = - accs["Parent body, RMS, absolute"] * self.parent_body.m  # inertial force
+            forces["Reaction force from reference frame"] += force_parent_body
             forces["Inertial force from parent mass"] = - force_parent_body
 
         if self.passive_radiator is not None:
+            force_pr = - accs["PR/vent, RMS, absolute"] * self.passive_radiator.m_s()  # inertial force
+            forces["Reaction force from reference frame"] += force_pr
             forces["Inertial force from passive radiator"] = - force_pr
-
-        forces["Reaction force from reference frame"] = force_speaker + force_parent_body + force_pr
 
         return forces
 

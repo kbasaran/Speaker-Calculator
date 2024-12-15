@@ -189,7 +189,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Nominal impedance",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Rs_source",
+        form.add_row(pwi.FloatSpinBox("R_serial",
                                       "The resistance between the speaker terminal and the voltage source."
                                       "\nMay be due to cables, connectors, amplifier etc."
                                       "\nCauses resistive loss before arrival at the speaker terminals.",
@@ -900,12 +900,12 @@ class MainWindow(qtw.QMainWindow):
                                                    spk_sys.speaker.Sd,
                                                    )
 
-            curves.update({"SPL, piston mode": SPL,
-                           "SPL, piston mode, Xpeak limited": SPL_Xmax_limited,
+            curves.update({"SPL piston mode": SPL,
+                           "SPL piston mode, Xpeak limited": SPL_Xmax_limited,
                            })
 
             # self.graph.set_y_limits_policy("SPL")
-            self.graph.set_title(f"SPL@1m, Half-space, {V_source:.3g} Volt, {W_spk:.3g} Watt@Re")
+            self.graph.set_title(f"SPL@1m, Half-space, {V_source:.4g} Volt, {W_spk:.4g} Watt@Re")
             self.graph.ax.set_ylabel("dBSPL")
 
         elif checked_id == 1:
@@ -925,6 +925,12 @@ class MainWindow(qtw.QMainWindow):
             self.graph.set_y_limits_policy(None)
             self.graph.set_title("Displacements")
             self.graph.ax.set_ylabel("mm")
+
+        elif checked_id == 4:
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
+            self.graph.set_y_limits_policy(None)
+            self.graph.set_title("Forces")
+            self.graph.ax.set_ylabel("N")
 
         else:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
@@ -1226,7 +1232,7 @@ def construct_SpeakerSystem(vals, speaker: ac.SpeakerDriver) -> ac.SpeakerSystem
         passive_radiator = None
     
     speaker_system = ac.SpeakerSystem(speaker,
-                                      vals["Rs_source"],
+                                      vals["R_serial"],
                                       housing,
                                       parent_body,
                                       passive_radiator,

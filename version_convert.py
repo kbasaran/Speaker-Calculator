@@ -159,7 +159,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "dead_mass":                ("dead_mass",               lambda x: x),
                     "Sd":                       ("Sd",                      lambda x: x),
     
-                    "Rs_source":                (None,                      0.),
+                    "R_serial":                 (None,                      0.),
                     "excitation_type":          ("excitation_unit",         translate_excitation_type),
                     "excitation_value":         ("excitation_value",        lambda x: x),
                     "Rnom":                     ("nominal_impedance",       lambda x: x),
