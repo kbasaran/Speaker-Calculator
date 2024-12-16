@@ -24,3 +24,4 @@ Separate target winding height from calculated winding height. Show calculated o
 add coil inductance
 add a menu item to show app installation folder
 don't construct speaker model each time, only substitute values into ss model
+add minor lines to x
