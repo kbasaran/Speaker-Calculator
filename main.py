@@ -189,13 +189,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Nominal impedance",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Rs_source",
+        form.add_row(pwi.FloatSpinBox("R_serial",
                                       "The resistance between the speaker terminal and the voltage source."
-                                      "\nMay be due to cables, connectors etc."
+                                      "\nMay be due to cables, connectors, amplifier etc."
                                       "\nCauses resistive loss before arrival at the speaker terminals.",
                                       min_max=(0, None),
                                       ),
-                     description="Source resistance",
+                     description="External resistance",
                      )
         
         # ---- Form logic
@@ -487,7 +487,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
             form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
             form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
 
-
         form.interactable_widgets["box_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start
         adjust_form_for_enclosure_type(0, True)
@@ -590,15 +589,15 @@ class MainWindow(qtw.QMainWindow):
         self._rh_widget = qtw.QWidget()
 
         # Graph
-        self.graph = MatplotlibWidget(settings)
+        self.graph = MatplotlibWidget(settings, layout_engine="tight")
         self.graph_data_choice = pwi.ChoiceButtonGroup("graph_data_choice",
-
+                                                       
                                                        {0: "SPL",
                                                         1: "Impedance",
-                                                        2: "Displacement",
+                                                        2: "Displacements",
                                                         3: "Relative",
                                                         4: "Forces",
-                                                        5: "Accelerations",
+                                                        5: "Velocities",
                                                         6: "Phase",
                                                         },
 
@@ -611,8 +610,9 @@ class MainWindow(qtw.QMainWindow):
                                                            6: "/",
                                                         },
 
-                                                       # Graph buttons
                                                        )
+        self.graph_data_choice.buttons()[3].setEnabled(False)  # the relative button is disabled at start
+
         self.graph_pushbuttons = pwi.PushButtonGroup({"update_results": "Update results",
                                                    "export_curve": "Export curve",
                                                    "export_quick": "Quick export",
@@ -693,7 +693,11 @@ class MainWindow(qtw.QMainWindow):
         for button in self.graph_data_choice.buttons():
             button_id = self.graph_data_choice.button_group.id(button)
             button.pressed.connect(lambda arg1=button_id: self.update_graph(arg1))
-
+        
+        # disable the relative plots
+        self.input_form.interactable_widgets["parent_body"].buttons()[1].toggled.connect(
+            self.graph_data_choice.buttons()[3].setEnabled)
+        
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
         self.statusBar().showMessage("Test", 2000)
@@ -882,35 +886,81 @@ class MainWindow(qtw.QMainWindow):
 
     def update_graph(self, checked_id):
         self.graph.clear_graph()
-        spk_sys, V_source= self.speaker_model_state["system"], self.speaker_model_state["V_source"]
-        curves = {}
+
+        if not hasattr(self, "speaker_model_state"):
+            self.signal_bad_beep.emit()
+            return
+        else:
+            spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
+
+        curves = dict()
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
+        R_spk = spk_sys.speaker.Re
+        W_spk = (V_source / spk_sys.R_sys * R_spk)**2 / R_spk
 
         if checked_id == 0:
             velocs = spk_sys.get_velocities(V_source, freqs)
             _, SPL = ac.calculate_SPL(settings,
-                                      (freqs, velocs["Diaphragm, RMS, absolute (m/s)"]),
+                                      (freqs, velocs["Diaphragm, RMS, absolute"]),
                                       spk_sys.speaker.Sd,
                                       )
             w = 2 * np.pi * freqs
-            Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (-1j * w)
+            Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
             _, SPL_Xmax_limited = ac.calculate_SPL(settings,
                                                    (freqs, Xmax_limited_velocities),
                                                    spk_sys.speaker.Sd,
                                                    )
 
-            curves.update({"SPL, piston mode": SPL,
-                           "SPL, piston mode, Xpeak limited": SPL_Xmax_limited,
+            curves.update({"SPL piston mode": SPL,
+                           "SPL piston mode, Xpeak limited": SPL_Xmax_limited,
                            })
 
-            self.graph.set_title("SPL@1m, Half-space, %.2f Volt, %.2f Watt@R_sys"
-                                 % (V_source, V_source**2 / spk_sys.R_sys))
+            self.graph.set_y_limits_policy("SPL")
+            self.graph.set_title(f"SPL@1m, Half-space, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
+            self.graph.ax.set_ylabel("dBSPL")
 
         elif checked_id == 1:
-            curves.update(self.speaker_model_state["system"].velocities(self.speaker_model_state["V_source"],
-                                                                        freqs,
-                                                                        ))
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
+            self.graph.set_y_limits_policy("impedance")
+            self.graph.set_title("Electrical impedance - no inductance")
+            self.graph.ax.set_ylabel("ohm")
+
+        elif checked_id == 2:
+            for key, val in spk_sys.get_displacements(V_source, freqs).items():
+                if "absolute" in key: 
+                    curves[key] = np.abs(val)
+
             self.graph.set_y_limits_policy(None)
+            self.graph.set_title("Displacements")
+            self.graph.ax.set_ylabel("mm")
+
+        elif checked_id == 3:
+            for key, val in spk_sys.get_displacements(V_source, freqs).items():
+                if "relative" in key: 
+                    curves[key] = np.abs(val)
+
+            self.graph.set_y_limits_policy(None)
+            self.graph.set_title("Displacements")
+            self.graph.ax.set_ylabel("mm")
+
+        elif checked_id == 4:
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
+            self.graph.set_y_limits_policy(None)
+            self.graph.set_title("Forces")
+            self.graph.ax.set_ylabel("N")
+            
+        elif checked_id == 5:
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()})
+            self.graph.set_y_limits_policy(None)
+            self.graph.set_title("Velocities")
+            self.graph.ax.set_ylabel("m/s")
+
+        elif checked_id == 6:
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_phases(freqs).items()})
+            self.graph.set_y_limits_policy("phase")
+            self.graph.set_title("Phase, displacements")
+            self.graph.ax.set_ylabel("degrees")
+
         else:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
 
@@ -1211,7 +1261,7 @@ def construct_SpeakerSystem(vals, speaker: ac.SpeakerDriver) -> ac.SpeakerSystem
         passive_radiator = None
     
     speaker_system = ac.SpeakerSystem(speaker,
-                                      vals["Rs_source"],
+                                      vals["R_serial"],
                                       housing,
                                       parent_body,
                                       passive_radiator,
