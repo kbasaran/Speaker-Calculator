@@ -516,14 +516,14 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Mass (g)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("k2", "Stiffness between the parent body and the ground",
+        form.add_row(pwi.FloatSpinBox("k2", "Stiffness between the parent body and the reference frame",
                                       coeff_for_SI=1e3,
                                       ),
                      description="Stiffness (N/mm)",
                      )
 
 
-        form.add_row(pwi.FloatSpinBox("c2", "Damping coefficient between the parent body and the ground",
+        form.add_row(pwi.FloatSpinBox("c2", "Damping coefficient between the parent body and the reference frame",
                                       ),
                      description="Damping coefficient (kg/s)",
                      )
