@@ -25,3 +25,6 @@ add coil inductance
 add a menu item to show app installation folder
 don't construct speaker model each time, only substitute values into ss model
 add minor lines to x
+compare butterfly winding with results of DD
+tell fill ratio as percentage, using nominal thickness
+make default stacking ratio 1
