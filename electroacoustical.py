@@ -412,8 +412,7 @@ class SpeakerSystem:
     def __post_init__(self):
         self.settings = self.speaker.settings
         self._build_symbolic_ss_model()
-        self.substitute_values_to_ss_model()
-        self.R_sys = self.speaker.Re + self.Rs
+        self.update_values()
 
     def _build_symbolic_ss_model(self):
         # Static symbols
@@ -534,7 +533,7 @@ class SpeakerSystem:
         parameter_names_to_values = self._get_parameter_names_to_values()
         return {symbol: parameter_names_to_values[name] for name, symbol in self.symbols.items()}
 
-    def substitute_values_to_ss_model(self, **kwargs):
+    def update_values(self, **kwargs):
         # ---- Use kwargs to update attributes of the object 'self'
         # for key, val in kwargs.items():
         #     if key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
@@ -545,14 +544,17 @@ class SpeakerSystem:
 
         # for key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
         #     setattr(self, key, kwargs[key])  # set the attributes of self object with value in kwargs
-
         
+
         dataclass_field_names = [dataclass_field.name for dataclass_field in dtc.fields(self)]
         for key, val in kwargs.items():
             if key in dataclass_field_names:
                 setattr(self, key, val)  # set the attributes of self object with value in kwargs
             else:
                 raise KeyError("Not familiar with key '{key}'")
+
+        # Update scalars
+        self.R_sys = self.speaker.Re + self.Rs
 
         # ---- Substitute values into system matrix and input matrix
         symbols_to_values = self.get_symbols_to_values()
@@ -808,6 +810,13 @@ def tests():
                               housing=housing,
                               passive_radiator=None,
                               )
+
+    my_system.update_values(speaker=my_speaker,
+                            Rs=10,
+                            housing = housing,
+                            parent_body = parent_body,
+                            passive_radiator = None,
+                            )
 
 
     # do test model for unibox - Qa / Ql

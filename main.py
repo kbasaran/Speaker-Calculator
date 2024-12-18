@@ -866,7 +866,8 @@ class MainWindow(qtw.QMainWindow):
         try:
             vals = self.get_state()
             speaker_driver = construct_SpeakerDriver(vals)
-            speaker_system = construct_SpeakerSystem(vals, speaker_driver)
+            spk_sys = self.speaker_model_state["system"] if hasattr(self, "speaker_model_state") else None
+            speaker_system = build_or_update_SpeakerSystem(vals, speaker_driver, spk_sys)
             V_source = ac.calculate_voltage(vals["excitation_value"],
                                             vals["excitation_type"]["current_data"],
                                             Re=speaker_driver.Re,
@@ -1252,7 +1253,10 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
     return speaker_driver
 
 
-def construct_SpeakerSystem(vals, speaker: ac.SpeakerDriver) -> ac.SpeakerSystem:    
+def build_or_update_SpeakerSystem(vals,
+                                  speaker: ac.SpeakerDriver,
+                                  spk_sys: (None, ac.SpeakerSystem) = None,
+                                  ) -> ac.SpeakerSystem:    
     if vals["box_type"] == 1:
         housing = ac.Housing(speaker.settings,
                              vals["Vb"],
@@ -1274,15 +1278,23 @@ def construct_SpeakerSystem(vals, speaker: ac.SpeakerDriver) -> ac.SpeakerSystem
         pass
     else:
         passive_radiator = None
-    
-    speaker_system = ac.SpeakerSystem(speaker,
-                                      vals["R_serial"],
-                                      housing,
-                                      parent_body,
-                                      passive_radiator,
-                                      )
-    
-    return speaker_system
+        
+    if spk_sys is None:
+        return ac.SpeakerSystem(speaker,
+                                vals["R_serial"],
+                                housing,
+                                parent_body,
+                                passive_radiator,
+                                )   
+    else:
+        spk_sys.update_values(speaker=speaker,
+                                Rs = vals["R_serial"],
+                                housing = housing,
+                                parent_body = parent_body,
+                                passive_radiator = passive_radiator,
+                                )
+
+    return spk_sys
 
 
 def parse_args(app_definitions):
