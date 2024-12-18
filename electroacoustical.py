@@ -85,6 +85,11 @@ def calculate_air_mass(Sd: float) -> float:
 
 def calculate_Lm(Bl, Re, Mms, Sd, RHO=1.1839, c_air=(101325 * 1.401 / 1.1839)**0.5):
     "Calculate Lm@Re, 1W, 1m."
+    if Sd == 0:
+        return -np.inf
+    elif Sd < 0:
+        raise RuntimeError("Surface ares cannot have a negative value: " + Sd)
+
     w_ref = 10**-12
     I_1W_per_m2 = RHO * Bl**2 * Sd**2 / c_air / Re / Mms**2 / 2 / np.pi
     P_over_I_half_space = 1/2/np.pi  # m²
@@ -682,15 +687,10 @@ class SpeakerSystem:
     def get_accelerations(self, V_source, freqs: np.array) -> dict:
         # Voltage argument given in RMS
         # outputs in m/s
-        accs = dict()
         velocs = self.get_velocities(V_source, freqs)
         w = 2 * np.pi * np.array(freqs)
-        
-        for key, val in velocs.items():
-            acc_val = val.flatten() * 1j * w
-            accs[key] = acc_val
 
-        return accs
+        return {key: arr.flatten() * 1j * w for key, arr in velocs.items()}
     
     def get_Z(self, freqs):
         imps = dict()

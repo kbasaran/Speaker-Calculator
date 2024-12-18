@@ -130,7 +130,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form = pwi.UserForm()
 
         # ---- General specs
-        form.add_row(pwi.Title("General speaker specifications"))
+        form.add_row(pwi.Title("General specifications"))
 
         form.add_row(pwi.FloatSpinBox("fs", "Resonance frequency (undamped natural frequency) of the speaker in free-air condition",
                                       decimals=1,
@@ -159,6 +159,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area",
                                       coeff_for_SI=1e-4,
+                                      min_max=(0, None),
                                       ),
                      description="Sd (cm²)"
                      )
@@ -899,25 +900,39 @@ class MainWindow(qtw.QMainWindow):
         W_spk = (V_source / spk_sys.R_sys * R_spk)**2 / R_spk
 
         if checked_id == 0:
-            velocs = spk_sys.get_velocities(V_source, freqs)
-            _, SPL = ac.calculate_SPL(settings,
-                                      (freqs, velocs["Diaphragm, RMS, absolute"]),
-                                      spk_sys.speaker.Sd,
-                                      )
-            w = 2 * np.pi * freqs
-            Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
-            _, SPL_Xmax_limited = ac.calculate_SPL(settings,
-                                                   (freqs, Xmax_limited_velocities),
-                                                   spk_sys.speaker.Sd,
-                                                   )
 
-            curves.update({"SPL piston mode": SPL,
-                           "SPL piston mode, Xpeak limited": SPL_Xmax_limited,
-                           })
+            if spk_sys.speaker.Sd > 0:  # speaker
+                velocs = spk_sys.get_velocities(V_source, freqs)
+                w = 2 * np.pi * freqs
+                Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
 
-            self.graph.set_y_limits_policy("SPL")
-            self.graph.set_title(f"SPL@1m, Half-space, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
-            self.graph.ax.set_ylabel("dBSPL")
+                _, SPL = ac.calculate_SPL(settings,
+                                          (freqs, velocs["Diaphragm, RMS, absolute"]),
+                                          spk_sys.speaker.Sd,
+                                          )
+
+                _, SPL_Xmax_limited = ac.calculate_SPL(settings,
+                                                       (freqs, Xmax_limited_velocities),
+                                                       spk_sys.speaker.Sd,
+                                                       )
+    
+                curves.update({"SPL piston mode": SPL,
+                               "SPL piston mode, Xpeak limited": SPL_Xmax_limited,
+                               })
+
+                self.graph.set_y_limits_policy("SPL")
+                self.graph.set_title(f"SPL@1m, Half-space, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
+                self.graph.ax.set_ylabel("dBSPL")
+
+            elif spk_sys.speaker.Sd == 0:  # shaker or other with no diaphragm
+                accs = spk_sys.get_accelerations(V_source, freqs)
+              
+                curves.update({key.replace("Diaphragm", "Moving mass"): 20*np.log10(np.abs(acc)/1e-6) \
+                               for key, acc in accs.items() if "relative" not in key})
+                
+                self.graph.set_y_limits_policy("SPL")
+                self.graph.set_title(f"Acceleration, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
+                self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$ m/s²")
 
         elif checked_id == 1:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
@@ -956,7 +971,7 @@ class MainWindow(qtw.QMainWindow):
             self.graph.ax.set_ylabel("m/s")
 
         elif checked_id == 6:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_phases(freqs).items()})
+            curves.update(spk_sys.get_phases(freqs).items())
             self.graph.set_y_limits_policy("phase")
             self.graph.set_title("Phase, displacements")
             self.graph.ax.set_ylabel("degrees")
