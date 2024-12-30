@@ -7,24 +7,19 @@ list k2 of dof2 in results
 fb undamped, onu belirt
 don't save if error in calculated result
 beep is laggy, can you make it more responsive?
-add transfer function to the graphs and to the export
-make a separate function to write form parameters into speaker object. put it outside the speaker object.
-Option to enter Mms directly
 make the size of textedit boxes larger. text is being snipped.
 for layer options also accept comma, space, comma and space
 class record ya da bazı dictionary'ler yerine namedtuple kullanabilirsin
 make 2, 4, 8 layer options allow spaces
 change pickles to .ssc files and let open from explorer
 why is the Seas H1192-08 pickle file not working?
-make the size of textedit boxes larger. text is being snipped.
-Adding a series resistor into model
 Tooltip for dead weight should be added
 Separate target winding height from calculated winding height. Show calculated one in results.
 "analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
 add coil inductance
 add a menu item to show app installation folder
-don't construct speaker model each time, only substitute values into ss model
 add minor lines to x
 compare butterfly winding with results of DD
 tell fill ratio as percentage, using nominal thickness
 make default stacking ratio 1
+move setup_logging to common module. the one in kdbx-conversion is good, use that.
