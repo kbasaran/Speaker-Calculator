@@ -631,6 +631,18 @@ class SpeakerSystem:
                                                                 self._symbolic_ss["C"][state_var],
                                                                 self._symbolic_ss["D"],
                                                                 )
+    def get_summary(self) -> dict:
+        "Summary in markup language."
+        summary = f"R<sub>system total</sub>: {self.R_sys:.2f}\n"
+        if isinstance(self.housing, Housing):
+            summary += ("#### Housing\n"
+                        "data here"
+                        )
+        if isinstance(self.parent_body, ParentBody):
+            summary += ("#### Parent body\n"
+                        "data here"
+                        )
+        return summary
 
     def power_at_Re(self, Vspeaker):
         # Calculation of power at Re for given voltage at the speaker terminals

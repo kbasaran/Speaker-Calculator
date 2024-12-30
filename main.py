@@ -863,6 +863,7 @@ class MainWindow(qtw.QMainWindow):
         update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], speaker_options)
 
     def _update_model_button_clicked(self):
+        self.results_textbox.clear()
         try:
             vals = self.get_state()
             speaker_driver = construct_SpeakerDriver(vals)
@@ -884,6 +885,7 @@ class MainWindow(qtw.QMainWindow):
             self.signal_good_beep.emit()
         except Exception as e:
             logger.debug(e)
+            self.results_textbox.setPlainText("Update results failed.\nSee log for more details.")
             self.signal_bad_beep.emit()
 
     def update_graph(self, checked_id):
@@ -987,7 +989,8 @@ class MainWindow(qtw.QMainWindow):
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
-        self.results_textbox.setMarkdown("### Test\nSome text")
+        summary_all = self.speaker_model_state["system"].get_summary()
+        self.results_textbox.setMarkdown(summary_all)
         
 
 class SettingsDialog(qtw.QDialog):
