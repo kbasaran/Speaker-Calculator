@@ -225,6 +225,13 @@ class Motor:
     Bavg : float
         Average magnetic field on the total height of coil in rest position.
     """
+    def get_summary(self) -> str:
+        "Summary in markup language."
+        summary = ("### Coil\n"
+                   "data here\n"
+                   )
+
+        return summary
 
 
 @dtc.dataclass
@@ -287,7 +294,7 @@ class SpeakerDriver:
         self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd, self.settings.RHO, self.settings.c_air)  # sensitivity per W@Re
         self.Vas = self.settings.Kair / self.Kms * self.Sd**2
 
-    def get_summary(self) -> list:
+    def get_summary_old(self) -> list:
         "Give a summary for acoustical and mechanical properties as two items of a list."
         
         # Make a string for acoustical summary
@@ -309,6 +316,19 @@ class SpeakerDriver:
 
         return "\n\n".join(["<b>Speaker driver</b>\n", summary_ace, summary_mec])
 
+    def get_summary(self) -> str:
+        "Summary in markup language."
+        summary = ("## Driver\n"
+                   f"Re: {self.Re:.3g}ohm    Lm: {self.Lm:.2f}dBSPL    Bl: {self.Bl:.4g}Tm\n\n"
+                   f"Qts: {self.Qts:.3g}    Qes: {self.Qes:.3g}\n\n"
+                   f"Kms: {self.Kms / 1000:.4g}N/mm    Rms: {self.Rms:.3g}kg/s    Mms/Mmd: {self.Mms*1000:.4g}/{self.Mmd*1000:.4g}g\n\n"
+                   f"Xpeak: {self.Xpeak*1000:.3g}mm    Bl²/Re: {self.Bl**2/self.Re:.3g}N²/W\n\n"
+                   )
+
+        if self.motor is not None:
+            summary += self.motor.get_summary() + "\n"
+
+        return summary
 
 @dtc.dataclass
 class Housing:
@@ -631,16 +651,20 @@ class SpeakerSystem:
                                                                 self._symbolic_ss["C"][state_var],
                                                                 self._symbolic_ss["D"],
                                                                 )
-    def get_summary(self) -> dict:
+    def get_summary(self) -> str:
         "Summary in markup language."
-        summary = f"R<sub>system total</sub>: {self.R_sys:.2f}\n"
-        if isinstance(self.housing, Housing):
-            summary += ("#### Housing\n"
-                        "data here"
+        summary = self.speaker.get_summary()
+
+        summary += ("## System\n"
+                   f"R<sub>e system</sub>: {self.R_sys:.2f}\n"
+                   )
+        if self.housing is not None:
+            summary += ("### Housing\n"
+                        "data here\n"
                         )
-        if isinstance(self.parent_body, ParentBody):
-            summary += ("#### Parent body\n"
-                        "data here"
+        if self.parent_body is not None:
+            summary += ("### Parent body\n"
+                        "data here\n"
                         )
         return summary
 
