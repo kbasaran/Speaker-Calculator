@@ -643,11 +643,7 @@ class MainWindow(qtw.QMainWindow):
         self.notes_textbox = qtw.QPlainTextEdit()
         self.textboxes_layout = qtw.QHBoxLayout()
 
-        results_section = qtw.QWidget()
-        results_section_layout = qtw.QVBoxLayout(results_section)
-        results_section_layout.setContentsMargins(-1, 0, -1, 0)
-        results_section_layout.addWidget(qtw.QLabel("Results"))
-        results_section_layout.addWidget(self.results_textbox)
+        results_section = self.results_textbox
 
         notes_section = qtw.QWidget()
         notes_section_layout = qtw.QVBoxLayout(notes_section)
