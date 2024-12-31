@@ -655,8 +655,8 @@ class MainWindow(qtw.QMainWindow):
         notes_section_layout.addWidget(qtw.QLabel("Notes"))
         notes_section_layout.addWidget(self.notes_textbox)
 
-        self.textboxes_layout.addWidget(results_section)
-        self.textboxes_layout.addWidget(notes_section)
+        self.textboxes_layout.addWidget(results_section, 3)
+        self.textboxes_layout.addWidget(notes_section, 2)
 
     def _place_widgets(self):
         # ---- Make center widget
