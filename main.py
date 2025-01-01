@@ -888,7 +888,7 @@ class MainWindow(qtw.QMainWindow):
             self.signal_good_beep.emit()
         except Exception as e:
             logger.debug(e)
-            self.results_textbox.setPlainText("Update results failed.\nSee log for more details.")
+            self.results_textbox.setPlainText("Update failed.\nSee log for more details.")
             self.signal_bad_beep.emit()
 
     def update_graph(self, checked_id):
