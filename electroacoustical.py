@@ -319,16 +319,25 @@ class SpeakerDriver:
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = ("### Driver \n"
-                   f"Re: {self.Re:.3g} ohm    Lm: {self.Lm:.2f} dBSPL    Bl: {self.Bl:.4g} Tm  \n"
-                   f"Qts: {self.Qts:.3g}    Qes: {self.Qes:.3g}  \n"
-                   f"Kms: {self.Kms / 1000:.4g} N/mm    Rms: {self.Rms:.3g} kg/s  \n"
-                   f"Mms/Mmd: {self.Mms*1000:.4g}/{self.Mmd*1000:.4g} g"
-                   f"    Bl²/Re: {self.Bl**2/self.Re:.3g} N²/W  \n"
-                   f"Xpeak: {self.Xpeak*1000:.3g} mm"
+                   
+                   f"L<sub>m</sub> : {self.Lm:.2f} dBSPL \t"
+                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W  \n"
+                   
+                   f"Bl : {self.Bl:.4g} Tm \t"
+                   f"R<sub>e</sub> : {self.Re:.2f} ohm<br></br>"
+
+                   f"Q<sub>es</sub> : {self.Qes:.3g} \t"
+                   f"Q<sub>ts</sub> : {self.Qts:.3g}  \n"
+
+                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g \tM<sub>md</sub> : {self.Mmd*1000:.4g} g<br></br>"
+                   f"K<sub>ms</sub> : {self.Kms / 1000:.3g} N/mm \t"
+                   f"R<sub>ms</sub> : {self.Rms:.3g} kg/s  \n"
+                   
+                   f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
                    )
         if self.motor is not None:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary += f"    Xcrash: {Xcrash*1000:.3g} mm (recommended)"
+            summary += f" \tX<sub>crash</sub> : {Xcrash*1000:.3g} mm (rec.)"
 
         summary += "  \n"
 
@@ -336,6 +345,7 @@ class SpeakerDriver:
             summary += self.motor.get_summary() + "  \n"
 
         return summary
+
 
 @dtc.dataclass
 class Housing:
@@ -662,16 +672,16 @@ class SpeakerSystem:
         "Summary in markup language."
         summary = self.speaker.get_summary()
 
-        summary += ("### System\n"
-                   f"R<sub>e system</sub>: {self.R_sys:.2f}\n"
+        summary += ("### System  \n"
+                   f"R<sub>e system</sub> : {self.R_sys:.2f}\n"
                    )
         if self.housing is not None:
-            summary += ("#### Housing\n"
-                        "data here\n"
+            summary += ("#### Housing  \n"
+                        "data here  \n"
                         )
         if self.parent_body is not None:
-            summary += ("#### Parent body\n"
-                        "data here\n"
+            summary += ("#### Parent body  \n"
+                        "data here  \n"
                         )
         return summary
 
