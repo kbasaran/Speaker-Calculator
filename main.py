@@ -136,18 +136,18 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
-                     description="fs (Hz)",
+                     description="f<sub>s</sub> (Hz)",
                      )
 
         form.add_row(pwi.FloatSpinBox("Qms", "Quality factor of speaker, only the mechanical part",
                                       ),
-                     description="Qms",
+                     description="Q<sub>ms</sub>",
                      )
 
         form.add_row(pwi.FloatSpinBox("Xpeak", "Peak excursion allowed, one way",
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Xpeak (mm)",
+                     description="X<sub>peak</sub> (mm)",
                      )
 
         form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itform and the air.|n(Dead mass = Mmd - coil mass)",
@@ -161,7 +161,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       coeff_for_SI=1e-4,
                                       min_max=(0, None),
                                       ),
-                     description="Sd (cm²)"
+                     description="S<sub>d</sub> (cm²)"
                      )
 
         # ---- Electrical input
@@ -239,7 +239,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("target_Re", "Re value that needs to be approached while calculating an appropriate coil and winding",
                                       ),
-                     description="Target Re (ohm)",
+                     description="Target R<sub>e</sub> (ohm)",
                      into_form=motor_definition_p1,
                      )
 
@@ -349,7 +349,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("Re_p2", "DC resistance",
                                     ),
-                     description="Re (ohm)",
+                     description="R<sub>e</sub> (ohm)",
                      into_form=motor_definition_p2,
                      )
 
@@ -358,7 +358,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Mmd (g)",
+                     description="M<sub>md</sub> (g)",
                      into_form=motor_definition_p2,
                      )
 
@@ -376,7 +376,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.FloatSpinBox("Re_p3",
                                     "DC resistance",
                                     ),
-                     description="Re (ohm)",
+                     description="R<sub>e</sub> (ohm)",
                      into_form=motor_definition_p3,
                      )
 
@@ -385,7 +385,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Mms (g)",
+                     description="M<sub>ms</sub> (g)",
                      into_form=motor_definition_p3,
                      )
 
@@ -459,7 +459,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.Title("Closed box specifications"))
 
-        form.add_row(pwi.FloatSpinBox("Vb", "Internal free volume filled by air",
+        form.add_row(pwi.FloatSpinBox("Vb", "Internal netto volume filled by air",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
@@ -471,14 +471,14 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
-                     description="Qa - box absorption",
+                     description="Q<sub>a</sub> - box absorption",
                      )
 
         form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of box",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
-                     description="Ql - box losses",
+                     description="Q<sub>l</sub> - box losses",
                      )
 
 
@@ -644,15 +644,22 @@ class MainWindow(qtw.QMainWindow):
         self.textboxes_layout = qtw.QHBoxLayout()
 
         results_section = self.results_textbox
+        results_section.setSizePolicy(
+            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
+        results_section.setMinimumWidth(350)
+
 
         notes_section = qtw.QWidget()
         notes_section_layout = qtw.QVBoxLayout(notes_section)
         notes_section_layout.setContentsMargins(-1, 0, -1, 0)
         notes_section_layout.addWidget(qtw.QLabel("Notes"))
         notes_section_layout.addWidget(self.notes_textbox)
+        notes_section.setSizePolicy(
+            qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)
 
-        self.textboxes_layout.addWidget(results_section, 3)
-        self.textboxes_layout.addWidget(notes_section, 2)
+
+        self.textboxes_layout.addWidget(results_section)
+        self.textboxes_layout.addWidget(notes_section)
 
     def _place_widgets(self):
         # ---- Make center widget
