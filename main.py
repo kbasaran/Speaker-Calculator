@@ -18,6 +18,7 @@ __email__ = "kbasaran@gmail.com"
 
 import sys
 import json
+import time
 from dataclasses import dataclass, fields
 
 from PySide6 import QtWidgets as qtw
@@ -330,9 +331,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
 
         form.add_row(pwi.ComboBox("coil_options", "Select coil winding to be used for calculations",
-                                  [("SV", {"current_text": "4x CCAW230, Re=4.18, Lm=87.19, Qts=0.59", "current_data": {}}),
-                                   ("CCAW", {"current_text": "current text"}),
-                                   ("MEGA", {"current_text": "current text"}), ],
+                                  [],
                                   ),
                      into_form=motor_definition_p1,
                      )
@@ -1194,7 +1193,7 @@ def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, speak
     for speaker in speaker_options:
         # Make a string for the text to show on the combo box
         name_shown_in_combobox = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
-        combo_box.addItem(name_shown_in_combobox, speaker)
+        combo_box.addItem(name_shown_in_combobox, speaker)  # speaker object in here causes problems with saving as json
     
     # if nothing to add to combobox
     if combo_box.count() == 0:
@@ -1320,8 +1319,9 @@ def parse_args(app_definitions):
 
     parser.add_argument('infile', nargs='?', type=Path,
                         help="Path to a '*.scf' file. This will open with preset values.")
-    parser.add_argument('-d', '--debuglevel', nargs="?", default="warning",
-                        help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
+    parser.add_argument('-d', '--loglevel', nargs="?",
+                        choices=["debug", "info", "warning", "error", "critical"],
+                        help="Set logging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
 
@@ -1340,11 +1340,12 @@ def create_sound_engine(app):
     return sound_engine, sound_engine_thread
 
 
-def setup_logging(args):
-    if args.debuglevel:
-        log_level = getattr(logging, args.debuglevel.upper())
+def setup_logging(level: str="warning", args=None):
+    if args and args.loglevel:
+        log_level = getattr(logging, args.loglevel.upper())
     else:
-        log_level = logging.INFO
+        log_level = level.upper()
+        
     log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
 
     file_handler = logging.FileHandler(filename=log_filename)
@@ -1359,8 +1360,8 @@ def setup_logging(args):
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
-    logger.info(f"Starting with log level {log_level}.")
-
+    logger.info(f"{time.strftime('%c')} - Started logging with log level {log_level}.")
+    
     return logger
 
 
@@ -1368,7 +1369,7 @@ def main():
     global settings, app_definition, logger, create_sound_engine, wire_table
 
     args = parse_args(app_definitions)
-    logger = setup_logging(args)
+    logger = setup_logging(args=args)
     settings = Settings(app_definitions["app_name"])
     wire_table_path = Path.cwd().joinpath("SC_data", "wire table.ods")
     wire_table = read_wire_table(wire_table_path)
