@@ -297,6 +297,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Stacking coeff. for additional layers",
                      into_form=motor_definition_p1,
                      )
+        form.interactable_widgets["w_stacking_coef"].setValue(1)
 
         form.add_row(pwi.FloatSpinBox("Rs_leadwire",
                                       "Resistance between the coil and the speaker terminals, e.g. leadwire",
