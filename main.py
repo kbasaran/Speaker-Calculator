@@ -1118,6 +1118,7 @@ def read_wire_table(wire_table: Path) -> pd.DataFrame:
     coeff_for_SI = {"w_avg": 1e-6,
                     "h_avg": 1e-6,
                     "w_max": 1e-6,
+                    "nominal_size": 1e-6,
                     "mass_density": 1e-3,
                     }
     for key, coeff in coeff_for_SI.items():
