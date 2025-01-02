@@ -23,3 +23,4 @@ compare butterfly winding with results of DD
 tell fill ratio as percentage, using nominal thickness
 make default stacking ratio 1
 move setup_logging to common module. the one in kdbx-conversion is good, use that.
+trigger a "clear coil choices combobox" when the coil parameters are changed.
