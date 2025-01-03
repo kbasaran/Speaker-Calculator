@@ -788,6 +788,9 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(state)
         else:
             raise ValueError(f"Invalid suffix '{suffix}'")
+        
+        # self.statusBar().showMessage(f"Opened file '{file.name}'", 5000)
+        self._update_model_button_clicked()
 
     def set_state(self, state: dict):
         logger.debug("Set states initiated.")
@@ -801,8 +804,6 @@ class MainWindow(qtw.QMainWindow):
             input_form_widget.update_form_values(relevant_states)
 
         self.notes_textbox.setPlainText(state.get("user_notes", "Error: User notes could not be loaded."))
-
-        self.signal_good_beep.emit()
 
     def duplicate_window(self):
         self.signal_new_window.emit(
@@ -1417,7 +1418,6 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
-        mw.status_bar().show_message(f"Opened file '{args.infile.name}'", 5000)
     elif (default_file := Path.cwd().joinpath("default.scf")).is_file():
         new_window(open_user_file=default_file)
     else:
