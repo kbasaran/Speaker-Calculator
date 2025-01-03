@@ -19,6 +19,7 @@ __email__ = "kbasaran@gmail.com"
 import sys
 import json
 import time
+import dataclasses
 from dataclasses import dataclass, fields
 
 from PySide6 import QtWidgets as qtw
@@ -707,6 +708,7 @@ class MainWindow(qtw.QMainWindow):
         self.statusBar().showMessage("Test", 2000)
 
     def get_state(self):
+        logger.debug("Get states initiated.")
         state = {}
         tab_widgets = [self.input_form.widget(i) for i in range(self.input_form.count())]
         for input_form_widget in tab_widgets:
@@ -714,8 +716,6 @@ class MainWindow(qtw.QMainWindow):
         
         state["user_notes"] = self.notes_textbox.toPlainText()
 
-        logger.debug("Get states returning dictionary with following types:\n"\
-                     + repr({key: type(val) for key, val in state.items()}))
         return state
 
     def save_state_to_file(self, state=None):
@@ -790,6 +790,7 @@ class MainWindow(qtw.QMainWindow):
             raise ValueError(f"Invalid suffix '{suffix}'")
 
     def set_state(self, state: dict):
+        logger.debug("Set states initiated.")
         tab_widgets = [self.input_form.widget(i) for i in range(self.input_form.count())]
         for input_form_widget in tab_widgets:
             # for each form on its corresponding tab, make a "relevant states" dictionary
@@ -860,8 +861,8 @@ class MainWindow(qtw.QMainWindow):
         message_box.exec()
     
     def update_coil_choices_button_clicked(self):
-        name_to_coil = find_feasible_coils(self.get_state(), wire_table)
-        update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], name_to_coil)
+        name_to_motor = find_feasible_coils(self.get_state(), wires)
+        update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], name_to_motor)
 
     def _update_model_button_clicked(self):
         self.results_textbox.clear()
@@ -884,7 +885,7 @@ class MainWindow(qtw.QMainWindow):
             
             self.update_all_results()
             self.signal_good_beep.emit()
-        except Exception as e:
+        except KeyError as e:
             logger.debug(e)
             self.results_textbox.setPlainText("Update failed.\nSee log for more details.")
             self.signal_bad_beep.emit()
@@ -1109,38 +1110,31 @@ class SettingsDialog(qtw.QDialog):
         self.accept()
 
 
-def read_wire_table(wire_table: Path) -> pd.DataFrame:
-    if not wire_table.exists():
+def read_wire_table(wire_table_file: Path) -> pd.DataFrame:
+    if not wire_table_file.exists():
         raise FileNotFoundError(f"Wire table file not found: {Path}")
-    df = pd.read_excel(wire_table, "Sheet1", skiprows=range(2), index_col=0)
-    coeff_for_SI = {"w_avg": 1e-6,
-                    "h_avg": 1e-6,
-                    "w_max": 1e-6,
-                    "nominal_size": 1e-6,
-                    "mass_density": 1e-3,
-                    }
+    imported_wire_table = pd.read_excel(wire_table_file, "Sheet1", skiprows=range(2), index_col=0)
+    coeff_for_SI = {
+        "nominal_size": 1e-6,
+        "w_avg": 1e-6,
+        "h_avg": 1e-6,
+        "w_max": 1e-6,
+        "nominal_size": 1e-6,
+        "mass_density": 1e-3,
+        }
     for key, coeff in coeff_for_SI.items():
-        df[key] = coeff * df[key]
-    if not df.index.is_unique:
+        imported_wire_table[key] = coeff * imported_wire_table[key]
+    if not imported_wire_table.index.is_unique:
         raise IndexError("Wire names in the imported table are not unique.")
-    return df
+    
+    wires_as_dict = dict()
+    for wire_name, columns_data_as_series in imported_wire_table.iterrows():
+        wires_as_dict[wire_name] = ac.Wire(name=wire_name, **columns_data_as_series.to_dict())
+
+    return wires_as_dict
 
 
-def construct_Wire(df: pd.DataFrame, name: str) -> ac.Wire:
-    if name not in df.index:
-        raise ValueError(f"Wire {name} is not available in wire table.")
-    wire_data = df.loc[name]
-    wire = ac.Wire(name,
-                   wire_data["w_avg"],
-                   wire_data["h_avg"],
-                   wire_data["w_max"],
-                   wire_data["resistance"],
-                   wire_data["mass_density"],
-                   )
-    return wire
-
-
-def find_feasible_coils(vals, wire_table):
+def find_feasible_coils(vals, wires):
     """Scan best matching speaker coil options."""
     try:  # try to read the N_layer_options string
         layer_options = [int(str) for str in vals["N_layer_options"].replace(" ", "").split(",")]
@@ -1156,7 +1150,7 @@ def find_feasible_coils(vals, wire_table):
     speaker_options = []
 
     for N_layers in layer_options:
-        for wire_name, wire in wire_table.iterrows():
+        for wire_name, wire in wires.items():
             try:
                 coil = ac.wind_coil(wire,
                                     N_layers,
@@ -1183,20 +1177,20 @@ def find_feasible_coils(vals, wire_table):
 
     # Sort the viable coil options
     speaker_options.sort(key=lambda x: x.Lm, reverse=True)
-    name_to_coil = dict()
+    name_to_motor = dict()
     for speaker in speaker_options:
         name = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
-        name_to_coil[name] = speaker.motor.coil
+        name_to_motor[name] = dataclasses.asdict(speaker.motor)
     
-    return name_to_coil
+    return name_to_motor  # keys: friendly name values: motor object as a dictionary. contains coil and wire in it.
             
 
-def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, name_to_coil: dict):
+def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, name_to_motor: dict):
     combo_box.clear()
     # Add the coils to the combobox (with their userData)
-    for name, coil in name_to_coil.items():
+    for name, motor_as_dict in name_to_motor.items():
         # Make a string for the text to show on the combo box
-        combo_box.addItem(name, coil)
+        combo_box.addItem(name, motor_as_dict)
     
     # if nothing to add to combobox
     if combo_box.count() == 0:
@@ -1209,15 +1203,26 @@ def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, name_
 
 def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
     "Create the loudspeaker model based on the values provided in the widget."
-    global wire_table, logger
+    global wires, logger
     motor_spec_type = vals["motor_spec_type"]["current_data"]
-    
+
     if motor_spec_type == "define_coil":
         try:
-            coil = vals["coil_options"]["current_data"]
+            motor_as_dict = vals["coil_options"]["current_data"]
+            logging.debug(f"Motor object will be built from dict: {motor_as_dict}")
+            wire_as_dict = motor_as_dict["coil"]["wire"]
+            wire = ac.Wire(**wire_as_dict)
+
+            coil_as_dict = motor_as_dict["coil"]
+            coil_as_dict["wire"] = wire
+            coil = ac.Coil(**coil_as_dict)
+
+            motor_as_dict["coil"] = coil
+            motor = ac.Motor(**motor_as_dict)
+
+
         except AttributeError:  # doesn't have motor attribute
-            raise TypeError("Invalid coil object in speaker.")
-        motor = ac.Motor(coil, vals["B_average"])
+            raise RuntimeError("Invalid motor object in coil options combobox")
         speaker_driver = ac.SpeakerDriver(settings,
                                           fs=vals["fs"],
                                           Sd=vals["Sd"],
@@ -1369,13 +1374,13 @@ def setup_logging(level: str="warning", args=None):
 
 
 def main():
-    global settings, app_definition, logger, create_sound_engine, wire_table
+    global settings, app_definition, logger, create_sound_engine, wires
 
     args = parse_args(app_definitions)
     logger = setup_logging(args=args)
     settings = Settings(app_definitions["app_name"])
-    wire_table_path = Path.cwd().joinpath("SC_data", "wire table.ods")
-    wire_table = read_wire_table(wire_table_path)
+    wire_table_file = Path.cwd().joinpath("SC_data", "wire table.ods")
+    wires = read_wire_table(wire_table_file)
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
