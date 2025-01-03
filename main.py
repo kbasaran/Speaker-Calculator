@@ -1,5 +1,5 @@
 # Speaker Calculator - Loudspeaker design and calculations tool
-# Copyright (C) 2024 - Kerem Basaran
+# Copyright (C) 2025 - Kerem Basaran
 # https://github.com/kbasaran
 __email__ = "kbasaran@gmail.com"
 
@@ -43,7 +43,7 @@ app_definitions = {"app_name": "Speaker Calculator",
                    "version": "0.2.0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Loudspeaker design and calculations",
-                   "copyright": "Copyright (C) 2024 Kerem Basaran",
+                   "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": str(Path("./images/logo.ico")),
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
@@ -781,7 +781,7 @@ class MainWindow(qtw.QMainWindow):
         if suffix == ".sscf":
             state = convert_v01_to_v02(file)
             self.set_state(state)
-            
+        
         elif suffix == ".scf":
             with open(file, "rt") as f:
                 state = json.load(f)
