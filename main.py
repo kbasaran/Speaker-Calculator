@@ -886,6 +886,12 @@ class MainWindow(qtw.QMainWindow):
             
             self.update_all_results()
             self.signal_good_beep.emit()
+
+        except RuntimeError as e:
+            logger.debug(e)
+            self.results_textbox.setPlainText("Speaker model build failed. Check parameters.\nSee log for more details.")
+            self.signal_bad_beep.emit()
+
         except KeyError as e:
             logger.debug(e)
             self.results_textbox.setPlainText("Update failed.\nSee log for more details.")
@@ -1228,7 +1234,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
             motor = ac.Motor(**motor_as_dict)
 
 
-        except AttributeError:  # doesn't have motor attribute
+        except (TypeError, AttributeError):  # doesn't have motor attribute
             raise RuntimeError("Invalid motor object in coil options combobox")
         speaker_driver = ac.SpeakerDriver(settings,
                                           fs=vals["fs"],
