@@ -120,17 +120,20 @@ def calculate_SPL(settings: object, xty: tuple, Sd: float):
 @dtc.dataclass
 class Wire:
     name: str
+    wire_type: str
+    nominal_size: float
     w_avg: float
     h_avg: float
     w_max: float
     resistance: float  # ohm/m
     mass_density: float  # kg/m
+    notes: str
 
 
 @dtc.dataclass
 class Coil:
     carrier_OD: float
-    wire: Wire | pd.Series
+    wire: Wire
     N_windings: tuple
     w_stacking_coef: float
 
@@ -679,7 +682,7 @@ class SpeakerSystem:
         summary = self.speaker.get_summary()
 
         summary += ("### System  \n"
-                   f"R<sub>e system</sub> : {self.R_sys:.2f}\n"
+                   f"R<sub>e</sub> : {self.R_sys:.2f}\n"
                    )
         if self.housing is not None:
             summary += ("#### Housing  \n"
