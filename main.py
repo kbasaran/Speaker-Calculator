@@ -862,8 +862,8 @@ class MainWindow(qtw.QMainWindow):
         message_box.exec()
     
     def update_coil_choices_button_clicked(self):
-        speaker_options = find_feasible_coils(self.get_state(), wire_table)
-        update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], speaker_options)
+        name_to_coil = find_feasible_coils(self.get_state(), wire_table)
+        update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], name_to_coil)
 
     def _update_model_button_clicked(self):
         self.results_textbox.clear()
@@ -1185,17 +1185,20 @@ def find_feasible_coils(vals, wire_table):
 
     # Sort the viable coil options
     speaker_options.sort(key=lambda x: x.Lm, reverse=True)
+    name_to_coil = dict()
+    for speaker in speaker_options:
+        name = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
+        name_to_coil[name] = speaker.motor.coil
     
-    return speaker_options  # each speaker object has attribute motor that has attribute coil that has attribute wire
+    return name_to_coil
             
 
-def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, speaker_options):
+def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, name_to_coil: dict):
     combo_box.clear()
     # Add the coils to the combobox (with their userData)
-    for speaker in speaker_options:
+    for name, coil in name_to_coil.items():
         # Make a string for the text to show on the combo box
-        name_shown_in_combobox = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
-        combo_box.addItem(name_shown_in_combobox, speaker)  # speaker object in here causes problems with saving as json
+        combo_box.addItem(name, coil)
     
     # if nothing to add to combobox
     if combo_box.count() == 0:
@@ -1213,7 +1216,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
     
     if motor_spec_type == "define_coil":
         try:
-            coil = vals["coil_options"]["current_data"].motor.coil
+            coil = vals["coil_options"]["current_data"]
         except AttributeError:  # doesn't have motor attribute
             raise TypeError("Invalid coil object in speaker.")
         motor = ac.Motor(coil, vals["B_average"])
