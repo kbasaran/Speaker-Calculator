@@ -188,7 +188,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "h_top_plate":              ("h_washer",                lambda x: x),
                     "airgap_clearance_inner":   ("airgap_clearance_inner",  lambda x: x),
                     "airgap_clearance_outer":   ("airgap_clearance_outer",  lambda x: x),
-                    "h_former_extension_under_coil":      ("former_extension_under_coil",  lambda x: x),
+                    "h_former_under_coil":      ("former_extension_under_coil",  lambda x: x),
 
                     "box_type":                 ("box_type",                translate_box_type),
                     "Vb":                       ("Vb",                      lambda x: x),

@@ -5,6 +5,9 @@
     "dead_mass": 0.004,
     "Sd": 0.005200000000000001,
     "excitation_type": {
+        "current_index": 0,
+        "current_data": "V",
+        "current_text": "Volts",
         "items": [
             [
                 "Volts",
@@ -18,15 +21,15 @@
                 "Watts @Rnom",
                 "Wn"
             ]
-        ],
-        "current_index": 0,
-        "current_data": "V",
-        "current_text": "Volts"
+        ]
     },
     "excitation_value": 2.83,
     "Rnom": 0.01,
     "R_serial": 0.0,
     "motor_spec_type": {
+        "current_index": 0,
+        "current_data": "define_coil",
+        "current_text": "Define Coil Dimensions and Average B",
         "items": [
             [
                 "Define Coil Dimensions and Average B",
@@ -40,48 +43,193 @@
                 "Define Bl, Re, Mms",
                 "define_Bl_Re_Mms"
             ]
-        ],
-        "current_index": 2,
-        "current_data": "define_Bl_Re_Mms",
-        "current_text": "Define Bl, Re, Mms"
+        ]
     },
-    "target_Re": 0.01,
-    "former_ID": 1e-05,
-    "t_former": 0.0,
-    "h_winding_target": 1e-05,
-    "B_average": 0.0,
-    "N_layer_options": "",
-    "w_stacking_coef": 0.0,
+    "target_Re": 4.0,
+    "former_ID": 0.025,
+    "t_former": 9.999999999999999e-05,
+    "h_winding_target": 0.007,
+    "B_average": 0.8,
+    "N_layer_options": "2",
+    "w_stacking_coef": 1.0,
     "Rs_leadwire": 0.0,
     "reduce_per_layer": 0.0,
     "coil_options": {
+        "current_index": 2,
+        "current_data": {
+            "Bavg": 0.8,
+            "airgap_clearance_inner": 0.00019999999999999998,
+            "airgap_clearance_outer": 0.00019999999999999998,
+            "coil": {
+                "N_windings": [
+                    34,
+                    34
+                ],
+                "carrier_OD": 0.0252,
+                "w_stacking_coef": 1.0,
+                "wire": {
+                    "h_avg": 0.0002075,
+                    "mass_density": 0.00024,
+                    "name": "SV180",
+                    "nominal_size": 0.00017999999999999998,
+                    "notes": NaN,
+                    "resistance": 0.67,
+                    "w_avg": 0.0002075,
+                    "w_max": 0.000214,
+                    "wire_type": "SV"
+                }
+            },
+            "h_former_under_coil": 0.0005,
+            "h_top_plate": 0.003
+        },
+        "current_text": "2L SV180 -> Re=3.67, Lm=85.70, Qts=0.63",
         "items": [
             [
-                "SV",
+                "2L CCAW210 -> Re=3.50, Lm=85.93, Qts=0.68",
                 {
-                    "current_data": {},
-                    "current_text": "4x CCAW230, Re=4.18, Lm=87.19, Qts=0.59"
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.00019999999999999998,
+                    "airgap_clearance_outer": 0.00019999999999999998,
+                    "coil": {
+                        "N_windings": [
+                            30,
+                            30
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.00023475,
+                            "mass_density": 0.00013120000000000002,
+                            "name": "CCAW210",
+                            "nominal_size": 0.00020999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.72324,
+                            "w_avg": 0.00023475,
+                            "w_max": 0.0002385,
+                            "wire_type": "CCAW"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003
                 }
             ],
             [
-                "CCAW",
+                "2L CCAW200 -> Re=3.99, Lm=85.71, Qts=0.72",
                 {
-                    "current_text": "current text"
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.00019999999999999998,
+                    "airgap_clearance_outer": 0.00019999999999999998,
+                    "coil": {
+                        "N_windings": [
+                            31,
+                            31
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.00022475,
+                            "mass_density": 0.0001189,
+                            "name": "CCAW200",
+                            "nominal_size": 0.00019999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.79821,
+                            "w_avg": 0.00022475,
+                            "w_max": 0.0002285,
+                            "wire_type": "CCAW"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003
                 }
             ],
             [
-                "MEGA",
+                "2L SV180 -> Re=3.67, Lm=85.70, Qts=0.63",
                 {
-                    "current_text": "current text"
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.00019999999999999998,
+                    "airgap_clearance_outer": 0.00019999999999999998,
+                    "coil": {
+                        "N_windings": [
+                            34,
+                            34
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.0002075,
+                            "mass_density": 0.00024,
+                            "name": "SV180",
+                            "nominal_size": 0.00017999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.67,
+                            "w_avg": 0.0002075,
+                            "w_max": 0.000214,
+                            "wire_type": "SV"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003
+                }
+            ],
+            [
+                "2L SV170 -> Re=4.35, Lm=85.60, Qts=0.66",
+                {
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.00019999999999999998,
+                    "airgap_clearance_outer": 0.00019999999999999998,
+                    "coil": {
+                        "N_windings": [
+                            36,
+                            36
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.00019649999999999998,
+                            "mass_density": 0.00021,
+                            "name": "SV170",
+                            "nominal_size": 0.00016999999999999999,
+                            "notes": NaN,
+                            "resistance": 0.752,
+                            "w_avg": 0.00019649999999999998,
+                            "w_max": 0.000204,
+                            "wire_type": "SV"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003
+                }
+            ],
+            [
+                "2L CCAW190 -> Re=4.70, Lm=85.54, Qts=0.74",
+                {
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.00019999999999999998,
+                    "airgap_clearance_outer": 0.00019999999999999998,
+                    "coil": {
+                        "N_windings": [
+                            33,
+                            33
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.00021475,
+                            "mass_density": 0.00011070000000000001,
+                            "name": "CCAW190",
+                            "nominal_size": 0.00018999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.88494,
+                            "w_avg": 0.00021475,
+                            "w_max": 0.0002185,
+                            "wire_type": "CCAW"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003
                 }
             ]
-        ],
-        "current_index": 0,
-        "current_data": {
-            "current_data": {},
-            "current_text": "4x CCAW230, Re=4.18, Lm=87.19, Qts=0.59"
-        },
-        "current_text": "SV"
+        ]
     },
     "Bl_p2": 0.01,
     "Re_p2": 0.01,
@@ -89,10 +237,10 @@
     "Bl_p3": 3.0,
     "Re_p3": 4.0,
     "Mms_p3": 0.004,
-    "h_top_plate": 1e-05,
-    "airgap_clearance_inner": 0.0,
-    "airgap_clearance_outer": 0.0,
-    "h_former_extension_under_coil": 0.0,
+    "h_top_plate": 0.003,
+    "airgap_clearance_inner": 0.00019999999999999998,
+    "airgap_clearance_outer": 0.00019999999999999998,
+    "h_former_under_coil": 0.0005,
     "box_type": 0,
     "Vb": 1e-06,
     "Qa": 0.1,
