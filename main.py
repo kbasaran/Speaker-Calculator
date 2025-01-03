@@ -555,6 +555,8 @@ class MainWindow(qtw.QMainWindow):
     def __init__(self, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
         self.setWindowTitle(app_definitions["app_name"])
+        self.signal_bad_beep.connect(sound_engine.bad_beep)
+        self.signal_good_beep.connect(sound_engine.good_beep)
         self._create_menu_bar()
         self._create_widgets()
         self._place_widgets()
@@ -564,7 +566,8 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(user_form_dict)
         elif open_user_file:
             self.load_state_from_file(open_user_file)
-        self._update_model_button_clicked()
+        else:
+            self._update_model_button_clicked()
 
     def _create_menu_bar(self):
         menu_bar = self.menuBar()
@@ -1416,8 +1419,6 @@ def main():
         mw = MainWindow(sound_engine, **kwargs)
         windows.append(mw)  # needs to be addressed otherwise it gets deleted from memory.
         mw.signal_new_window.connect(lambda kwargs: new_window(**kwargs))
-        mw.signal_bad_beep.connect(sound_engine.bad_beep)
-        mw.signal_good_beep.connect(sound_engine.good_beep)
         mw.show()
         return mw
 
