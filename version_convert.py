@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Feb 10 10:37:25 2024
-
-@author: kerem
-"""
-
 from pathlib import Path
 import pickle
 import pathlib
