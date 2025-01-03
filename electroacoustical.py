@@ -125,7 +125,6 @@ class Wire:
     w_max: float
     resistance: float  # ohm/m
     mass_density: float  # kg/m
-    reduce_per_layer: float = 0
 
 
 @dtc.dataclass
@@ -157,6 +156,16 @@ class Coil:
         self.Re = self.total_wire_length() * self.wire.resistance
         self.w_max = self.wire.w_max * (1 + (self.N_layers - 1) * self.w_stacking_coef)
         self.name = (str(self.N_layers) + "L " + self.wire.name).strip()
+    
+        
+    def get_summary(self) -> str:
+        "Summary in markup language."
+        summary = (f"{self.wire.name} \t"
+                   f"{self.N_layers:d} layers \th : {self.h_winding * 1000:.3g} mm  \n"
+                   f"{self.total_wire_length():3g} m total length<br></br>"
+                   f"Windings per layer: {self.N_windings}"
+                   )
+        return summary
 
 
 def wind_coil(wire: Wire,
@@ -227,10 +236,7 @@ class Motor:
     """
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = ("#### Coil\n"
-                   "data here\n"
-                   )
-
+        summary = "#### Coil  \n" + self.coil.get_summary()
         return summary
 
 
@@ -262,7 +268,7 @@ class SpeakerDriver:
             if not all([getattr(self, val) is None for val in available_from_Motor_object]):
                 raise RuntimeError("These attributes should not be specified when motor is already specified:"
                                    f"\n{available_from_Motor_object}")
-            self.Bl = self.motor.coil.h_winding * self.motor.Bavg
+            self.Bl = self.motor.coil.total_wire_length() * self.motor.Bavg
             self.Re = self.motor.coil.Re + self.Rs
 
         # derived parameters
