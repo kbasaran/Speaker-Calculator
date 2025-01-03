@@ -753,34 +753,32 @@ class MainWindow(qtw.QMainWindow):
         self.signal_good_beep.emit()
 
     def load_state_from_file(self, file: Path = None):
-        # when no file is provided as argumnent, this function raises a file selection menu
+        # no file is provided as argumnent
+        # raise a file selection menu
         if file is None:
             path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
                                                               dir=settings.last_used_folder,
                                                               filter='Speaker calculator files (*.scf *.sscf)',
                                                               )
 
-            # Check file
             if file_raw := path_unverified[0]:
                 file = Path(file_raw)
             else:
                 return  # canceled file select
-        else:
-            pass  # use the argument
 
-        # Check if file exists
-        if not file.is_file():
-            raise FileNotFoundError(file)
+        # file provided as argumnent
+        # Check if argument file exists
+        elif not file.is_file():
+                raise FileNotFoundError(file)
 
-        # if you reached here, file is ready as Path object
+        # file is ready as Path object at this point
+
         logger.info(f"Loading file '{file.name}'")
-
         settings.update("last_used_folder", str(file.parent))
 
+        # backwards compatibility with v0.1
         suffix = file.suffixes[-1]
-
         if suffix == ".sscf":
-            # backwards compatibility with v0.1
             state = convert_v01_to_v02(file)
             self.set_state(state)
             
