@@ -297,6 +297,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Stacking coeff. for additional layers",
                      into_form=motor_definition_p1,
                      )
+        form.interactable_widgets["w_stacking_coef"].setValue(1)
 
         form.add_row(pwi.FloatSpinBox("Rs_leadwire",
                                       "Resistance between the coil and the speaker terminals, e.g. leadwire",
@@ -1117,6 +1118,7 @@ def read_wire_table(wire_table: Path) -> pd.DataFrame:
     coeff_for_SI = {"w_avg": 1e-6,
                     "h_avg": 1e-6,
                     "w_max": 1e-6,
+                    "nominal_size": 1e-6,
                     "mass_density": 1e-3,
                     }
     for key, coeff in coeff_for_SI.items():
@@ -1319,7 +1321,8 @@ def parse_args(app_definitions):
 
     parser.add_argument('infile', nargs='?', type=Path,
                         help="Path to a '*.scf' file. This will open with preset values.")
-    parser.add_argument('-d', '--loglevel', nargs="?", default="warning",
+    parser.add_argument('-d', '--loglevel', nargs="?",
+                        choices=["debug", "info", "warning", "error", "critical"],
                         help="Set logging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
@@ -1343,7 +1346,7 @@ def setup_logging(level: str="warning", args=None):
     if args and args.loglevel:
         log_level = getattr(logging, args.loglevel.upper())
     else:
-        log_level = level
+        log_level = level.upper()
         
     log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
 
@@ -1368,7 +1371,7 @@ def main():
     global settings, app_definition, logger, create_sound_engine, wire_table
 
     args = parse_args(app_definitions)
-    logger = setup_logging(args)
+    logger = setup_logging(args=args)
     settings = Settings(app_definitions["app_name"])
     wire_table_path = Path.cwd().joinpath("SC_data", "wire table.ods")
     wire_table = read_wire_table(wire_table_path)
