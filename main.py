@@ -327,7 +327,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                                     tooltip="Populate the below dropdown with possible coil choices for the given parameters",
                                                     )
 
-        # update_coil_choices_button.setMinimumHeight(32)  # maybe make relative to the height of the dropdown boxes? e.g. 1.5x?
         form.add_row(update_coil_choices_button,
                      into_form=motor_definition_p1,
                      )
@@ -630,7 +629,7 @@ class MainWindow(qtw.QMainWindow):
 
         # Make buttons under the graph larger
         for button in self.graph_pushbuttons.buttons().values():
-            font_pixel_size = button.font().pixelSize()
+            font_pixel_size = qtg.QFontMetrics(button.font()).height()
             button.setMinimumHeight(font_pixel_size * 2)  # not working it seems
 
         # Text boxes
@@ -643,8 +642,8 @@ class MainWindow(qtw.QMainWindow):
         results_section = self.results_textbox
         results_section.setSizePolicy(
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
-        results_section.setMinimumWidth(350)
-
+        expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 35
+        results_section.setMinimumWidth(int(expected_text_width * 1.1))
 
         user_notes_section = qtw.QWidget()
         notes_section_layout = qtw.QVBoxLayout(user_notes_section)
