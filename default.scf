@@ -250,11 +250,12 @@
     "k2": 10.0,
     "c2": 0.01,
     "user_notes": "",
+    "user_title": "",
     "application_data": {
         "app_name": "Speaker Calculator",
         "version": "0.2.0",
         "description": "Loudspeaker design and calculations",
-        "copyright": "Copyright (C) 2024 Kerem Basaran",
+        "copyright": "Copyright (C) 2025 Kerem Basaran",
         "icon_path": "images/logo.ico",
         "author": "Kerem Basaran",
         "author_short": "kbasaran",
