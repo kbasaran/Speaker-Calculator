@@ -620,30 +620,23 @@ class MainWindow(qtw.QMainWindow):
 
         self.graph_pushbuttons = pwi.PushButtonGroup({"update_results": "Update results",
                                                    "export_curve": "Export curve",
-                                                   "export_quick": "Quick export",
-                                                   "import_curve": "Import curve",
-                                                   "remove_curve": "Remove curve",
+                                                   "export_json": "Export model",
                                                    },
-                                                  {"update_results": "Update calculated values. Click this each time you modify the user form.",
-                                                   "export_curve": "Open export menu",
-                                                   "export_quick": "Quick export using latest settings",
-                                                   "import_curve": "Open import menu",
-                                                   "remove_curve": "Open remove curves menu",
+                                                  {"update_results": "Update the underlying model and recalculate. Click this each time you modify the user form.",
+                                                   "export_curve": "Export a single curve.",
+                                                   "export_json": "Export the underlying model parameters in JSON format.",
                                                    },
                                                   )
 
         # Make buttons under the graph larger
         for button in self.graph_pushbuttons.buttons().values():
             font_pixel_size = button.font().pixelSize()
-            button.setMinimumHeight(48)
-
-            # temporary disable, to be decided later
-            if button.text() != "Update results":
-                button.setEnabled(False)
+            button.setMinimumHeight(font_pixel_size * 2)  # not working it seems
 
         # Text boxes
         self.results_textbox = qtw.QTextEdit()
         self.results_textbox.setReadOnly(True)
+        self.title_textbox = qtw.QLineEdit()
         self.notes_textbox = qtw.QPlainTextEdit()
         self.textboxes_layout = qtw.QHBoxLayout()
 
@@ -653,17 +646,20 @@ class MainWindow(qtw.QMainWindow):
         results_section.setMinimumWidth(350)
 
 
-        notes_section = qtw.QWidget()
-        notes_section_layout = qtw.QVBoxLayout(notes_section)
+        user_notes_section = qtw.QWidget()
+        notes_section_layout = qtw.QVBoxLayout(user_notes_section)
         notes_section_layout.setContentsMargins(-1, 0, -1, 0)
+        notes_section_layout.addWidget(qtw.QLabel("Title"))
+        notes_section_layout.addWidget(self.title_textbox)
         notes_section_layout.addWidget(qtw.QLabel("Notes"))
         notes_section_layout.addWidget(self.notes_textbox)
-        notes_section.setSizePolicy(
-            qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)
+        # user_notes_section.setSizePolicy(
+            # qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.Preferred)
+            #over ridden by 4 and 2 size hints
 
 
         self.textboxes_layout.addWidget(results_section)
-        self.textboxes_layout.addWidget(notes_section)
+        self.textboxes_layout.addWidget(user_notes_section)
 
     def _place_widgets(self):
         # ---- Make center widget
@@ -684,7 +680,7 @@ class MainWindow(qtw.QMainWindow):
         self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
         self._rh_layout.setContentsMargins(-1, 0, -1, 0)
 
-        self._rh_layout.addWidget(self.graph, 3)
+        self._rh_layout.addWidget(self.graph, 4)
         self.graph.setSizePolicy(
             qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
 
@@ -718,6 +714,7 @@ class MainWindow(qtw.QMainWindow):
             state = {**state, **input_form_widget.get_form_values()}
         
         state["user_notes"] = self.notes_textbox.toPlainText()
+        state["user_title"] = self.title_textbox.text()
 
         return state
 
@@ -806,7 +803,9 @@ class MainWindow(qtw.QMainWindow):
             relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
             input_form_widget.update_form_values(relevant_states)
 
-        self.notes_textbox.setPlainText(state.get("user_notes", "Error: User notes could not be loaded."))
+        self.notes_textbox.setPlainText(state.get("user_notes", "Error: NA"))
+        self.title_textbox.setText(state.get("user_title", "Error: NA"))
+
 
     def duplicate_window(self):
         self.signal_new_window.emit(
@@ -1236,8 +1235,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
             motor_as_dict["coil"] = coil
             motor = ac.Motor(**motor_as_dict)
 
-
-        except (TypeError, AttributeError):  # doesn't have motor attribute
+        except (TypeError, AttributeError):  # doesn't have motor attribute or is None
             raise RuntimeError("Invalid motor object in coil options combobox")
         speaker_driver = ac.SpeakerDriver(settings,
                                           fs=vals["fs"],
