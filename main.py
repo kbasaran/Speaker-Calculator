@@ -32,7 +32,7 @@ import generictools.personalized_widgets as pwi
 from version_convert import convert_v01_to_v02
 
 import logging
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import matplotlib as mpl
 import numpy as np
 from functools import partial
@@ -65,7 +65,8 @@ class Settings:
     RHO: float = 1.1839  # density of air at 25 degrees celcius
     Kair: float = 101325. * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
-    vc_table_file = str(Path.cwd().joinpath('SSC_data', 'WIRE_TABLE.csv'))
+    vc_table_file = "./data/wire table.ods"  # posix path
+    default_state_file = "./data/default.scf"  # posix path
     f_min: int = 10
     f_max: int = 3000
     A_beep: int = 0.25
@@ -83,6 +84,8 @@ class Settings:
         self.settings_sys = qtc.QSettings(self.author_short, settings_storage_title)
         logger.debug(f"Settings will be stored in '{self.author_short}', '{settings_storage_title}'")
         self.read_all_from_system()
+        
+        # settings that are updated on each load
 
     def update(self, attr_name, new_val):
         # update a given setting
@@ -542,6 +545,28 @@ class InputSectionTabWidget(qtw.QTabWidget):
         return form
 
 
+def show_file_paths(parent_window):
+    working_directory = Path.cwd()
+    coil_table_file = Path(PurePosixPath(settings.vc_table_file)).absolute()
+    default_state_file = Path(PurePosixPath(settings.default_state_file)).absolute()
+    
+    result_text = (f"#### Installation folder<br></br>{working_directory}"
+                   "<br></br>  \n"
+                   f"#### Coil wire definitions file<br></br>{coil_table_file}"
+                   "<br></br>  \n"
+                   f"#### Default state file<br></br>{default_state_file}"
+                   )
+    
+    popup = pwi.ResultTextBox("File paths",
+                              result_text,
+                              monospace=False,
+                              parent=parent_window,
+                              markdown=True,
+                              )
+    
+    popup.exec()
+
+
 class MainWindow(qtw.QMainWindow):
     global settings
     # these are signals that this object emits.
@@ -577,6 +602,7 @@ class MainWindow(qtw.QMainWindow):
         save_action = file_menu.addAction("Save state..", self.save_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
+        paths_action = edit_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
         settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
 
         help_menu = menu_bar.addMenu("Help")
@@ -890,7 +916,7 @@ class MainWindow(qtw.QMainWindow):
 
         except RuntimeError as e:
             logger.debug(e)
-            self.results_textbox.setPlainText("Speaker model build failed. Check parameters.\nSee log for more details.")
+            self.results_textbox.setPlainText("Speaker model build failed. Check your file or the parameters provided in form.\nSee log for more details.")
             self.signal_bad_beep.emit()
 
         except KeyError as e:
@@ -1234,7 +1260,8 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
             motor_as_dict["coil"] = coil
             motor = ac.Motor(**motor_as_dict)
 
-        except (TypeError, AttributeError):  # doesn't have motor attribute or is None
+        except (TypeError, AttributeError) as e:  # doesn't have motor attribute or is None
+            print(e)
             raise RuntimeError("Invalid motor object in coil options combobox")
         speaker_driver = ac.SpeakerDriver(settings,
                                           fs=vals["fs"],
@@ -1392,8 +1419,7 @@ def main():
     args = parse_args(app_definitions)
     logger = setup_logging(args=args)
     settings = Settings(app_definitions["app_name"])
-    wire_table_file = Path.cwd().joinpath("SC_data", "wire table.ods")
-    wires = read_wire_table(wire_table_file)
+    wires = read_wire_table(Path(PurePosixPath(settings.vc_table_file)))
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
@@ -1422,7 +1448,7 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
-    elif (default_file := Path.cwd().joinpath("default.scf")).is_file():
+    elif (default_file := Path(PurePosixPath(settings.default_state_file))).is_file():
         new_window(open_user_file=default_file)
     else:
         new_window()
