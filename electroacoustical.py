@@ -147,28 +147,40 @@ class Coil:
     wire: Wire
     N_windings: tuple
     w_stacking_coef: float
-
-    def length_of_one_turn(self, i_layer):
-        """Calculate the length of one turn of wire on a given coil layer."""
-        if i_layer == 0:
-            turn_radius_wire_center_to_axis = self.carrier_OD/2 + self.wire.w_avg/2
-        else:
-            turn_radius_wire_center_to_axis = (self.carrier_OD/2 + self.wire.w_avg/2
-                                               + (self.w_stacking_coef * i_layer * self.wire.w_avg)
-                                               )
-        # pi/4 is stacking coefficient for ideal circular wire
-        return 2 * np.pi * turn_radius_wire_center_to_axis
+    
+    def _calc_turn_radius_per_layer(self):
+        turn_radii_wire_center_to_axis = list()
+        for i_layer in range(len(self.N_windings)):
+            if i_layer == 0:
+                turn_radii_wire_center_to_axis.append(
+                    self.carrier_OD/2 + self.wire.w_avg/2
+                    )
+            else:
+                turn_radii_wire_center_to_axis.append(
+                    self.carrier_OD/2 + self.wire.w_avg/2
+                    + (self.w_stacking_coef * i_layer * self.wire.w_avg)
+                    )
+        return turn_radii_wire_center_to_axis
 
     def total_wire_length(self):
-        return sum([self.length_of_one_turn(i) * self.N_windings[i] for i in range(self.N_layers)])
+        wire_length_per_layer = [2 * np.pi * radius * self.N_windings[i_layer] for i_layer, radius in enumerate(self.turn_radii)]
+        return sum(wire_length_per_layer)
 
     def __post_init__(self):
-        assert all([i > 0 for i in self.N_windings])
+        if not all([i > 0 for i in self.N_windings]):
+            raise RuntimeError("Coil has layers with 0 windings.")
+        self.turn_radii = self._calc_turn_radius_per_layer()
         self.N_layers = len(self.N_windings)
         self.h_winding = self.wire.h_avg * self.N_windings[0]
         self.mass = self.total_wire_length() * self.wire.mass_density
         self.Re = self.total_wire_length() * self.wire.resistance
+        
         self.w_max = self.wire.w_max * (1 + (self.N_layers - 1) * self.w_stacking_coef)
+        self.w_nom = self.wire.w_avg * (1 + (self.N_layers - 1) * self.w_stacking_coef)
+
+        self.OD_nom = 2 * self.turn_radii[-1] + self.wire.w_avg
+        self.OD_max = self.carrier_OD + 2 * self.w_max
+
         self.name = (str(self.N_layers) + "L " + self.wire.name).strip()
     
         
