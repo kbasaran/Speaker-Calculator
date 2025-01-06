@@ -186,9 +186,10 @@ class Coil:
         
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = (f"{self.wire.name} \t"
-                   f"{self.N_layers:d} layers \th : {self.h_winding * 1000:.3g} mm  \n"
-                   f"{self.total_wire_length():3g} m total length<br></br>"
+        summary = (f"{self.wire.name} \t{sum(self.N_windings)} windings<br></br>"
+                   f"{self.total_wire_length():.3g} m \th<sub>nom</sub> : {self.h_winding * 1000:.3g} mm  \n"
+                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm \tw<sub>max</sub> : {self.w_max*1e3:.4g} mm<br></br>"
+                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.2f} mm \tOD<sub>max</sub> : {self.OD_max*1e3:.2f} mm  \n"
                    f"Windings per layer: {self.N_windings}"
                    )
         return summary
