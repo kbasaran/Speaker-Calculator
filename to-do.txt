@@ -20,4 +20,5 @@ tell fill ratio as percentage, using nominal thickness
 move setup_logging to common module. the one in kdbx-conversion is good, use that.
 trigger a "clear coil choices combobox" when the coil parameters are changed.
 improve sizing of text windows with: https://runebook.dev/en/articles/qt/qfont/pixelSize
-
+streamline name for housing (box, enclosure, housing are used)
+make results window wider
