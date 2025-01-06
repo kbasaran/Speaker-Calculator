@@ -602,10 +602,10 @@ class MainWindow(qtw.QMainWindow):
         save_action = file_menu.addAction("Save state..", self.save_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
-        paths_action = edit_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
         settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
-
+        
         help_menu = menu_bar.addMenu("Help")
+        paths_action = help_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
         about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
