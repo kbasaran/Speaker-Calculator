@@ -668,7 +668,7 @@ class MainWindow(qtw.QMainWindow):
         results_section = self.results_textbox
         results_section.setSizePolicy(
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
-        expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 40
+        expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 45
         results_section.setMinimumWidth(int(expected_text_width * 1.25))
 
         user_notes_section = qtw.QWidget()
@@ -680,7 +680,7 @@ class MainWindow(qtw.QMainWindow):
         notes_section_layout.addWidget(self.notes_textbox)
         # user_notes_section.setSizePolicy(
             # qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.Preferred)
-            #over ridden by 4 and 2 size hints
+            # overridden for vertical by 4 and 2 size hints
 
 
         self.textboxes_layout.addWidget(results_section)
@@ -1201,6 +1201,7 @@ def find_feasible_coils(vals, wires):
                 motor = ac.Motor(coil,
                                  vals["B_average"],
                                  h_top_plate=vals["h_top_plate"],
+                                 t_former=vals["t_former"],
                                  airgap_clearance_inner=vals["airgap_clearance_inner"],
                                  airgap_clearance_outer=vals["airgap_clearance_outer"],
                                  h_former_under_coil=vals["h_former_under_coil"],

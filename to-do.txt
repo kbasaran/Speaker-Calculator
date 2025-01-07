@@ -20,5 +20,4 @@ move setup_logging to common module. the one in kdbx-conversion is good, use tha
 trigger a "clear coil choices combobox" when the coil parameters are changed.
 improve sizing of text windows with: https://runebook.dev/en/articles/qt/qfont/pixelSize
 streamline name for housing (box, enclosure, housing are used)
-make results window wider
 say "complete" list of python libraries, not "extensive"
