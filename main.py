@@ -648,8 +648,8 @@ class MainWindow(qtw.QMainWindow):
                                                    "export_json": "Export model",
                                                    },
                                                   {"update_results": "Update the underlying model and recalculate. Click this each time you modify the user form.",
-                                                   "export_curve": "Export a single curve.",
-                                                   "export_json": "Export the underlying model parameters in JSON format.",
+                                                   "export_curve": "Export a single curve to clipboard.",
+                                                   "export_json": "Export the underlying model parameters to clipboard. Export will be JSON format text.",
                                                    },
                                                   )
 
@@ -668,8 +668,8 @@ class MainWindow(qtw.QMainWindow):
         results_section = self.results_textbox
         results_section.setSizePolicy(
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
-        expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 35
-        results_section.setMinimumWidth(int(expected_text_width * 1.1))
+        expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 40
+        results_section.setMinimumWidth(int(expected_text_width * 1.25))
 
         user_notes_section = qtw.QWidget()
         notes_section_layout = qtw.QVBoxLayout(user_notes_section)
