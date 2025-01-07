@@ -5,7 +5,6 @@ add a link to the manual
 for dof2 input f0 and not k2
 list k2 of dof2 in results
 fb undamped, onu belirt
-don't save if error in calculated result
 for layer options also accept comma, space, comma and space
 class record ya da bazı dictionary'ler yerine namedtuple kullanabilirsin
 make 2, 4, 8 layer options allow spaces
@@ -22,3 +21,4 @@ trigger a "clear coil choices combobox" when the coil parameters are changed.
 improve sizing of text windows with: https://runebook.dev/en/articles/qt/qfont/pixelSize
 streamline name for housing (box, enclosure, housing are used)
 make results window wider
+say "complete" list of python libraries, not "extensive"
