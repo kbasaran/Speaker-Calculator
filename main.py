@@ -617,6 +617,11 @@ class MainWindow(qtw.QMainWindow):
         
 
         # ---- Center - textboxes
+        self.update_button = pwi.PushButton(
+            "update_results",
+            "Update results",
+            "Update the underlying model and recalculate. Click this each time you modify the user form.",
+            )
         self.results_textbox = qtw.QTextEdit()
         self.results_textbox.setReadOnly(True)
         self.title_textbox = qtw.QLineEdit()
@@ -625,27 +630,18 @@ class MainWindow(qtw.QMainWindow):
 
         text_height = qtg.QFontMetrics(self.results_textbox.font()).capHeight()
 
-        # results_section = self.results_textbox
-
-        # user_notes_section = qtw.QWidget()
-        # notes_section_layout = qtw.QVBoxLayout(user_notes_section)
-        # notes_section_layout.setContentsMargins(-1, 0, -1, 0)
-        # notes_section_layout.addWidget(qtw.QLabel("Title"))
-        # notes_section_layout.addWidget(self.title_textbox)
-        # notes_section_layout.addWidget(qtw.QLabel("Notes"))
-        # notes_section_layout.addWidget(self.notes_textbox)
-        # user_notes_section.setSizePolicy(
-            # qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.Preferred)
-            # overridden for vertical by 4 and 2 size hints
-            
-
-        self.textboxes_layout.addWidget(qtw.QLabel("<b>Results</b>"))
+        self.textboxes_layout.addWidget(self.update_button)
+        # self.textboxes_layout.addSpacing(text_height)
         self.textboxes_layout.addWidget(self.results_textbox, 3)
         self.textboxes_layout.addSpacing(text_height)
         self.textboxes_layout.addWidget(qtw.QLabel("<b>Title</b>"))
         self.textboxes_layout.addWidget(self.title_textbox)
+        self.textboxes_layout.addSpacing(text_height)
         self.textboxes_layout.addWidget(qtw.QLabel("<b>Notes</b>"))
         self.textboxes_layout.addWidget(self.notes_textbox, 1)
+        
+        self.update_button.setMinimumHeight(text_height * 8)
+        self.textboxes_layout.setContentsMargins(-1, text_height * 3, -1, -1)
 
 
         # ---- Right hand side (graph etc.)
@@ -676,38 +672,35 @@ class MainWindow(qtw.QMainWindow):
                                                        )
         self.graph_data_choice.buttons()[3].setEnabled(False)  # the relative button is disabled at start
 
-        self.graph_pushbuttons = pwi.PushButtonGroup({"update_results": "Update results",
-                                                   "export_curve": "Export curve",
-                                                   "export_json": "Export model",
-                                                   },
-                                                  {"update_results": "Update the underlying model and recalculate. Click this each time you modify the user form.",
-                                                   "export_curve": "Export a single curve to clipboard.",
-                                                   "export_json": "Export the underlying model parameters to clipboard. Export will be JSON format text.",
-                                                   },
-                                                  )
+        self.graph_pushbuttons = pwi.PushButtonGroup({"export_curve": "Export curve",
+                                                      "export_json": "Export model",
+                                                      },
+                                                     {"export_curve": "Export a single curve to clipboard.",
+                                                      "export_json": "Export the underlying model parameters to clipboard. Export will be JSON format text.",
+                                                      },
+                                                     )
 
         # Make buttons under the graph larger
         for button in self.graph_pushbuttons.buttons().values():
             text_height = qtg.QFontMetrics(button.font()).capHeight()
-            button.setMinimumHeight(text_height * 6)
-
+            button.setMinimumHeight(text_height * 5)
 
     def _place_widgets(self):
         # ---- Make center widget
-        self._center_widget = qtw.QWidget()
-        self._center_layout = qtw.QHBoxLayout(self._center_widget)
-        self.setCentralWidget(self._center_widget)
+        center_widget = qtw.QWidget()
+        center_layout = qtw.QHBoxLayout(center_widget)
+        self.setCentralWidget(center_widget)
 
         # ---- Make left hand side
         lh_layout = qtw.QVBoxLayout()
-        self._center_layout.addLayout(lh_layout)
+        center_layout.addLayout(lh_layout)
         lh_layout.addWidget(self.input_form)
 
         self.input_form.setSizePolicy(
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
         
         # ---- Make center with results
-        self._center_layout.addLayout(self.textboxes_layout)
+        center_layout.addLayout(self.textboxes_layout)
 
         expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 63
         self.results_textbox.setMinimumWidth(int(expected_text_width * 0.9))
@@ -719,25 +712,23 @@ class MainWindow(qtw.QMainWindow):
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Preferred)
 
         # ---- Make right hand with graph
-        self._center_layout.addWidget(self._rh_widget)
-        self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
+        rh_layout = qtw.QVBoxLayout()
+        center_layout.addLayout(rh_layout)
 
-        self._rh_layout.addWidget(self.graph)
-
-        self._rh_layout.addWidget(self.graph_data_choice)
-        self._rh_layout.addWidget(self.graph_pushbuttons)
-        self._rh_layout.setContentsMargins(0, 0, -1, 0)
+        rh_layout.addWidget(self.graph)
+        rh_layout.addWidget(self.graph_data_choice)
+        rh_layout.addWidget(self.graph_pushbuttons)
+        rh_layout.setContentsMargins(0, 0, -1, 0)
 
         self.graph.setSizePolicy(
             qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)  
-        self._rh_widget.setSizePolicy(
-            qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)        
+        # self._rh_widget.setSizePolicy(
+        #     qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)        
 
     def _connect_widgets(self):
         self.input_form.interactable_widgets["update_coil_choices"]\
             .clicked.connect(self.update_coil_choices_button_clicked)
-        self.graph_pushbuttons.buttons()["update_results_pushbutton"]\
-            .clicked.connect(self._update_model_button_clicked)
+        self.update_button.clicked.connect(self._update_model_button_clicked)
         for button in self.graph_data_choice.buttons():
             button_id = self.graph_data_choice.button_group.id(button)
             button.pressed.connect(lambda arg1=button_id: self.update_graph(arg1))
