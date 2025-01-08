@@ -1,5 +1,3 @@
-Calculator----------
-
 write manual
 add a link to the manual
 for dof2 input f0 and not k2
