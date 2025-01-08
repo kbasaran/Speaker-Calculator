@@ -187,7 +187,7 @@ class Coil:
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = (f"{self.wire.name}        "
-                   "{sum(self.N_windings)} windings        "
+                   f"{sum(self.N_windings)} windings        "
                    f"{self.total_wire_length():.3g} m  \n"
                    
                    "### Dimensions<br></br>"
@@ -274,8 +274,10 @@ class Motor:
             "## Coil<br></br>"
             + self.coil.get_summary() + "  \n"
             + "## Motor<br></br>"
-            + f"OD<sub>pole piece</sub> : {self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner):.2g} mm \t"
-            + f"ID<sub>top plate</sub> : {self.coil.OD_max + 2 * self.airgap_clearance_outer:.2g} mm"
+            + f"Overhang : {(self.coil.h_winding - self.h_top_plate) / 2:.3g}  \n"
+            + "### Dimensions<br></br>"
+            + f"OD<sub>pole piece</sub> : {self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner):.3g} mm \t"
+            + f"ID<sub>top plate</sub> : {self.coil.OD_max + 2 * self.airgap_clearance_outer:.3g} mm"
             )
 
         return summary
@@ -365,10 +367,10 @@ class SpeakerDriver:
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = ("## Speaker unit  \n"
+        summary = ("## Speaker unit<br></br>"
                    f"L<sub>m</sub> : {self.Lm:.2f} dBSPL        "
                    f"R<sub>e</sub> : {self.Re:.2f} ohm        "
-                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W  \n"
+                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W<br></br>"
                    
                    f"Bl : {self.Bl:.4g} Tm        "
                    f"Q<sub>es</sub> : {self.Qes:.3g}        "
@@ -387,10 +389,10 @@ class SpeakerDriver:
                    )
 
         if self.motor is None:
-            summary += "  \n"
+            summary += "  \n  \n"
         else:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary += f"      X<sub>crash</sub> : {Xcrash*1000:.3g} mm (rec.)  \n" + self.motor.get_summary()
+            summary += f"      X<sub>crash</sub> : {Xcrash*1000:.3g} mm (recommended)  \n" + self.motor.get_summary()
             
         return summary
 
