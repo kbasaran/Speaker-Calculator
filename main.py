@@ -585,7 +585,7 @@ class MainWindow(qtw.QMainWindow):
         self._create_widgets()
         self._place_widgets()
         self._connect_widgets()
-        # self._add_status_bar()
+        self._add_status_bar()
         if user_form_dict:
             self.set_state(user_form_dict)
         elif open_user_file:
@@ -614,6 +614,39 @@ class MainWindow(qtw.QMainWindow):
         # connect its signals
         self.input_form.signal_good_beep.connect(self.signal_good_beep)
         self.input_form.signal_bad_beep.connect(self.signal_bad_beep)
+        
+
+        # ---- Center - textboxes
+        self.results_textbox = qtw.QTextEdit()
+        self.results_textbox.setReadOnly(True)
+        self.title_textbox = qtw.QLineEdit()
+        self.notes_textbox = qtw.QPlainTextEdit()
+        self.textboxes_layout = qtw.QVBoxLayout()
+
+        text_height = qtg.QFontMetrics(self.results_textbox.font()).capHeight()
+
+        # results_section = self.results_textbox
+
+        # user_notes_section = qtw.QWidget()
+        # notes_section_layout = qtw.QVBoxLayout(user_notes_section)
+        # notes_section_layout.setContentsMargins(-1, 0, -1, 0)
+        # notes_section_layout.addWidget(qtw.QLabel("Title"))
+        # notes_section_layout.addWidget(self.title_textbox)
+        # notes_section_layout.addWidget(qtw.QLabel("Notes"))
+        # notes_section_layout.addWidget(self.notes_textbox)
+        # user_notes_section.setSizePolicy(
+            # qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.Preferred)
+            # overridden for vertical by 4 and 2 size hints
+            
+
+        self.textboxes_layout.addWidget(qtw.QLabel("<b>Results</b>"))
+        self.textboxes_layout.addWidget(self.results_textbox, 3)
+        self.textboxes_layout.addSpacing(text_height)
+        self.textboxes_layout.addWidget(qtw.QLabel("<b>Title</b>"))
+        self.textboxes_layout.addWidget(self.title_textbox)
+        self.textboxes_layout.addWidget(qtw.QLabel("<b>Notes</b>"))
+        self.textboxes_layout.addWidget(self.notes_textbox, 1)
+
 
         # ---- Right hand side (graph etc.)
         self._rh_widget = qtw.QWidget()
@@ -655,36 +688,9 @@ class MainWindow(qtw.QMainWindow):
 
         # Make buttons under the graph larger
         for button in self.graph_pushbuttons.buttons().values():
-            font_pixel_size = qtg.QFontMetrics(button.font()).height()
-            button.setMinimumHeight(font_pixel_size * 2)  # not working it seems
+            text_height = qtg.QFontMetrics(button.font()).capHeight()
+            button.setMinimumHeight(text_height * 6)
 
-        # Text boxes
-        self.results_textbox = qtw.QTextEdit()
-        self.results_textbox.setReadOnly(True)
-        self.title_textbox = qtw.QLineEdit()
-        self.notes_textbox = qtw.QPlainTextEdit()
-        self.textboxes_layout = qtw.QHBoxLayout()
-
-        results_section = self.results_textbox
-        results_section.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
-        expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 45
-        results_section.setMinimumWidth(int(expected_text_width * 1.25))
-
-        user_notes_section = qtw.QWidget()
-        notes_section_layout = qtw.QVBoxLayout(user_notes_section)
-        notes_section_layout.setContentsMargins(-1, 0, -1, 0)
-        notes_section_layout.addWidget(qtw.QLabel("Title"))
-        notes_section_layout.addWidget(self.title_textbox)
-        notes_section_layout.addWidget(qtw.QLabel("Notes"))
-        notes_section_layout.addWidget(self.notes_textbox)
-        # user_notes_section.setSizePolicy(
-            # qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.Preferred)
-            # overridden for vertical by 4 and 2 size hints
-
-
-        self.textboxes_layout.addWidget(results_section)
-        self.textboxes_layout.addWidget(user_notes_section)
 
     def _place_widgets(self):
         # ---- Make center widget
@@ -694,25 +700,38 @@ class MainWindow(qtw.QMainWindow):
 
         # ---- Make left hand side
         lh_layout = qtw.QVBoxLayout()
+        self._center_layout.addLayout(lh_layout)
         lh_layout.addWidget(self.input_form)
 
         self.input_form.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Minimum)
-        self._center_layout.addLayout(lh_layout)
+            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
+        
+        # ---- Make center with results
+        self._center_layout.addLayout(self.textboxes_layout)
 
-        # ---- Make right hand group
+        expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 63
+        self.results_textbox.setMinimumWidth(int(expected_text_width * 0.9))
+        self.results_textbox.setSizePolicy(
+            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
+        self.title_textbox.setSizePolicy(
+            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Preferred)
+        self.notes_textbox.setSizePolicy(
+            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Preferred)
+
+        # ---- Make right hand with graph
         self._center_layout.addWidget(self._rh_widget)
         self._rh_layout = qtw.QVBoxLayout(self._rh_widget)
-        self._rh_layout.setContentsMargins(-1, 0, -1, 0)
 
-        self._rh_layout.addWidget(self.graph, 4)
-        self.graph.setSizePolicy(
-            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
+        self._rh_layout.addWidget(self.graph)
 
         self._rh_layout.addWidget(self.graph_data_choice)
         self._rh_layout.addWidget(self.graph_pushbuttons)
-        self.graph_data_choice.layout().setContentsMargins(-1, 0, -1, 0)
-        self._rh_layout.addLayout(self.textboxes_layout, 2)
+        self._rh_layout.setContentsMargins(0, 0, -1, 0)
+
+        self.graph.setSizePolicy(
+            qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)  
+        self._rh_widget.setSizePolicy(
+            qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)        
 
     def _connect_widgets(self):
         self.input_form.interactable_widgets["update_coil_choices"]\
@@ -729,7 +748,7 @@ class MainWindow(qtw.QMainWindow):
         
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
-        self.statusBar().showMessage("Test", 2000)
+        self.statusBar().showMessage("Starting new window..", 2000)
 
     def get_state(self):
         logger.debug("Get states initiated.")
