@@ -684,6 +684,7 @@ class MainWindow(qtw.QMainWindow):
         mw_center_layout.addLayout(lh_boxlayout)
         
         text_height = qtg.QFontMetrics(self.notes_textbox.font()).capHeight()
+        text_width = qtg.QFontMetrics(self.notes_textbox.font()).averageCharWidth()
         
 
         lh_boxlayout.addWidget(self.input_form)
@@ -702,6 +703,15 @@ class MainWindow(qtw.QMainWindow):
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
         # self.notes_textbox.setSizePolicy(
         #     qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
+
+
+        # Put a spacer line in between input and results
+        sunken_line = qtw.QFrame()
+        sunken_line_layout = qtw.QHBoxLayout(sunken_line)
+        sunken_line.setFrameShape(qtw.QFrame.VLine)
+        sunken_line.setFrameShadow(qtw.QFrame.Sunken)
+        sunken_line_layout.setContentsMargins(text_width, text_height, text_width, text_height)
+        mw_center_layout.addWidget(sunken_line)
         
         
         # ---- Make center with results
