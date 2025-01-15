@@ -686,7 +686,7 @@ class MainWindow(qtw.QMainWindow):
         text_height = qtg.QFontMetrics(self.notes_textbox.font()).capHeight()
         
 
-        lh_boxlayout.addWidget(self.input_form, 3)
+        lh_boxlayout.addWidget(self.input_form)
         lh_boxlayout.addWidget(self.update_button)
         lh_boxlayout.addSpacing(text_height)
         lh_boxlayout.addWidget(pwi.SunkenLine())
@@ -695,13 +695,13 @@ class MainWindow(qtw.QMainWindow):
         lh_boxlayout.addWidget(self.title_textbox)
         lh_boxlayout.addSpacing(text_height)
         lh_boxlayout.addWidget(qtw.QLabel("<b>Notes</b>"))
-        lh_boxlayout.addWidget(self.notes_textbox, 1)
+        lh_boxlayout.addWidget(self.notes_textbox)
 
         self.update_button.setMinimumHeight(text_height * 6)
         self.input_form.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Preferred)
-        self.notes_textbox.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
+            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
+        # self.notes_textbox.setSizePolicy(
+        #     qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
         
         
         # ---- Make center with results
@@ -713,8 +713,10 @@ class MainWindow(qtw.QMainWindow):
         
         # center_boxlayout.setContentsMargins(-1, text_height * 2, -1, -1)
 
-        expected_text_width = qtg.QFontMetrics(self.results_textbox.font()).averageCharWidth() * 63
-        self.results_textbox.setMinimumWidth(int(expected_text_width * 0.9))
+        expected_text_width = qtg.QFontMetrics(
+            self.results_textbox.font()).horizontalAdvance(
+                "Bl : 55.55 Tm      Bl²/Re : 55.55 N²/W")
+        self.results_textbox.setMinimumWidth(int(expected_text_width * 1.2))
         self.results_textbox.setSizePolicy(
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
 
@@ -1382,7 +1384,6 @@ def parse_args(app_definitions):
                                      description=description,
                                      epilog={app_definitions['website']},
                                      )
-
     parser.add_argument('infile', nargs='?', type=Path,
                         help="Path to a '*.scf' file. This will open with preset values.")
     parser.add_argument('-d', '--loglevel', nargs="?",
