@@ -182,21 +182,21 @@ class Coil:
         self.OD_max = self.carrier_OD + 2 * self.w_max
 
         self.name = (str(self.N_layers) + "L " + self.wire.name).strip()
-    
-        
+
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = (f"{self.wire.name}        "
-                   f"{sum(self.N_windings)} windings        "
-                   f"{self.total_wire_length():.3g} m  \n  \n"
-                   
-                   "### Dimensions  \n"
-                   f"h<sub>nom</sub> : {self.h_winding * 1000:.3g} mm  \n"
-                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm \tw<sub>max</sub> : {self.w_max*1e3:.4g} mm  \n"
-                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.2f} mm \tOD<sub>max</sub> : {self.OD_max*1e3:.2f} mm  \n  \n"
-                   
-                   "### Windings per layer  \n"
-                   f"{self.N_windings}"
+                   f"{sum(self.N_windings)} windings<br></br>"
+
+                   f"L<sub>total</sub>: {self.total_wire_length():.3g} m      "
+                   f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
+
+                   "<br></br>"
+                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm      w<sub>max</sub> : {self.w_max*1e3:.4g} mm<br></br>"
+                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm      OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
+
+                   "<br></br>"
+                   f"Windings per layer: {self.N_windings}"
                    )
         return summary
 
@@ -271,14 +271,14 @@ class Motor:
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = (
-            "## Coil  \n"
-            + self.coil.get_summary()
-            + "  \n  \n"
-            + "## Motor  \n"
-            + f"Overhang : {(self.coil.h_winding - self.h_top_plate) / 2:.3g}  \n  \n"
-            + "### Dimensions  \n"
-            + f"OD<sub>pole piece</sub> : {self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner):.3g} mm \t"
-            + f"ID<sub>top plate</sub> : {self.coil.OD_max + 2 * self.airgap_clearance_outer:.3g} mm"
+            "### Motor<br></br>"
+            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm<br></br>"
+            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm      "
+            f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
+            
+            "<br/>  \n"
+            "#### Coil<br></br>"
+            f"{self.coil.get_summary()}"
             )
 
         return summary
@@ -368,35 +368,36 @@ class SpeakerDriver:
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = ("## Speaker unit  \n"
+        summary = ("## Speaker unit<br></br>"
                    f"L<sub>m</sub> : {self.Lm:.2f} dBSPL      "
-                   f"R<sub>e</sub> : {self.Re:.2f} ohm  \n"
+                   f"R<sub>e</sub> : {self.Re:.2f} ohm<br></br>"
 
                    f"Bl : {self.Bl:.4g} Tm      "
-                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W  \n"
+                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W<br></br>"
 
                    f"Q<sub>es</sub> : {self.Qes:.3g}      "
-                   f"Q<sub>ts</sub> : {self.Qts:.3g}  \n  \n"
+                   f"Q<sub>ts</sub> : {self.Qts:.3g}"
                    
-                   f"### Masses  \n"
+                   "<br/>  \n"
+                   f"#### Mass and suspension<br></br>"
                    f"M<sub>ms</sub> : {self.Mms*1000:.4g} g      "
-                   f"M<sub>md</sub> : {self.Mmd*1000:.4g} g  \n  \n"
+                   f"M<sub>md</sub> : {self.Mmd*1000:.4g} g"
+                   
+                   "<br></br>"
+                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm      "
+                   f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
 
-                   "### Suspension  \n"
-                   f"K<sub>ms</sub> : {self.Kms / 1000:.3g} N/mm      "
-                   f"R<sub>ms</sub> : {self.Rms:.3g} kg/s  \n  \n"
-
-                   "### Displacement limits  \n"
+                   "<br/>  \n"
+                   "#### Displacement<br></br>"
                    f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
                    )
 
-        if self.motor is None:
-            summary += "  \n  \n"
-        else:
+        if self.motor is not None:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary += f"      X<sub>crash</sub> : {Xcrash*1000:.3g} mm (recomm.)  \n  \n"
+            summary += f"      X<sub>crash</sub> : {Xcrash*1000:.3g} mm (recomm.)"
+            summary += "<br/>  \n"
             summary += self.motor.get_summary()
-            
+
         return summary
 
 
@@ -723,18 +724,21 @@ class SpeakerSystem:
                                                                 )
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = self.speaker.get_summary() + "  \n  \n"
+        summary = self.speaker.get_summary()
 
-        summary += ("## System  \n"
-                   f"R<sub>e</sub> : {self.R_sys:.2f}  \n  \n"
+        summary += ("<br/>  \n"
+                    "## System<br></br>"
+                   f"R<sub>e</sub> : {self.R_sys:.2f}"
                    )
         if self.housing is not None:
-            summary += ("### Housing  \n"
-                        "data here  \n  \n"
+            summary += ("<br/>  \n"
+                        "### Housing<br></br>"
+                        "data here"
                         )
         if self.parent_body is not None:
-            summary += ("### Parent body  \n"
-                        "data here  \n  \n"
+            summary += ("<br/>  \n"
+                        "### Parent body<br></br>"
+                        "data here"
                         )
         return summary
 
