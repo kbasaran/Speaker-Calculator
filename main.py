@@ -628,8 +628,9 @@ class MainWindow(qtw.QMainWindow):
 
 
         # ---- Center - results
-        self.results_textbox = qtw.QTextEdit()
-        self.results_textbox.setReadOnly(True)
+        self.results_textbox = qtw.QLabel()
+        self.results_textbox.setTextFormat(qtg.Qt.MarkdownText)
+        self.results_textbox.setAlignment(qtg.Qt.AlignTop)
 
 
         # ---- Right hand side (graph etc.)
@@ -684,6 +685,7 @@ class MainWindow(qtw.QMainWindow):
         mw_center_layout.addLayout(lh_boxlayout)
         
         text_height = qtg.QFontMetrics(self.notes_textbox.font()).capHeight()
+        text_width = qtg.QFontMetrics(self.notes_textbox.font()).averageCharWidth()
         
 
         lh_boxlayout.addWidget(self.input_form)
@@ -702,16 +704,22 @@ class MainWindow(qtw.QMainWindow):
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
         # self.notes_textbox.setSizePolicy(
         #     qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
-        
+
+
+        # Put a spacer line in between input and results
+        sunken_line = qtw.QFrame()
+        sunken_line_layout = qtw.QHBoxLayout(sunken_line)
+        sunken_line.setFrameShape(qtw.QFrame.VLine)
+        sunken_line.setFrameShadow(qtw.QFrame.Sunken)
+        sunken_line_layout.setContentsMargins(text_width, text_height * 2, text_width, text_height)
+        mw_center_layout.addWidget(sunken_line)
         
         # ---- Make center with results
-        center_boxlayout = qtw.QVBoxLayout()
-        mw_center_layout.addLayout(center_boxlayout)
+        results_textbox_layout = qtw.QVBoxLayout()
+        results_textbox_layout.addSpacing(int(text_height * 2))
+        results_textbox_layout.addWidget(self.results_textbox)
 
-        # self.textboxes_layout.addSpacing(text_height)
-        center_boxlayout.addWidget(self.results_textbox)
-        
-        # center_boxlayout.setContentsMargins(-1, text_height * 2, -1, -1)
+        mw_center_layout.addLayout(results_textbox_layout)
 
         expected_text_width = qtg.QFontMetrics(
             self.results_textbox.font()).horizontalAdvance(
@@ -723,15 +731,16 @@ class MainWindow(qtw.QMainWindow):
 
         # ---- Make right hand with graph
         rh_layout = qtw.QVBoxLayout()
+        rh_layout.setContentsMargins(-1, 0, -1, 0)
         mw_center_layout.addLayout(rh_layout)
 
         rh_layout.addWidget(self.graph)
         rh_layout.addWidget(self.graph_data_choice)
         rh_layout.addWidget(self.graph_pushbuttons)
-        # rh_layout.setContentsMargins(-1, 0, -1, 0)
 
         self.graph.setSizePolicy(
             qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)  
+
      
 
     def _connect_widgets(self):
@@ -1045,7 +1054,7 @@ class MainWindow(qtw.QMainWindow):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
         summary_all = self.speaker_model_state["system"].get_summary()
-        self.results_textbox.setMarkdown(summary_all)
+        self.results_textbox.setText(summary_all)
         
 
 class SettingsDialog(qtw.QDialog):
