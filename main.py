@@ -711,7 +711,7 @@ class MainWindow(qtw.QMainWindow):
         sunken_line_layout = qtw.QHBoxLayout(sunken_line)
         sunken_line.setFrameShape(qtw.QFrame.VLine)
         sunken_line.setFrameShadow(qtw.QFrame.Sunken)
-        sunken_line_layout.setContentsMargins(text_width, text_height * 2, text_width, text_height)
+        sunken_line_layout.setContentsMargins(text_width * 2 / 3, text_height * 2, text_width * 2 / 3, text_height)
         mw_center_layout.addWidget(sunken_line)
         
         # ---- Make center with results
@@ -724,7 +724,7 @@ class MainWindow(qtw.QMainWindow):
         expected_text_width = qtg.QFontMetrics(
             self.results_textbox.font()).horizontalAdvance(
                 "Bl : 55.55 Tm      Bl²/Re : 55.55 N²/W")
-        self.results_textbox.setMinimumWidth(int(expected_text_width * 1.2))
+        self.results_textbox.setMinimumWidth(int(expected_text_width * 1.25))
         self.results_textbox.setSizePolicy(
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
 
