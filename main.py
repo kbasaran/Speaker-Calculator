@@ -692,19 +692,20 @@ class MainWindow(qtw.QMainWindow):
         lh_boxlayout.addWidget(self.update_button)
         lh_boxlayout.addSpacing(text_height)
         lh_boxlayout.addWidget(pwi.SunkenLine())
-        lh_boxlayout.addSpacing(text_height)
+        lh_boxlayout.addSpacing(text_height / 2)
         lh_boxlayout.addWidget(qtw.QLabel("<b>Title</b>"))
         lh_boxlayout.addWidget(self.title_textbox)
-        lh_boxlayout.addSpacing(text_height)
+        lh_boxlayout.addSpacing(text_height / 2)
         lh_boxlayout.addWidget(qtw.QLabel("<b>Notes</b>"))
         lh_boxlayout.addWidget(self.notes_textbox)
 
         self.update_button.setMinimumHeight(text_height * 6)
         self.input_form.setSizePolicy(
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
-        # self.notes_textbox.setSizePolicy(
-        #     qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
-
+        self.notes_textbox.setSizePolicy(
+            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Preferred)
+        self.title_textbox.setSizePolicy(
+            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Preferred)
 
         # Put a spacer line in between input and results
         sunken_line = qtw.QFrame()
@@ -716,7 +717,7 @@ class MainWindow(qtw.QMainWindow):
         
         # ---- Make center with results
         results_textbox_layout = qtw.QVBoxLayout()
-        results_textbox_layout.addSpacing(int(text_height * 2))
+        results_textbox_layout.addSpacing(text_height * 3)
         results_textbox_layout.addWidget(self.results_textbox)
 
         mw_center_layout.addLayout(results_textbox_layout)
