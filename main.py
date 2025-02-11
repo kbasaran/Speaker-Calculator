@@ -66,7 +66,7 @@ class Settings:
     Kair: float = 101325. * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
     vc_table_file = "./data/wire table.ods"  # posix path
-    default_state_file = "./data/default.scf"  # posix path
+    startup_state_file = "./data/startup.scf"  # posix path
     f_min: int = 10
     f_max: int = 3000
     A_beep: int = 0.25
@@ -551,13 +551,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
 def show_file_paths(parent_window):
     working_directory = Path.cwd()
     coil_table_file = Path(PurePosixPath(settings.vc_table_file)).absolute()
-    default_state_file = Path(PurePosixPath(settings.default_state_file)).absolute()
+    startup_state_file = Path(PurePosixPath(settings.startup_state_file)).absolute()
     
     result_text = (f"#### Installation folder<br></br>{working_directory}"
                    "<br></br>  \n"
                    f"#### Coil wire definitions file<br></br>{coil_table_file}"
                    "<br></br>  \n"
-                   f"#### Default state file<br></br>{default_state_file}"
+                   f"#### Start-up state file<br></br>{startup_state_file}"
                    )
     
     popup = pwi.ResultTextBox("File paths",
@@ -1481,8 +1481,8 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
-    elif (default_file := Path(PurePosixPath(settings.default_state_file))).is_file():
-        new_window(open_user_file=default_file)
+    elif (default_startup_file := Path(PurePosixPath(settings.startup_state_file))).is_file():
+        new_window(open_user_file=default_startup_file)
     else:
         new_window()
 
