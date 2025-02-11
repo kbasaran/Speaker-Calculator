@@ -74,7 +74,7 @@ class Settings:
     show_legend: bool = True
     max_legend_size: int = 10
     matplotlib_style: str = "bmh"
-    graph_grids: str = "default"
+    graph_grids: str = "Major and minor"
 
     def __post_init__(self):
         settings_storage_title = (self.app_name
