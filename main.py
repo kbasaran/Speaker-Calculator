@@ -788,7 +788,7 @@ class MainWindow(qtw.QMainWindow):
                 file = Path(file_raw + ".scf" if file_raw[-4:] != ".scf" else file_raw)
                 # filter not working as expected, saves files without file extension scf
                 # therefore above logic
-                assert file.parent.is_dir()
+                assert file.parent.exists()
             else:
                 return  # empty file_raw. means nothing was selected, so pick file is canceled.
         except:
@@ -817,8 +817,9 @@ class MainWindow(qtw.QMainWindow):
                                                               dir=settings.last_used_folder,
                                                               filter='Speaker calculator files (*.scf *.sscf)',
                                                               )
-
-            if file_raw := path_unverified[0]:
+            
+            file_raw = path_unverified[0]
+            if file_raw:
                 file = Path(file_raw)
             else:
                 return  # canceled file select
@@ -826,7 +827,7 @@ class MainWindow(qtw.QMainWindow):
         # file provided as argumnent
         # Check if argument file exists
         elif not file.is_file():
-                raise FileNotFoundError(file)
+            raise FileNotFoundError(file)
 
         # file is ready as Path object at this point
 
