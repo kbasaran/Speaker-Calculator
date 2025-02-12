@@ -5,4 +5,4 @@ Tooltip for dead weight should be added
 add coil inductance
 tell fill ratio as percentage, using nominal thickness
 trigger a "clear coil choices combobox" when the coil parameters are changed.
-streamline name for housing (box, enclosure, housing are used)
+

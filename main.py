@@ -450,43 +450,42 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # ---- Enclosure type
         form.add_row(pwi.Title("Enclosure type"))
 
-        box_type_choice_buttons = pwi.ChoiceButtonGroup("box_type",
+        enclosue_type_choice_buttons = pwi.ChoiceButtonGroup("enclosure_type",
                                                         {0: "Free-air", 1: "Closed box"},
                                                         {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
-                                                         1: "Speaker rear side coupled to a lossy sealed box.",
+                                                         1: "Speaker rear side coupled to a sealed enclosure.",
                                                          },
                                                         vertical=False,
                                                         )
-        box_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
-        form.add_row(box_type_choice_buttons)
+        enclosue_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
+        form.add_row(enclosue_type_choice_buttons)
 
         # ---- Closed box specs
         form.add_row(pwi.SunkenLine())
 
         form.add_row(pwi.Title("Closed box specifications"))
 
-        form.add_row(pwi.FloatSpinBox("Vb", "Internal netto volume filled by air",
+        form.add_row(pwi.FloatSpinBox("Vb", "Internal volume filled by air.",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Box internal volume (l)",
+                     description="Net internal volume (l)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the box."
-                                      + "\n**This value also affects effective box volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
+        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the enclosure."
+                                      + "\n**This value also affects the effective enclosure volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
-                     description="Q<sub>a</sub> - box absorption",
+                     description="Q<sub>a</sub> - internal absorption",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of box",
+        form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of the enclosure.",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
-                     description="Q<sub>l</sub> - box losses",
+                     description="Q<sub>l</sub> - leakage losses",
                      )
-
 
         # ---- Form logic
         def adjust_form_for_enclosure_type(toggled_id, checked):
@@ -494,7 +493,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
             form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
             form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
 
-        form.interactable_widgets["box_type"].idToggled.connect(adjust_form_for_enclosure_type)
+        form.interactable_widgets["enclosure_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start
         adjust_form_for_enclosure_type(0, True)
 
@@ -1344,14 +1343,14 @@ def build_or_update_SpeakerSystem(vals,
                                   speaker: ac.SpeakerDriver,
                                   spk_sys: (None, ac.SpeakerSystem) = None,
                                   ) -> ac.SpeakerSystem:    
-    if vals["box_type"] == 1:
-        housing = ac.Housing(speaker.settings,
+    if vals["enclosure_type"] == 1:
+        enclosure = ac.Enclosure(speaker.settings,
                              vals["Vb"],
                              vals["Qa"],
                              vals["Qa"],
                              )
     else:
-        housing = None
+        enclosure = None
         
     if vals["parent_body"] == 1:
         parent_body = ac.ParentBody(vals["m2"],
@@ -1369,14 +1368,14 @@ def build_or_update_SpeakerSystem(vals,
     if spk_sys is None:
         return ac.SpeakerSystem(speaker,
                                 vals["R_serial"],
-                                housing,
+                                enclosure,
                                 parent_body,
                                 passive_radiator,
                                 )   
     else:
         spk_sys.update_values(speaker=speaker,
                                 Rs = vals["R_serial"],
-                                housing = housing,
+                                enclosure = enclosure,
                                 parent_body = parent_body,
                                 passive_radiator = passive_radiator,
                                 )
