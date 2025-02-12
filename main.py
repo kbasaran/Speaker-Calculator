@@ -192,7 +192,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Excitation value",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Rnom", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
+        form.add_row(pwi.FloatSpinBox("Rnom", "Nominal impedance of the system. This is necessary to calculate the voltage applied to the system"
                                       "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
                                       ),
                      description="Nominal impedance",
@@ -968,7 +968,9 @@ class MainWindow(qtw.QMainWindow):
         curves = dict()
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
         R_spk = spk_sys.speaker.Re
-        W_spk = (V_source / spk_sys.R_sys * R_spk)**2 / R_spk
+        W_sys = V_source**2 / spk_sys.R_sys
+        V_spk = V_source / spk_sys.R_sys * R_spk
+        W_spk = V_spk**2 / R_spk
 
         if checked_id == 0:
 
@@ -992,7 +994,11 @@ class MainWindow(qtw.QMainWindow):
                                })
 
                 self.graph.set_y_limits_policy("SPL")
-                self.graph.set_title(f"SPL@1m, Half-space, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
+                if spk_sys.speaker.Re == spk_sys.R_sys:
+                    title = f"SPL@1m, Half-space\n{V_spk:.4g} V, {W_spk:.3g} Watt@Re"
+                else:
+                    title = f"SPL@1m, Half-space\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V, {W_spk:.3g} Watt@Re"
+                self.graph.set_title(title)
                 self.graph.ax.set_ylabel("dBSPL")
 
             elif spk_sys.speaker.Sd == 0:  # shaker or other with no diaphragm
@@ -1002,7 +1008,7 @@ class MainWindow(qtw.QMainWindow):
                                for key, acc in accs.items() if "relative" not in key})
                 
                 self.graph.set_y_limits_policy("SPL")
-                self.graph.set_title(f"Acceleration, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
+                self.graph.set_title(f"Acceleration, {V_source:.4g} V, {W_spk:.3g} Watt@Re")
                 self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$ m/s²")
 
         elif checked_id == 1:
@@ -1017,7 +1023,11 @@ class MainWindow(qtw.QMainWindow):
                     curves[key] = np.abs(val)
 
             self.graph.set_y_limits_policy(None)
-            self.graph.set_title("Displacements")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Displacements\n{V_spk:.4g} V"
+            else:
+                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 3:
@@ -1026,25 +1036,41 @@ class MainWindow(qtw.QMainWindow):
                     curves[key] = np.abs(val)
 
             self.graph.set_y_limits_policy(None)
-            self.graph.set_title("Displacements")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Displacements\n{V_spk:.4g} V"
+            else:
+                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 4:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
-            self.graph.set_title("Forces")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Forces\n{V_spk:.4g} V"
+            else:
+                title = f"Forces\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("N")
             
         elif checked_id == 5:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
-            self.graph.set_title("Velocities")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Velocities\n{V_spk:.4g} V"
+            else:
+                title = f"Velocities\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("m/s")
 
         elif checked_id == 6:
             curves.update(spk_sys.get_phases(freqs).items())
             self.graph.set_y_limits_policy("phase")
-            self.graph.set_title("Phase, displacements")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Phase, displacements\n{V_spk:.4g} V"
+            else:
+                title = f"Phase, displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("degrees")
 
         else:
