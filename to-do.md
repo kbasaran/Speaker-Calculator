@@ -1,4 +1,3 @@
 for dof2 input f0 and not k2
 "analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
-tell fill ratio as percentage, using nominal thickness
 trigger a "clear coil choices combobox" when the coil parameters are changed.

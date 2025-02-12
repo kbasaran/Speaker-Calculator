@@ -133,12 +133,16 @@ class Wire:
     name: str
     wire_type: str
     nominal_size: float
+    shape: str
     w_avg: float
     h_avg: float
     w_max: float
     resistance: float  # ohm/m
     mass_density: float  # kg/m
     notes: str
+    
+    def __post_init__(self):
+        self.shape = self.shape.lower()
 
 
 @dtc.dataclass
@@ -182,11 +186,22 @@ class Coil:
         self.OD_max = self.carrier_OD + 2 * self.w_max
 
         self.name = (str(self.N_layers) + "L " + self.wire.name).strip()
+        section_total_area = self.w_nom * self.h_winding
+        if self.wire.shape == "circular":
+            section_conductor_area = self.wire.nominal_size**2 * np.pi / 4 * sum(self.N_windings)
+            self.fill_ratio = section_conductor_area / section_total_area
+        elif self.wire.shapre == "rectangular":
+            section_conductor_area = self.wire.nominal_size**2 * sum(self.N_windings)
+            self.fill_ratio = section_conductor_area / section_total_area
+        else:
+            self.fill_ratio = np.nan
+            raise ValueError("Unrecognized shape definition for wire {self.wire.name}: {self.wire.shape}")
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = (f"{self.wire.name}        "
-                   f"{sum(self.N_windings)} windings"
+        summary = (f"{self.wire.name}"
+                   "<br></br>"
+                   f"{self.wire.shape.capitalize()}      {sum(self.N_windings)} windings"
                    "<br></br>"
                    f"L<sub>total</sub>: {self.total_wire_length():.3g} m      "
                    f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
@@ -196,6 +211,8 @@ class Coil:
                    f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm      OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
                    "<br></br>"
                    f"Windings per layer: {self.N_windings}"
+                   "<br></br>"
+                   f"Fill ratio: {self.fill_ratio * 100:.3g} %"
                    )
         return summary
 
