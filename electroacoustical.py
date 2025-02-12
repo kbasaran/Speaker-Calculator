@@ -186,15 +186,14 @@ class Coil:
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = (f"{self.wire.name}        "
-                   f"{sum(self.N_windings)} windings<br></br>"
-
+                   f"{sum(self.N_windings)} windings"
+                   "<br></br>"
                    f"L<sub>total</sub>: {self.total_wire_length():.3g} m      "
                    f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
-
                    "<br></br>"
-                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm      w<sub>max</sub> : {self.w_max*1e3:.4g} mm<br></br>"
+                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm      w<sub>max</sub> : {self.w_max*1e3:.4g} mm"
+                   "<br></br>"
                    f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm      OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
-
                    "<br></br>"
                    f"Windings per layer: {self.N_windings}"
                    )
@@ -271,8 +270,10 @@ class Motor:
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = (
-            "### Motor<br></br>"
-            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm<br></br>"
+            "### Motor"
+            "<br></br>"
+            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm"
+            "<br></br>"
             f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm      "
             f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
             
@@ -368,27 +369,29 @@ class SpeakerDriver:
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = ("## Speaker unit<br></br>"
+        summary = ("## Speaker unit"
+                   "<br></br>"
                    f"L<sub>m</sub> : {self.Lm:.2f} dBSPL      "
-                   f"R<sub>e</sub> : {self.Re:.2f} ohm<br></br>"
-
+                   f"R<sub>e</sub> : {self.Re:.2f} ohm"
+                   "<br></br>"
                    f"Bl : {self.Bl:.4g} Tm      "
-                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W<br></br>"
-
+                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W"
+                   "<br></br>"
                    f"Q<sub>es</sub> : {self.Qes:.3g}      "
                    f"Q<sub>ts</sub> : {self.Qts:.3g}"
                    
                    "<br/>  \n"
-                   f"#### Mass and suspension<br></br>"
+                   f"#### Mass and suspension"
+                   "<br></br>"
                    f"M<sub>ms</sub> : {self.Mms*1000:.4g} g      "
                    f"M<sub>md</sub> : {self.Mmd*1000:.4g} g"
-                   
                    "<br></br>"
                    f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm      "
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
 
                    "<br/>  \n"
-                   "#### Displacement<br></br>"
+                   "#### Displacement"
+                   "<br></br>"
                    f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
                    )
 
@@ -652,6 +655,7 @@ class SpeakerSystem:
         A = np.array(self._symbolic_ss["A"].subs(symbols_to_values)).astype(float)
         B = np.array(self._symbolic_ss["B"].subs(symbols_to_values)).astype(float)
 
+
         # ---- Updates in relation to enclosure
         if isinstance(self.enclosure, Enclosure):
             zeta_boxed_speaker = (self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
@@ -670,8 +674,7 @@ class SpeakerSystem:
         else:
             self.fb = np.nan
             self.Qtc = np.nan
-            # Make coefficients linked to enclosure inner pressure 0, thus disable enclosure
-            # ---- code to disable enclosure here
+
 
         # ---- Updates in relation to passive radiator
         if isinstance(self.parent_body, ParentBody):
@@ -727,26 +730,28 @@ class SpeakerSystem:
         summary = self.speaker.get_summary()
 
         summary += ("<br/>  \n"
-                    "## System<br></br>"
-                   f"R<sub>e</sub> : {self.R_sys:.2f}"
+                    "## System"
+                    "<br></br>"
+                    f"R<sub>e</sub> : {self.R_sys:.2f}"
                    )
 
-        # if self.enclosure is not None:
-        #     summary += (
-        #         "### Motor<br></br>"
-        #         f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm<br></br>"
-        #         f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm      "
-        #         f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
-                
-        #         "<br/>  \n"
-        #         "#### Coil<br></br>"
-        #         f"{self.coil.get_summary()}"
-        #         )
-
+        if isinstance(self.enclosure, Enclosure):
+            summary += (
+                "<br/>  \n"
+                "### Enclosure"
+                "<br></br>"
+                f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
+                "<br></br>"
+                f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd):.4g} N/mm"
+                )
+            if isinstance(self.passive_radiator, PassiveRadiator):
+                summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.Spr):.4g} N/mm"
+            
         if self.parent_body is not None:
             summary += (
                 "<br/>  \n"
-                "### Parent body<br></br>"
+                "### Parent body"
+                "<br></br>"
                 "data here"
                 )
         return summary
