@@ -7,14 +7,22 @@ from main import app_definitions
 from pathlib import Path
 # https://cx-freeze.readthedocs.io/en/stable/setup_script.html
 
+files_to_include = [
+    (str(Path("./LICENSE")), str(Path("./LICENSE"))),
+    (str(Path("./README.md")), str(Path("./README.md"))),
+    (app_definitions["icon_path"], app_definitions["icon_path"]),
+    *[(str(file.relative_to(Path.cwd())),) * 2 for file in Path.cwd().rglob("data/*")],
+    ]
+
+print("Warning.. Adding following additional files to package:")
+for pair in files_to_include:
+    print("\t" + pair[0])
+print()
+
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
     "packages": ["numpy"],
-    "include_files": [
-        (str(Path("./LICENSE")), str(Path("./LICENSE"))),
-        (str(Path("./README.md")), str(Path("./README.md"))),
-	(app_definitions["icon_path"], app_definitions["icon_path"]),
-        ],
+    "include_files": files_to_include,
     "silent_level": 1,
 }
 
