@@ -119,7 +119,7 @@ def calculate_coil_to_bottom_plate_clearance(Xpeak):
 
 def calculate_SPL(settings: object, xty: tuple, Sd: float):
     # SPL calculation with simplified radiation impedance * acceleration
-    # xy: RMS velocities per frequency
+    # xty: RMS velocity of the disc along its axis, per frequency
     a = np.sqrt(Sd/np.pi)  # piston radius
     freqs = np.array(xty[0]).flatten()
     p0 = 0.5 * 1j * freqs*2*np.pi * settings.RHO * a**2 * np.array(xty[1]).flatten()
@@ -430,11 +430,11 @@ class ParentBody:
     k: float
     c: float
 
-    # def f(self):
-    #     return 1 / 2 / np.pi * (self.k / self.m)**0.5
+    def f(self):
+        return 1 / 2 / np.pi * (self.k / self.m)**0.5
 
-    # def Q(self):
-    #     return (self.k * self.m)**0.5 / self.c
+    def Q(self):
+        return (self.k * self.m)**0.5 / self.c
 
 
 @dtc.dataclass
@@ -629,16 +629,6 @@ class SpeakerSystem:
 
     def update_values(self, **kwargs):
         # ---- Use kwargs to update attributes of the object 'self'
-        # for key, val in kwargs.items():
-        #     if key in ["speaker", "Rs", "enclosure", "parent_body", "passive_radiator"]:
-        #         setattr(self, key, val)  # set the attributes of self object with value in kwargs
-        #     else:
-        #         raise KeyError("Not familiar with key '{key}'")
-
-
-        # for key in ["speaker", "Rs", "enclosure", "parent_body", "passive_radiator"]:
-        #     setattr(self, key, kwargs[key])  # set the attributes of self object with value in kwargs
-        
 
         dataclass_field_names = [dataclass_field.name for dataclass_field in dtc.fields(self)]
         for key, val in kwargs.items():
@@ -694,7 +684,7 @@ class SpeakerSystem:
             f2_undamped = 1 / 2 / np.pi * (self.parent_body.k / (self.speaker.Mms + self.parent_body.m))**0.5
 
             f2_damped = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
-            if np.iscomplex(f2_damped):  # means overdamped I think
+            if np.iscomplex(f2_damped):  # means overdamped
                 f2_damped = np.nan
 
             self.f2 = f2_undamped
