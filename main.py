@@ -949,12 +949,20 @@ class MainWindow(qtw.QMainWindow):
 
         except RuntimeError as e:
             logger.debug(e)
-            self.results_textbox.setPlainText("Speaker model build failed. Check your file or the parameters provided in form.\nSee log for more details.")
+            self.results_textbox.setText("Speaker model build failed."
+                                         "<br></br>"
+                                         "Check your file if you loaded a file"
+                                         "<br></br>"
+                                         "Check parameters if you updated the model."
+                                         "<br></br>"
+                                         "See log for more details.")
             self.signal_bad_beep.emit()
 
         except KeyError as e:
             logger.debug(e)
-            self.results_textbox.setPlainText("Update failed.\nSee log for more details.")
+            self.results_textbox.setText("Update failed."
+                                         "<br></br>"
+                                         "See log for more details.")
             self.signal_bad_beep.emit()
 
     def update_graph(self, checked_id):
