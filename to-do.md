@@ -3,3 +3,4 @@ for dof2 input f0 and not k2
 trigger a "clear coil choices combobox" when the coil parameters are changed.
 add export curve functionality
 add export model functionality
+home button in plot brings back to SPL settings and not to the starting state of chosen data.
