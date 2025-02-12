@@ -40,7 +40,7 @@ import electroacoustical as ac
 import pandas as pd
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.2.0",
+                   "version": "0.2.0rc0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
