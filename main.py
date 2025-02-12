@@ -158,7 +158,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="X<sub>peak</sub> (mm)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itform and the air.|n(Dead mass = Mmd - coil mass)",
+        form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil windings and the air load on the diaphragm."
+                                                   "\nDead mass = Mmd - coil winding mass",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
