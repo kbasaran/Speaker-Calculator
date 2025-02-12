@@ -720,7 +720,7 @@ class MainWindow(qtw.QMainWindow):
         
         # ---- Make center with results
         results_textbox_layout = qtw.QVBoxLayout()
-        results_textbox_layout.addSpacing(text_height * 3)
+        results_textbox_layout.addSpacing(text_height * 2)
         results_textbox_layout.addWidget(self.results_textbox)
 
         mw_center_layout.addLayout(results_textbox_layout)
