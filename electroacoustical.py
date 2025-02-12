@@ -430,11 +430,24 @@ class ParentBody:
     k: float
     c: float
 
-    def f(self):
-        return 1 / 2 / np.pi * (self.k / self.m)**0.5
+    def zeta(self, coupled_masses=0):
+        # damping ratio
+        return self.c / 2 / ((self.m + coupled_masses) * self.k)**0.5
 
-    def Q(self):
-        return (self.k * self.m)**0.5 / self.c
+    def Q(self, coupled_masses=0):
+        if self.c > 0:
+            return 1 / 2 / self.zeta(coupled_masses)
+        else:
+            return np.inf
+
+    def f(self, coupled_masses=0):
+        # undamped natural frequency a.k.a. resonance frequency
+        f2_undamped = 1 / 2 / np.pi * (self.k / (self.m + coupled_masses))**0.5
+        # f2_damped = f2_undamped * (1 - 2 * self.zeta()**2)**0.5
+        # if np.iscomplex(f2_damped):
+        #     f2_damped = None
+        return f2_undamped
+
 
 
 @dtc.dataclass
@@ -446,16 +459,17 @@ class PassiveRadiator:
     Spr: float  # surface area
     direction: int = 1
 
+        
     def m_s(self):
         # passive radiator with coupled air mass included
         return self.m + calculate_air_mass(self.Sp)
+    
+    def f(self):
+        return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
 
-    # def f(self):
-    #     return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
-
-    # def Q(self):
-    #     return (self.k * self.m_s())**0.5 / self.c
-
+    def Q(self):
+        return (self.k * self.m_s())**0.5 / self.c
+                
 
 def make_state_matrix_A(state_vars, state_diffs, sols):
     # State matrix
@@ -722,7 +736,7 @@ class SpeakerSystem:
         summary += ("<br/>  \n"
                     "## System"
                     "<br></br>"
-                    f"R<sub>e</sub> : {self.R_sys:.2f}"
+                    f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
                    )
 
         if isinstance(self.enclosure, Enclosure):
@@ -737,13 +751,21 @@ class SpeakerSystem:
             if isinstance(self.passive_radiator, PassiveRadiator):
                 summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.Spr):.4g} N/mm"
             
-        if self.parent_body is not None:
+        if isinstance(self.parent_body, ParentBody):
+            coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (
                 "<br/>  \n"
                 "### Parent body"
+                "\n"
+                "##### Coupled with child masses"
                 "<br></br>"
-                "data here"
+                f"Q<sub>pb</sub>: {self.parent_body.Q():.4g}      f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
+                "\n"
+                "##### Decoupled from child masses"
+                "<br></br>"
+                f"Q<sub>pb</sub>: {self.parent_body.Q(coupled_masses):.4g}      f<sub>pb</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
                 )
+
         return summary
 
     def power_at_Re(self, Vspeaker):
