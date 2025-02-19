@@ -40,7 +40,7 @@ import electroacoustical as ac
 import pandas as pd
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.2.0",
+                   "version": "0.2.0rc0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
@@ -66,7 +66,7 @@ class Settings:
     Kair: float = 101325. * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
     vc_table_file = "./data/wire table.ods"  # posix path
-    default_state_file = "./data/default.scf"  # posix path
+    startup_state_file = "./data/startup.scf"  # posix path
     f_min: int = 10
     f_max: int = 3000
     A_beep: int = 0.25
@@ -74,12 +74,15 @@ class Settings:
     show_legend: bool = True
     max_legend_size: int = 10
     matplotlib_style: str = "bmh"
-    graph_grids: str = "default"
+    graph_grids: str = "Major and minor"
 
     def __post_init__(self):
         settings_storage_title = (self.app_name
-                                  + " - "
-                                  + (self.version.split(".")[0] if "." in self.version else "")
+                                  + " v"
+                                  + (".".join(self.version.split(".")[:2])
+                                     if "." in self.version
+                                     else "???"
+                                     )
                                   )
         self.settings_sys = qtc.QSettings(self.author_short, settings_storage_title)
         logger.debug(f"Settings will be stored in '{self.author_short}', '{settings_storage_title}'")
@@ -155,7 +158,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="X<sub>peak</sub> (mm)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil itform and the air.|n(Dead mass = Mmd - coil mass)",
+        form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil windings and the air load on the diaphragm."
+                                                   "\nDead mass = Mmd - coil winding mass",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
@@ -189,7 +193,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Excitation value",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Rnom", "Nominal impedance of the speaker. This is necessary to calculate the voltage input"
+        form.add_row(pwi.FloatSpinBox("Rnom", "Nominal impedance of the system. This is necessary to calculate the voltage applied to the system"
                                       "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
                                       ),
                      description="Nominal impedance",
@@ -447,43 +451,42 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # ---- Enclosure type
         form.add_row(pwi.Title("Enclosure type"))
 
-        box_type_choice_buttons = pwi.ChoiceButtonGroup("box_type",
+        enclosue_type_choice_buttons = pwi.ChoiceButtonGroup("enclosure_type",
                                                         {0: "Free-air", 1: "Closed box"},
                                                         {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
-                                                         1: "Speaker rear side coupled to a lossy sealed box.",
+                                                         1: "Speaker rear side coupled to a sealed enclosure.",
                                                          },
                                                         vertical=False,
                                                         )
-        box_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
-        form.add_row(box_type_choice_buttons)
+        enclosue_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
+        form.add_row(enclosue_type_choice_buttons)
 
         # ---- Closed box specs
         form.add_row(pwi.SunkenLine())
 
         form.add_row(pwi.Title("Closed box specifications"))
 
-        form.add_row(pwi.FloatSpinBox("Vb", "Internal netto volume filled by air",
+        form.add_row(pwi.FloatSpinBox("Vb", "Internal volume filled by air.",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Box internal volume (l)",
+                     description="Net internal volume (l)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the box."
-                                      + "\n**This value also affects effective box volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
+        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the enclosure."
+                                      + "\n**This value also affects the effective enclosure volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
-                     description="Q<sub>a</sub> - box absorption",
+                     description="Q<sub>a</sub> - internal absorption",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of box",
+        form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of the enclosure.",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
-                     description="Q<sub>l</sub> - box losses",
+                     description="Q<sub>l</sub> - leakage losses",
                      )
-
 
         # ---- Form logic
         def adjust_form_for_enclosure_type(toggled_id, checked):
@@ -491,7 +494,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
             form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
             form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
 
-        form.interactable_widgets["box_type"].idToggled.connect(adjust_form_for_enclosure_type)
+        form.interactable_widgets["enclosure_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start
         adjust_form_for_enclosure_type(0, True)
 
@@ -548,13 +551,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
 def show_file_paths(parent_window):
     working_directory = Path.cwd()
     coil_table_file = Path(PurePosixPath(settings.vc_table_file)).absolute()
-    default_state_file = Path(PurePosixPath(settings.default_state_file)).absolute()
+    startup_state_file = Path(PurePosixPath(settings.startup_state_file)).absolute()
     
     result_text = (f"#### Installation folder<br></br>{working_directory}"
                    "<br></br>  \n"
                    f"#### Coil wire definitions file<br></br>{coil_table_file}"
                    "<br></br>  \n"
-                   f"#### Default state file<br></br>{default_state_file}"
+                   f"#### Start-up state file<br></br>{startup_state_file}"
                    )
     
     popup = pwi.ResultTextBox("File paths",
@@ -717,7 +720,7 @@ class MainWindow(qtw.QMainWindow):
         
         # ---- Make center with results
         results_textbox_layout = qtw.QVBoxLayout()
-        results_textbox_layout.addSpacing(text_height * 3)
+        results_textbox_layout.addSpacing(text_height * 2)
         results_textbox_layout.addWidget(self.results_textbox)
 
         mw_center_layout.addLayout(results_textbox_layout)
@@ -785,7 +788,7 @@ class MainWindow(qtw.QMainWindow):
                 file = Path(file_raw + ".scf" if file_raw[-4:] != ".scf" else file_raw)
                 # filter not working as expected, saves files without file extension scf
                 # therefore above logic
-                assert file.parent.is_dir()
+                assert file.parent.exists()
             else:
                 return  # empty file_raw. means nothing was selected, so pick file is canceled.
         except:
@@ -814,8 +817,9 @@ class MainWindow(qtw.QMainWindow):
                                                               dir=settings.last_used_folder,
                                                               filter='Speaker calculator files (*.scf *.sscf)',
                                                               )
-
-            if file_raw := path_unverified[0]:
+            
+            file_raw = path_unverified[0]
+            if file_raw:
                 file = Path(file_raw)
             else:
                 return  # canceled file select
@@ -823,7 +827,7 @@ class MainWindow(qtw.QMainWindow):
         # file provided as argumnent
         # Check if argument file exists
         elif not file.is_file():
-                raise FileNotFoundError(file)
+            raise FileNotFoundError(file)
 
         # file is ready as Path object at this point
 
@@ -945,12 +949,20 @@ class MainWindow(qtw.QMainWindow):
 
         except RuntimeError as e:
             logger.debug(e)
-            self.results_textbox.setPlainText("Speaker model build failed. Check your file or the parameters provided in form.\nSee log for more details.")
+            self.results_textbox.setText("Speaker model build failed."
+                                         "<br></br>"
+                                         "Check your file if you loaded a file"
+                                         "<br></br>"
+                                         "Check parameters if you updated the model."
+                                         "<br></br>"
+                                         "See log for more details.")
             self.signal_bad_beep.emit()
 
         except KeyError as e:
             logger.debug(e)
-            self.results_textbox.setPlainText("Update failed.\nSee log for more details.")
+            self.results_textbox.setText("Update failed."
+                                         "<br></br>"
+                                         "See log for more details.")
             self.signal_bad_beep.emit()
 
     def update_graph(self, checked_id):
@@ -965,7 +977,9 @@ class MainWindow(qtw.QMainWindow):
         curves = dict()
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
         R_spk = spk_sys.speaker.Re
-        W_spk = (V_source / spk_sys.R_sys * R_spk)**2 / R_spk
+        W_sys = V_source**2 / spk_sys.R_sys
+        V_spk = V_source / spk_sys.R_sys * R_spk
+        W_spk = V_spk**2 / R_spk
 
         if checked_id == 0:
 
@@ -989,7 +1003,11 @@ class MainWindow(qtw.QMainWindow):
                                })
 
                 self.graph.set_y_limits_policy("SPL")
-                self.graph.set_title(f"SPL@1m, Half-space, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
+                if spk_sys.speaker.Re == spk_sys.R_sys:
+                    title = f"SPL@1m, Half-space\n{V_spk:.4g} V, {W_spk:.3g} Watt@Re"
+                else:
+                    title = f"SPL@1m, Half-space\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V, {W_spk:.3g} Watt@Re"
+                self.graph.set_title(title)
                 self.graph.ax.set_ylabel("dBSPL")
 
             elif spk_sys.speaker.Sd == 0:  # shaker or other with no diaphragm
@@ -999,7 +1017,7 @@ class MainWindow(qtw.QMainWindow):
                                for key, acc in accs.items() if "relative" not in key})
                 
                 self.graph.set_y_limits_policy("SPL")
-                self.graph.set_title(f"Acceleration, {V_source:.4g} Volt, {W_spk:.3g} Watt@Re")
+                self.graph.set_title(f"Acceleration, {V_source:.4g} V, {W_spk:.3g} Watt@Re")
                 self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$ m/s²")
 
         elif checked_id == 1:
@@ -1014,7 +1032,11 @@ class MainWindow(qtw.QMainWindow):
                     curves[key] = np.abs(val)
 
             self.graph.set_y_limits_policy(None)
-            self.graph.set_title("Displacements")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Displacements\n{V_spk:.4g} V"
+            else:
+                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 3:
@@ -1023,25 +1045,41 @@ class MainWindow(qtw.QMainWindow):
                     curves[key] = np.abs(val)
 
             self.graph.set_y_limits_policy(None)
-            self.graph.set_title("Displacements")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Displacements\n{V_spk:.4g} V"
+            else:
+                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 4:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
-            self.graph.set_title("Forces")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Forces\n{V_spk:.4g} V"
+            else:
+                title = f"Forces\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("N")
             
         elif checked_id == 5:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
-            self.graph.set_title("Velocities")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Velocities\n{V_spk:.4g} V"
+            else:
+                title = f"Velocities\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("m/s")
 
         elif checked_id == 6:
             curves.update(spk_sys.get_phases(freqs).items())
             self.graph.set_y_limits_policy("phase")
-            self.graph.set_title("Phase, displacements")
+            if spk_sys.speaker.Re == spk_sys.R_sys:
+                title = f"Phase, displacements\n{V_spk:.4g} V"
+            else:
+                title = f"Phase, displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+            self.graph.set_title(title)
             self.graph.ax.set_ylabel("degrees")
 
         else:
@@ -1340,14 +1378,14 @@ def build_or_update_SpeakerSystem(vals,
                                   speaker: ac.SpeakerDriver,
                                   spk_sys: (None, ac.SpeakerSystem) = None,
                                   ) -> ac.SpeakerSystem:    
-    if vals["box_type"] == 1:
-        housing = ac.Housing(speaker.settings,
+    if vals["enclosure_type"] == 1:
+        enclosure = ac.Enclosure(speaker.settings,
                              vals["Vb"],
                              vals["Qa"],
                              vals["Qa"],
                              )
     else:
-        housing = None
+        enclosure = None
         
     if vals["parent_body"] == 1:
         parent_body = ac.ParentBody(vals["m2"],
@@ -1365,14 +1403,14 @@ def build_or_update_SpeakerSystem(vals,
     if spk_sys is None:
         return ac.SpeakerSystem(speaker,
                                 vals["R_serial"],
-                                housing,
+                                enclosure,
                                 parent_body,
                                 passive_radiator,
                                 )   
     else:
         spk_sys.update_values(speaker=speaker,
                                 Rs = vals["R_serial"],
-                                housing = housing,
+                                enclosure = enclosure,
                                 parent_body = parent_body,
                                 passive_radiator = passive_radiator,
                                 )
@@ -1477,8 +1515,8 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
-    elif (default_file := Path(PurePosixPath(settings.default_state_file))).is_file():
-        new_window(open_user_file=default_file)
+    elif (default_startup_file := Path(PurePosixPath(settings.startup_state_file))).is_file():
+        new_window(open_user_file=default_startup_file)
     else:
         new_window()
 
