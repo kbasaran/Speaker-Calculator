@@ -119,7 +119,7 @@ def calculate_coil_to_bottom_plate_clearance(Xpeak):
 
 def calculate_SPL(settings: object, xty: tuple, Sd: float):
     # SPL calculation with simplified radiation impedance * acceleration
-    # xy: RMS velocities per frequency
+    # xty: RMS velocity of the disc along its axis, per frequency
     a = np.sqrt(Sd/np.pi)  # piston radius
     freqs = np.array(xty[0]).flatten()
     p0 = 0.5 * 1j * freqs*2*np.pi * settings.RHO * a**2 * np.array(xty[1]).flatten()
@@ -133,12 +133,16 @@ class Wire:
     name: str
     wire_type: str
     nominal_size: float
+    shape: str
     w_avg: float
     h_avg: float
     w_max: float
     resistance: float  # ohm/m
     mass_density: float  # kg/m
     notes: str
+    
+    def __post_init__(self):
+        self.shape = self.shape.lower()
 
 
 @dtc.dataclass
@@ -182,21 +186,33 @@ class Coil:
         self.OD_max = self.carrier_OD + 2 * self.w_max
 
         self.name = (str(self.N_layers) + "L " + self.wire.name).strip()
+        section_total_area = self.w_nom * self.h_winding
+        if self.wire.shape == "circular":
+            section_conductor_area = self.wire.nominal_size**2 * np.pi / 4 * sum(self.N_windings)
+            self.fill_ratio = section_conductor_area / section_total_area
+        elif self.wire.shapre == "rectangular":
+            section_conductor_area = self.wire.nominal_size**2 * sum(self.N_windings)
+            self.fill_ratio = section_conductor_area / section_total_area
+        else:
+            self.fill_ratio = np.nan
+            raise ValueError("Unrecognized shape definition for wire {self.wire.name}: {self.wire.shape}")
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = (f"{self.wire.name}        "
-                   f"{sum(self.N_windings)} windings<br></br>"
-
+        summary = (f"{self.wire.name}"
+                   "<br></br>"
+                   f"{self.wire.shape[0].upper() + self.wire.shape[1:]}      {sum(self.N_windings)} windings"
+                   "  \n"
                    f"L<sub>total</sub>: {self.total_wire_length():.3g} m      "
                    f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
-
                    "<br></br>"
-                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm      w<sub>max</sub> : {self.w_max*1e3:.4g} mm<br></br>"
+                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm      w<sub>max</sub> : {self.w_max*1e3:.4g} mm"
+                   "<br></br>"
                    f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm      OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
-
-                   "<br></br>"
+                   "  \n"
                    f"Windings per layer: {self.N_windings}"
+                   "<br></br>"
+                   f"Fill ratio: {self.fill_ratio * 100:.3g} %"
                    )
         return summary
 
@@ -271,8 +287,10 @@ class Motor:
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = (
-            "### Motor<br></br>"
-            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm<br></br>"
+            "### Motor"
+            "<br></br>"
+            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm"
+            "<br></br>"
             f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm      "
             f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
             
@@ -368,27 +386,29 @@ class SpeakerDriver:
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = ("## Speaker unit<br></br>"
+        summary = ("## Speaker unit"
+                   "<br></br>"
                    f"L<sub>m</sub> : {self.Lm:.2f} dBSPL      "
-                   f"R<sub>e</sub> : {self.Re:.2f} ohm<br></br>"
-
+                   f"R<sub>e</sub> : {self.Re:.2f} ohm"
+                   "<br></br>"
                    f"Bl : {self.Bl:.4g} Tm      "
-                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W<br></br>"
-
+                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W"
+                   "<br></br>"
                    f"Q<sub>es</sub> : {self.Qes:.3g}      "
                    f"Q<sub>ts</sub> : {self.Qts:.3g}"
                    
                    "<br/>  \n"
-                   f"#### Mass and suspension<br></br>"
+                   f"#### Mass and suspension"
+                   "<br></br>"
                    f"M<sub>ms</sub> : {self.Mms*1000:.4g} g      "
                    f"M<sub>md</sub> : {self.Mmd*1000:.4g} g"
-                   
                    "<br></br>"
                    f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm      "
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
 
                    "<br/>  \n"
-                   "#### Displacement<br></br>"
+                   "#### Displacement"
+                   "<br></br>"
                    f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
                    )
 
@@ -402,7 +422,7 @@ class SpeakerDriver:
 
 
 @dtc.dataclass
-class Housing:
+class Enclosure:
     # All units are SI
     settings: object
     Vb: float
@@ -427,11 +447,24 @@ class ParentBody:
     k: float
     c: float
 
-    # def f(self):
-    #     return 1 / 2 / np.pi * (self.k / self.m)**0.5
+    def zeta(self, coupled_masses=0):
+        # damping ratio
+        return self.c / 2 / ((self.m + coupled_masses) * self.k)**0.5
 
-    # def Q(self):
-    #     return (self.k * self.m)**0.5 / self.c
+    def Q(self, coupled_masses=0):
+        if self.c > 0:
+            return 1 / 2 / self.zeta(coupled_masses)
+        else:
+            return np.inf
+
+    def f(self, coupled_masses=0):
+        # undamped natural frequency a.k.a. resonance frequency
+        f2_undamped = 1 / 2 / np.pi * (self.k / (self.m + coupled_masses))**0.5
+        # f2_damped = f2_undamped * (1 - 2 * self.zeta()**2)**0.5
+        # if np.iscomplex(f2_damped):
+        #     f2_damped = None
+        return f2_undamped
+
 
 
 @dtc.dataclass
@@ -443,16 +476,17 @@ class PassiveRadiator:
     Spr: float  # surface area
     direction: int = 1
 
+        
     def m_s(self):
         # passive radiator with coupled air mass included
         return self.m + calculate_air_mass(self.Sp)
+    
+    def f(self):
+        return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
 
-    # def f(self):
-    #     return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
-
-    # def Q(self):
-    #     return (self.k * self.m_s())**0.5 / self.c
-
+    def Q(self):
+        return (self.k * self.m_s())**0.5 / self.c
+                
 
 def make_state_matrix_A(state_vars, state_diffs, sols):
     # State matrix
@@ -496,7 +530,7 @@ class SpeakerSystem:
     speaker: SpeakerDriver
     Rs: float = 0  # series electrical resistance to the speaker terminals.
                     # may be inside the amp or in the cables to the speaker terminals
-    housing: None | Housing = None
+    enclosure: None | Enclosure = None
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
 
@@ -539,7 +573,7 @@ class SpeakerSystem:
                 (- M2 * x2_tt - R2 * x2_t - K2 * x2
                  - Rms*(x2_t - x1_t) - Kms*(x2 - x1)
                  + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
-                 + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes housing
+                 + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
                  - (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
@@ -605,10 +639,10 @@ class SpeakerSystem:
             "Spr": 1e-99 if self.passive_radiator is None else self.passive_radiator.Spr,
             "dir_pr": 0 if self.passive_radiator is None else self.passive_radiator.direction,
 
-            "Vba": 1e99 if self.housing is None else self.housing.Vba(),
-            "Qa": 1e99 if self.housing is None else self.housing.Qa,
-            "Ql": 1e99 if self.housing is None else self.housing.Ql,
-            "has_housing": 0 if self.housing is None else 1,
+            "Vba": 1e99 if self.enclosure is None else self.enclosure.Vba(),
+            "Qa": 1e99 if self.enclosure is None else self.enclosure.Qa,
+            "Ql": 1e99 if self.enclosure is None else self.enclosure.Ql,
+            "has_housing": 0 if self.enclosure is None else 1,
 
             "P0": self.settings.P0,
             "gamma": self.settings.GAMMA,
@@ -626,16 +660,6 @@ class SpeakerSystem:
 
     def update_values(self, **kwargs):
         # ---- Use kwargs to update attributes of the object 'self'
-        # for key, val in kwargs.items():
-        #     if key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
-        #         setattr(self, key, val)  # set the attributes of self object with value in kwargs
-        #     else:
-        #         raise KeyError("Not familiar with key '{key}'")
-
-
-        # for key in ["speaker", "Rs", "housing", "parent_body", "passive_radiator"]:
-        #     setattr(self, key, kwargs[key])  # set the attributes of self object with value in kwargs
-        
 
         dataclass_field_names = [dataclass_field.name for dataclass_field in dtc.fields(self)]
         for key, val in kwargs.items():
@@ -652,13 +676,14 @@ class SpeakerSystem:
         A = np.array(self._symbolic_ss["A"].subs(symbols_to_values)).astype(float)
         B = np.array(self._symbolic_ss["B"].subs(symbols_to_values)).astype(float)
 
-        # ---- Updates in relation to housing
-        if isinstance(self.housing, Housing):
-            zeta_boxed_speaker = (self.housing.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
-                                  + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
-                / 2 / ((self.speaker.Kms+self.housing.K(self.speaker.Sd)) * self.speaker.Mms)**0.5
 
-            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms+self.housing.K(self.speaker.Sd)) / self.speaker.Mms)**0.5
+        # ---- Updates in relation to enclosure
+        if isinstance(self.enclosure, Enclosure):
+            zeta_boxed_speaker = (self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
+                                  + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
+                / 2 / ((self.speaker.Kms+self.enclosure.K(self.speaker.Sd)) * self.speaker.Mms)**0.5
+
+            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms+self.enclosure.K(self.speaker.Sd)) / self.speaker.Mms)**0.5
 
             fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
             if np.iscomplex(fb_damped):  # means overdamped I think
@@ -670,8 +695,7 @@ class SpeakerSystem:
         else:
             self.fb = np.nan
             self.Qtc = np.nan
-            # Make coefficients linked to housing inner pressure 0, thus disable housing
-            # ---- code to disable housing here
+
 
         # ---- Updates in relation to passive radiator
         if isinstance(self.parent_body, ParentBody):
@@ -691,7 +715,7 @@ class SpeakerSystem:
             f2_undamped = 1 / 2 / np.pi * (self.parent_body.k / (self.speaker.Mms + self.parent_body.m))**0.5
 
             f2_damped = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
-            if np.iscomplex(f2_damped):  # means overdamped I think
+            if np.iscomplex(f2_damped):  # means overdamped
                 f2_damped = np.nan
 
             self.f2 = f2_undamped
@@ -727,19 +751,38 @@ class SpeakerSystem:
         summary = self.speaker.get_summary()
 
         summary += ("<br/>  \n"
-                    "## System<br></br>"
-                   f"R<sub>e</sub> : {self.R_sys:.2f}"
+                    "## System"
+                    "<br></br>"
+                    f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
                    )
-        if self.housing is not None:
-            summary += ("<br/>  \n"
-                        "### Housing<br></br>"
-                        "data here"
-                        )
-        if self.parent_body is not None:
-            summary += ("<br/>  \n"
-                        "### Parent body<br></br>"
-                        "data here"
-                        )
+
+        if isinstance(self.enclosure, Enclosure):
+            summary += (
+                "<br/>  \n"
+                "### Enclosure"
+                "<br></br>"
+                f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
+                "<br></br>"
+                f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd):.4g} N/mm"
+                )
+            if isinstance(self.passive_radiator, PassiveRadiator):
+                summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.Spr):.4g} N/mm"
+            
+        if isinstance(self.parent_body, ParentBody):
+            coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
+            summary += (
+                "<br/>  \n"
+                "### Parent body"
+                "\n"
+                "##### Coupled child masses"
+                "<br></br>"
+                f"Q<sub>pb,c</sub>: {self.parent_body.Q(coupled_masses):.4g}      f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
+                "\n"
+                "##### Decoupled child masses"
+                "<br></br>"
+                f"Q<sub>pb</sub>: {self.parent_body.Q():.4g}      f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
+                )
+
         return summary
 
     def power_at_Re(self, Vspeaker):
@@ -905,34 +948,34 @@ def tests():
     # my_system = SpeakerSystem(my_speaker)
 
     # # do test model 2
-    # housing = Housing(0.01, 5)
+    # enclosure = Enclosure(0.01, 5)
     # parent_body = ParentBody(1, 1, 1)
     # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    # my_system = SpeakerSystem(my_speaker, housing=housing, parent_body=parent_body)
+    # my_system = SpeakerSystem(my_speaker, enclosure=enclosure, parent_body=parent_body)
 
     # # do test model 3
-    housing = Housing(settings, 0.001, 1e99, 99999)
+    enclosure = Enclosure(settings, 0.001, 1e99, 99999)
     parent_body = ParentBody(1, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(settings, 100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
     my_system = SpeakerSystem(my_speaker,
                               parent_body=parent_body,
-                              housing=housing,
+                              enclosure=enclosure,
                               passive_radiator=None,
                               )
 
     my_system.update_values(speaker=my_speaker,
                             Rs=10,
-                            housing = housing,
+                            enclosure = enclosure,
                             parent_body = parent_body,
                             passive_radiator = None,
                             )
 
 
     # do test model for unibox - Qa / Ql
-    # housing = Housing(0.05, 9999)
+    # enclosure = Enclosure(0.05, 9999)
     # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=3, Re=4, Mms=7.7e-3)
-    # my_system = SpeakerSystem(my_speaker, housing=housing)
+    # my_system = SpeakerSystem(my_speaker, enclosure=enclosure)
     # x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
 
     w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)

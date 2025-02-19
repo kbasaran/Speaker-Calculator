@@ -1,7 +1,6 @@
 ## Speaker Calculator
-**Calculation tool for loudspeaker design**  
-Written for Python 3.12.  
-Uses additional modules: numpy, pandas, scipy.signal, matplotlib, PySide2, python-sounddevice
+**Calculation tool for loudspeaker design**
+Written for Python 3.12.x
 
 **Features:**
 * Modelling of loudspeaker response in free-air and closed box.
@@ -21,6 +20,6 @@ Uses additional modules: numpy, pandas, scipy.signal, matplotlib, PySide2, pytho
 * Electrical inductance
 * Change of acoustical impedance at higher frequencies
 
-**Screenshot:**  
+**Screenshot:**
 
 ![Image](./images/SC_screenshot.png)
