@@ -1053,7 +1053,7 @@ class MainWindow(qtw.QMainWindow):
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 4:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
+            curves.update({key: val for key, val in spk_sys.get_forces(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
                 title = f"Forces\n{V_spk:.4g} V"
