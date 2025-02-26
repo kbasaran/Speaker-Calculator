@@ -71,7 +71,6 @@ class Settings:
     f_max: int = 3000
     A_beep: float = 0.25
     last_used_folder: str = str(Path.home())
-    show_legend: bool = True
     max_legend_size: int = 10
     matplotlib_style: str = "ggplot"
     graph_grids: str = "Major and minor"
@@ -1112,9 +1111,6 @@ class SettingsDialog(qtw.QDialog):
         # ---- Form
         user_form = pwi.UserForm()
         layout.addWidget(user_form)
-
-        user_form.add_row(pwi.CheckBox("show_legend", "Show legend on the graph"),
-                          "Show legend")
 
         user_form.add_row(pwi.IntSpinBox("max_legend_size", "Limit the items that can be listed on the legend. Does not affect the shown curves in graph"),
                           "Nmax for graph legend")
