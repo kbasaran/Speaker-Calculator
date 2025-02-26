@@ -113,7 +113,7 @@ class Settings:
         # return the settings as a dict
         settings = {}
         for field in fields(self):
-            settings[field] = getattr(self, field.name)
+            settings[field.name] = getattr(self, field.name)
         return settings
 
     def __repr__(self):
