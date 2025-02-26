@@ -1207,16 +1207,8 @@ class SettingsDialog(qtw.QDialog):
             partial(self._save_and_close,  user_form))
 
     def _save_and_close(self, user_form):
-        # mpl_styles = [
-        #     style_name for style_name in mpl.style.available if style_name[0] != "_"]
         vals = user_form.get_form_values()
         if vals["matplotlib_style"]["current_text"] != settings.matplotlib_style:
-            print()
-            print()
-            print(vals["matplotlib_style"], type(vals["matplotlib_style"]))
-            print(settings.matplotlib_style, type(settings.matplotlib_style))
-            print()
-            print()
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
                                           "Application needs to be restarted to be able to use the new Matplotlib style.",
