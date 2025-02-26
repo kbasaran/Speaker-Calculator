@@ -1123,7 +1123,7 @@ class SettingsDialog(qtw.QDialog):
             style_name for style_name in mpl.style.available if style_name[0] != "_"]
         user_form.add_row(pwi.ComboBox("matplotlib_style",
                                        "Style for the canvas. To see options, web search: 'matplotlib style sheets reference'",
-                                       [(style_name, style_name)
+                                       [(style_name, None)
                                         for style_name in mpl_styles],
                                        ),
                           "Matplotlib style",
@@ -1167,39 +1167,56 @@ class SettingsDialog(qtw.QDialog):
         layout.addWidget(button_group)
 
         # ---- read values from settings
-        for widget_name, widget in user_form.interactable_widgets.items():
-            saved_setting = getattr(settings, widget_name)
-            if isinstance(widget, qtw.QCheckBox):
-                widget.setChecked(saved_setting)
-
-            elif widget_name == "matplotlib_style":
-                try:
-                    index_from_settings = mpl_styles.index(saved_setting)
-                except IndexError:
-                    index_from_settings = 0
-                widget.setCurrentIndex(index_from_settings)
-
-            elif widget_name == "graph_grids":
-                try:
-                    index_from_settings = [widget.itemData(i) for i in range(
-                        widget.count())].index(settings.graph_grids)
-                except IndexError:
-                    index_from_settings = 0
-                widget.setCurrentIndex(index_from_settings)
-
+        # read values from settings
+        values_from_settings = {}
+        for key, widget in user_form.interactable_widgets.items():
+            if isinstance(widget, qtw.QComboBox):
+                values_from_settings[key] = {"current_text": getattr(settings, key)}
             else:
-                widget.setValue(saved_setting)
+                values_from_settings[key] = getattr(settings, key)
+        user_form.update_form_values(values_from_settings)
+        
+        
+        # for widget_name, widget in user_form.interactable_widgets.items():
+        #     saved_setting = getattr(settings, widget_name)
+        #     if isinstance(widget, qtw.QCheckBox):
+        #         widget.setChecked(saved_setting)
+
+        #     elif widget_name == "matplotlib_style":
+        #         try:
+        #             index_from_settings = mpl_styles.index(saved_setting)
+        #         except IndexError:
+        #             index_from_settings = 0
+        #         widget.setCurrentIndex(index_from_settings)
+
+        #     elif widget_name == "graph_grids":
+        #         try:
+        #             index_from_settings = [widget.itemData(i) for i in range(
+        #                 widget.count())].index(settings.graph_grids)
+        #         except IndexError:
+        #             index_from_settings = 0
+        #         widget.setCurrentIndex(index_from_settings)
+
+        #     else:
+        #         widget.setValue(saved_setting)
 
         # Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
             self.reject)
         button_group.buttons()["save_pushbutton"].clicked.connect(
-            partial(self._save_and_close,  user_form.interactable_widgets))
+            partial(self._save_and_close,  user_form))
 
-    def _save_and_close(self, user_input_widgets):
-        mpl_styles = [
-            style_name for style_name in mpl.style.available if style_name[0] != "_"]
-        if user_input_widgets["matplotlib_style"].currentIndex() != mpl_styles.index(settings.matplotlib_style):
+    def _save_and_close(self, user_form):
+        # mpl_styles = [
+        #     style_name for style_name in mpl.style.available if style_name[0] != "_"]
+        vals = user_form.get_form_values()
+        if vals["matplotlib_style"]["current_text"] != settings.matplotlib_style:
+            print()
+            print()
+            print(vals["matplotlib_style"], type(vals["matplotlib_style"]))
+            print(settings.matplotlib_style, type(settings.matplotlib_style))
+            print()
+            print()
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
                                           "Application needs to be restarted to be able to use the new Matplotlib style.",
@@ -1210,16 +1227,22 @@ class SettingsDialog(qtw.QDialog):
 
             if returned == qtw.QMessageBox.Cancel:
                 return
-
-        for widget_name, widget in user_input_widgets.items():
-            if isinstance(widget, qtw.QCheckBox):
-                settings.update(widget_name, widget.isChecked())
-            elif widget_name == "matplotlib_style":
-                settings.update(widget_name, widget.currentData())
-            elif widget_name == "graph_grids":
-                settings.update(widget_name, widget.currentData())
+        
+        for widget_name, value in vals.items():
+            if isinstance(value, dict) and "current_text" in value.keys():  # if a qcombobox
+                settings.update(widget_name, value["current_text"])
             else:
-                settings.update(widget_name, widget.value())
+                settings.update(widget_name, value)
+
+        # for widget_name, widget in interactable_widgets.items():
+        #     if isinstance(widget, qtw.QCheckBox):
+        #         settings.update(widget_name, widget.isChecked())
+        #     elif widget_name == "matplotlib_style":
+        #         settings.update(widget_name, widget.currentData())
+        #     elif widget_name == "graph_grids":
+        #         settings.update(widget_name, widget.currentData())
+        #     else:
+        #         settings.update(widget_name, widget.value())
         self.signal_settings_changed.emit()
         self.accept()
 
