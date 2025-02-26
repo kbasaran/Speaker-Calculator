@@ -749,7 +749,6 @@ class MainWindow(qtw.QMainWindow):
             qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)  
 
      
-
     def _connect_widgets(self):
         self.input_form.interactable_widgets["update_coil_choices"]\
             .clicked.connect(self.update_coil_choices_button_clicked)
@@ -761,6 +760,9 @@ class MainWindow(qtw.QMainWindow):
         # disable the relative plots
         self.input_form.interactable_widgets["parent_body"].buttons()[1].toggled.connect(
             self.graph_data_choice.buttons()[3].setEnabled)
+        
+        # Update graph when settings are changed
+        self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
