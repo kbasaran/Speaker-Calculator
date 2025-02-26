@@ -89,12 +89,14 @@ class Settings:
         self.settings_sys = qtc.QSettings(self.author_short, settings_storage_title)
         logger.debug(f"Settings will be stored in '{self.author_short}', '{settings_storage_title}'")
         self.read_all_from_system()
+        self._field_types = {field.name: field.type for field in fields(self)}
         
-        # settings that are updated on each load
-
     def update(self, attr_name, new_val):
-        # update a given setting
-        assert type(getattr(self, attr_name)) == type(new_val)
+        # Update a given setting
+        # Check type of new_val first
+        expected_type = self._field_types[attr_name]
+        if type(new_val) != expected_type:
+            raise TypeError(f"Incorrect data type received for setting '{attr_name}'. Expected type: {expected_type}. Received type/value: {type(new_val)}/{new_val}.")
         setattr(self, attr_name, new_val)
         self.settings_sys.setValue(attr_name, getattr(self, attr_name))
 
