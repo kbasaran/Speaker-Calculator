@@ -628,13 +628,13 @@ class MainWindow(qtw.QMainWindow):
         
         self.title_textbox = qtw.QLineEdit()
         self.notes_textbox = qtw.QPlainTextEdit()
-
+        self.title_textbox.setClearButtonEnabled(True)
+        self.title_textbox.setMaxLength(48)
 
         # ---- Center - results
         self.results_textbox = qtw.QLabel()
         self.results_textbox.setTextFormat(qtg.Qt.MarkdownText)
         self.results_textbox.setAlignment(qtg.Qt.AlignTop)
-
 
         # ---- Right hand side (graph etc.)
         rh_widget = qtw.QWidget()
@@ -697,7 +697,7 @@ class MainWindow(qtw.QMainWindow):
         lh_boxlayout.addWidget(pwi.SunkenLine())
         lh_boxlayout.addSpacing(text_height / 2)
         lh_boxlayout.addWidget(qtw.QLabel("<b>Title</b>"))
-        lh_boxlayout.addWidget(self.title_textbox)
+        lh_boxlayout.addWidget(self.title_textbox)  # why is a line appearing under this box?
         lh_boxlayout.addSpacing(text_height / 2)
         lh_boxlayout.addWidget(qtw.QLabel("<b>Notes</b>"))
         lh_boxlayout.addWidget(self.notes_textbox)
@@ -710,7 +710,7 @@ class MainWindow(qtw.QMainWindow):
         self.title_textbox.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Preferred)
 
-        # Put a spacer line in between input and results
+        # Put a spacer line in between left hand saide with inputs and center column with results
         sunken_line = qtw.QFrame()
         sunken_line_layout = qtw.QHBoxLayout(sunken_line)
         sunken_line.setFrameShape(qtw.QFrame.VLine)
