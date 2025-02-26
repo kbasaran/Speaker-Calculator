@@ -69,7 +69,7 @@ class Settings:
     startup_state_file = "./data/startup.scf"  # posix path
     f_min: int = 10
     f_max: int = 3000
-    A_beep: int = 0.25
+    A_beep: float = 0.25
     last_used_folder: str = str(Path.home())
     show_legend: bool = True
     max_legend_size: int = 10
