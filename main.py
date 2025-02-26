@@ -73,7 +73,7 @@ class Settings:
     last_used_folder: str = str(Path.home())
     show_legend: bool = True
     max_legend_size: int = 10
-    matplotlib_style: str = "bmh"
+    matplotlib_style: str = "ggplot"
     graph_grids: str = "Major and minor"
 
     def __post_init__(self):
