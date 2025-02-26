@@ -75,6 +75,8 @@ class Settings:
     max_legend_size: int = 10
     matplotlib_style: str = "ggplot"
     graph_grids: str = "Major and minor"
+    calc_ppo: int = 48 * 8
+    export_ppo: int = 48
 
     def __post_init__(self):
         settings_storage_title = (self.app_name
@@ -975,7 +977,7 @@ class MainWindow(qtw.QMainWindow):
             spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
 
         curves = dict()
-        freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, 48*8)
+        freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, settings.calc_ppo)
         R_spk = spk_sys.speaker.Re
         W_sys = V_source**2 / spk_sys.R_sys
         V_spk = V_source / spk_sys.R_sys * R_spk
@@ -1142,6 +1144,15 @@ class SettingsDialog(qtw.QDialog):
                                            min_max=(0, 1),
                                            ),
                           "Beep amplitude",
+                          )
+        
+        user_form.add_row(pwi.SunkenLine())
+
+        user_form.add_row(pwi.IntSpinBox("export_ppo",
+                                         "Resolution of the exported curve in points per octave",
+                                         min_max=(1, settings.calc_ppo),
+                                         ),
+                          "Export curve resolution (ppo)",
                           )
 
         # ---- Buttons
