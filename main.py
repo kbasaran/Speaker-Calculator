@@ -638,6 +638,9 @@ class MainWindow(qtw.QMainWindow):
         self.results_textbox = qtw.QLabel()
         self.results_textbox.setTextFormat(qtg.Qt.MarkdownText)
         self.results_textbox.setAlignment(qtg.Qt.AlignTop)
+        self.results_textbox.setTextInteractionFlags(qtc.Qt.TextInteractionFlag.TextSelectableByMouse |
+                                                     qtc.Qt.TextInteractionFlag.TextSelectableByKeyboard,
+                                                     )
 
         # ---- Right hand side (graph etc.)
         rh_widget = qtw.QWidget()
