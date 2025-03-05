@@ -146,7 +146,7 @@ class Wire:
     
     def get_summary(self) -> str:
         "Summary in markup language."
-        return f"{self.name}      {self.shape[0].upper() + self.shape[1:]}"
+        return f"{self.name}        {self.shape[0].upper() + self.shape[1:]}"
                 
 
 @dtc.dataclass
@@ -220,12 +220,12 @@ class Coil:
                    "  \n"                   
                    "##### Dimensions"
                    "<br></br>"
-                   f"L<sub>total</sub>: {self.total_wire_length():.3g} m      "
+                   f"L<sub>total</sub>: {self.total_wire_length():.3g} m        "
                    f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
                    "<br></br>"
-                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm      w<sub>max</sub> : {self.w_max*1e3:.4g} mm"
+                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm        w<sub>max</sub> : {self.w_max*1e3:.4g} mm"
                    "<br></br>"
-                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm      OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
+                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm        OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
 
                    )
         return summary
@@ -402,22 +402,22 @@ class SpeakerDriver:
         "Summary in markup language."
         summary = ("## Speaker unit"
                    "<br></br>"
-                   f"L<sub>m</sub> : {self.Lm:.2f} dBSPL      "
+                   f"L<sub>m</sub> : {self.Lm:.2f} dBSPL        "
                    f"R<sub>e</sub> : {self.Re:.2f} ohm"
                    "<br></br>"
-                   f"Bl : {self.Bl:.4g} Tm      "
+                   f"Bl : {self.Bl:.4g} Tm        "
                    f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W"
                    "<br></br>"
-                   f"Q<sub>es</sub> : {self.Qes:.3g}      "
+                   f"Q<sub>es</sub> : {self.Qes:.3g}        "
                    f"Q<sub>ts</sub> : {self.Qts:.3g}"
                    
                    "<br/>  \n"
                    f"#### Mass and suspension"
                    "<br></br>"
-                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g      "
+                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g        "
                    f"M<sub>md</sub> : {self.Mmd*1000:.4g} g"
                    "<br></br>"
-                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm      "
+                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm        "
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
 
                    "<br/>  \n"
@@ -767,7 +767,7 @@ class SpeakerSystem:
         summary += ("<br/>  \n"
                     "## System"
                     "<br></br>"
-                    f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
+                    f"R<sub>sys</sub>: {self.R_sys:.2f} ohm"
                    )
 
         if isinstance(self.enclosure, Enclosure):
