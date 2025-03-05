@@ -143,7 +143,11 @@ class Wire:
     
     def __post_init__(self):
         self.shape = self.shape.lower()
-
+    
+    def get_summary(self) -> str:
+        "Summary in markup language."
+        return f"{self.name}      {self.shape[0].upper() + self.shape[1:]}"
+                
 
 @dtc.dataclass
 class Coil:
@@ -199,20 +203,30 @@ class Coil:
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = (f"{self.wire.name}"
+        windings_per_layer_subtext = "1" if len(self.N_windings) == 1 else f"1-{len(self.N_windings):d}"
+        summary = ("#### Winding"
                    "<br></br>"
-                   f"{self.wire.shape[0].upper() + self.wire.shape[1:]}      {sum(self.N_windings)} windings"
-                   "  \n"
+                   f"N<sub>{windings_per_layer_subtext}</sub>: {self.N_windings}"
+                   "<br></br>"
+                   f"Fill ratio: {self.fill_ratio * 100:.3g} %"
+
+                   "  \n"                   
+                   "##### Wire"
+                   "<br></br>"
+                   f"{self.wire.name}"
+                   "<br></br>"
+                   f"{self.wire.shape[0].upper() + self.wire.shape[1:]}"             
+
+                   "  \n"                   
+                   "##### Dimensions"
+                   "<br></br>"
                    f"L<sub>total</sub>: {self.total_wire_length():.3g} m      "
                    f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
                    "<br></br>"
                    f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm      w<sub>max</sub> : {self.w_max*1e3:.4g} mm"
                    "<br></br>"
                    f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm      OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
-                   "  \n"
-                   f"Windings per layer: {self.N_windings}"
-                   "<br></br>"
-                   f"Fill ratio: {self.fill_ratio * 100:.3g} %"
+
                    )
         return summary
 
@@ -291,11 +305,11 @@ class Motor:
             "<br></br>"
             f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm"
             "<br></br>"
-            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm      "
+            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm"
+            "<br></br>"
             f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
             
             "<br/>  \n"
-            "#### Coil<br></br>"
             f"{self.coil.get_summary()}"
             )
 
