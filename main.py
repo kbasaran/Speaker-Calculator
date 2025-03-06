@@ -76,6 +76,7 @@ class Settings:
     graph_grids: str = "Major and minor"
     calc_ppo: int = 48 * 8
     export_ppo: int = 48
+    interpolate_must_contain_hz: int = 1000
 
     def __post_init__(self):
         settings_storage_title = (self.app_name
@@ -759,6 +760,7 @@ class MainWindow(qtw.QMainWindow):
         for button in self.graph_data_choice.buttons():
             button_id = self.graph_data_choice.button_group.id(button)
             button.pressed.connect(lambda arg1=button_id: self.update_graph(arg1))
+        self.graph_pushbuttons.buttons()["export_curve_pushbutton"].clicked.connect(self._export_curve_clicked)
         
         # disable the relative plots
         self.input_form.interactable_widgets["parent_body"].buttons()[1].toggled.connect(
@@ -972,9 +974,15 @@ class MainWindow(qtw.QMainWindow):
                                          "<br></br>"
                                          "See log for more details.")
             self.signal_bad_beep.emit()
+    
+    def _export_curve_clicked(self):
+        position = self.graph_pushbuttons.buttons()["export_curve_pushbutton"].mapToGlobal(qtc.QPoint(0,0))
+        CurveExportMenu(curves=self.graph.active_curves, position=position, parent=self)
 
     def update_graph(self, checked_id):
         self.graph.clear_graph()
+        curves = dict()
+        self.graph.active_curves = list()
 
         if not hasattr(self, "speaker_model_state"):
             self.signal_bad_beep.emit()
@@ -982,7 +990,6 @@ class MainWindow(qtw.QMainWindow):
         else:
             spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
 
-        curves = dict()
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, settings.calc_ppo)
         R_spk = spk_sys.speaker.Re
         W_sys = V_source**2 / spk_sys.R_sys
@@ -1096,6 +1103,9 @@ class MainWindow(qtw.QMainWindow):
         if "curves" in locals():
             for i, (name, y) in enumerate(curves.items()):
                 self.graph.add_line2d(i, name, (freqs, y))
+                curve = signal_tools.Curve((freqs, y))
+                curve.set_name_base(name)
+                self.graph.active_curves.append(curve)
         
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
@@ -1103,6 +1113,18 @@ class MainWindow(qtw.QMainWindow):
         summary_all = self.speaker_model_state["system"].get_summary()
         self.results_textbox.setText(summary_all)
         
+
+class CurveExportMenu(qtw.QMenu):
+    def __init__(self, curves, position, parent):
+        super().__init__(parent=parent)
+        for curve in curves:
+            self.addAction(curve.get_full_name(), partial(curve.export_to_clipboard,
+                                                          ppo=settings.export_ppo,
+                                                          must_include_freq=settings.interpolate_must_contain_hz,
+                                                          )
+                           )
+        self.popup(position)
+
 
 class SettingsDialog(qtw.QDialog):
     global settings
@@ -1156,6 +1178,15 @@ class SettingsDialog(qtw.QDialog):
                                          min_max=(1, settings.calc_ppo),
                                          ),
                           "Export curve resolution (ppo)",
+                          )
+        
+        
+        user_form.add_row(pwi.IntSpinBox("interpolate_must_contain_hz",
+                                         "Frequency that will always be a point within interpolated frequency array."
+                                         "\nDefault value: 1000",
+                                         min_max=(1, 999999),
+                                         ),
+                          "Interpolate must contain frequency (Hz)",
                           )
 
         # ---- Buttons
