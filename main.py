@@ -858,7 +858,6 @@ class MainWindow(qtw.QMainWindow):
             raise ValueError(f"Invalid suffix '{suffix}'")
         
         # self.statusBar().showMessage(f"Opened file '{file.name}'", 5000)
-        self._update_model_button_clicked()
 
     def set_state(self, state: dict):
         logger.debug("Set states initiated.")
@@ -873,7 +872,8 @@ class MainWindow(qtw.QMainWindow):
 
         self.notes_textbox.setPlainText(state.get("user_notes", "Error: NA"))
         self.title_textbox.setText(state.get("user_title", "Error: NA"))
-
+        
+        self._update_model_button_clicked()
 
     def duplicate_window(self):
         self.signal_new_window.emit(
