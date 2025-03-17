@@ -38,6 +38,7 @@ import numpy as np
 from functools import partial
 import electroacoustical as ac
 import pandas as pd
+import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
                    "version": "0.2.0rc0",
@@ -761,6 +762,7 @@ class MainWindow(qtw.QMainWindow):
             button_id = self.graph_data_choice.button_group.id(button)
             button.pressed.connect(lambda arg1=button_id: self.update_graph(arg1))
         self.graph_pushbuttons.buttons()["export_curve_pushbutton"].clicked.connect(self._export_curve_clicked)
+        self.graph_pushbuttons.buttons()["export_json_pushbutton"].clicked.connect(self._export_model_clicked)
         
         # disable the relative plots
         self.input_form.interactable_widgets["parent_body"].buttons()[1].toggled.connect(
@@ -978,6 +980,15 @@ class MainWindow(qtw.QMainWindow):
     def _export_curve_clicked(self):
         position = self.graph_pushbuttons.buttons()["export_curve_pushbutton"].mapToGlobal(qtc.QPoint(0,0))
         CurveExportMenu(curves=self.graph.active_curves, position=position, parent=self)
+    
+    def _export_model_clicked(self):
+        if not hasattr(self, "speaker_model_state"):
+            self.signal_bad_beep.emit()
+            return
+        else:
+            model = self.speaker_model_state["system"]
+            pyperclip.copy(json.dumps(dataclasses.asdict(model), indent=4))
+            self.signal_good_beep.emit()
 
     def update_graph(self, checked_id):
         self.graph.clear_graph()

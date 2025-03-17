@@ -1,3 +1,4 @@
 odfpy
 pandas
 sympy
+pyperclip
