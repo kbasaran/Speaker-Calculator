@@ -171,7 +171,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Dead mass (g)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area",
+        form.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area.\nUse a value of '0' if no diaphragm exists, e.g. a shaker.",
                                       coeff_for_SI=1e-4,
                                       min_max=(0, None),
                                       ),
