@@ -16,6 +16,7 @@ __email__ = "kbasaran@gmail.com"
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import os
 import sys
 import json
 import time
@@ -125,6 +126,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
     # additional signals that this widget can publish
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
+    signal_file_dropped = qtc.Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -138,6 +140,29 @@ class InputSectionTabWidget(qtw.QTabWidget):
         for name, form in forms.items():
             self.addTab(form, name)
             self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets}
+        
+        # Enable drag and drop
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event: qtg.QDragEnterEvent):
+        """ Accept file drag event if it contains URLs (files) """
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: qtg.QDropEvent):
+        """ Handle file drop event and load file contents """
+        urls = event.mimeData().urls()
+        if urls:
+            paths = [url.toLocalFile().removesuffix("/") for url in urls]
+            if os.name == "nt":
+                paths = [path.removesuffix("/") for path in paths]
+            # file_path = Path(urls[0].toLocalFile())  # Get first file
+            # self.load_file(file_path)
+            # print(file_path)
+            self.signal_good_beep.emit()
+            for path in paths:
+                logger.info(f"User dropped file '{path}' onto InputSectionTabWidget.")
+                self.signal_file_dropped.emit(path)
 
     def _make_form_for_general_tab(self):
         form = pwi.UserForm()
@@ -171,7 +196,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Dead mass (g)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area.\nUse a value of '0' if no diaphragm exists, e.g. a shaker.",
+        form.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area.\nUse a value of '0' if there is no diaphragm, e.g. a shaker.",
                                       coeff_for_SI=1e-4,
                                       min_max=(0, None),
                                       ),
@@ -619,7 +644,7 @@ class MainWindow(qtw.QMainWindow):
     def _create_widgets(self):
         # ---- Left hand side
         lh_boxlayout = qtw.QVBoxLayout()
-        
+
         self.input_form = InputSectionTabWidget()
         # connect its signals
         self.input_form.signal_good_beep.connect(self.signal_good_beep)
@@ -753,7 +778,6 @@ class MainWindow(qtw.QMainWindow):
         self.graph.setSizePolicy(
             qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)  
 
-     
     def _connect_widgets(self):
         self.input_form.interactable_widgets["update_coil_choices"]\
             .clicked.connect(self.update_coil_choices_button_clicked)
@@ -771,6 +795,9 @@ class MainWindow(qtw.QMainWindow):
         # Update graph when settings are changed
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         
+        # Drag and drop functionality
+        self.input_form.signal_file_dropped.connect(self.load_state_from_file)
+
     def _add_status_bar(self):
         self.setStatusBar(qtw.QStatusBar())
         self.statusBar().showMessage("Starting new window..", 2000)
@@ -821,10 +848,11 @@ class MainWindow(qtw.QMainWindow):
 
         self.signal_good_beep.emit()
 
-    def load_state_from_file(self, file: Path = None):
+    @qtc.Slot(str)
+    def load_state_from_file(self, file_arg: (Path | str) = None):
         # no file is provided as argumnent
         # raise a file selection menu
-        if file is None:
+        if file_arg is None:
             path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
                                                               dir=settings.last_used_folder,
                                                               filter='Speaker calculator files (*.scf *.sscf)',
@@ -832,13 +860,13 @@ class MainWindow(qtw.QMainWindow):
             
             file_raw = path_unverified[0]
             if file_raw:
-                file = Path(file_raw)
+                file_arg = Path(file_raw)
             else:
                 return  # canceled file select
 
         # file provided as argumnent
-        # Check if argument file exists
-        elif not file.is_file():
+        file = Path(file_arg)
+        if not file.is_file():
             raise FileNotFoundError(file)
 
         # file is ready as Path object at this point
