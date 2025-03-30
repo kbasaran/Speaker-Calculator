@@ -81,7 +81,11 @@ def convert_v01_to_v02(file: Path) -> dict:
             case "Volts":
                 current_text = "Volts"
 
+            case "W@Rdc":
+                current_text = "Watts @Re"
             case "W@Re":
+                current_text = "Watts @Re"
+            case "Watt@Rdc":
                 current_text = "Watts @Re"
             case "Watt@Re":
                 current_text = "Watts @Re"
@@ -125,7 +129,7 @@ def convert_v01_to_v02(file: Path) -> dict:
         elif value_v01 == "Closed box":
             return 1
         else:
-            raise ValueError(f'Could not convert box type setting: {form_dict["dof"]}')
+            raise ValueError(f'Could not convert enclosure type setting: {form_dict["dof"]}')
 
     def translate_parent_body(value_v01):
         if value_v01 == "1 dof":
@@ -182,7 +186,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "airgap_clearance_outer":   ("airgap_clearance_outer",  lambda x: x),
                     "h_former_under_coil":      ("former_extension_under_coil",  lambda x: x),
 
-                    "box_type":                 ("box_type",                translate_box_type),
+                    "enclosure_type":           ("box_type",          translate_box_type),
                     "Vb":                       ("Vb",                      lambda x: x),
                     "Qa":                       ("Qa",                      lambda x: x),
                     "Ql":                       (None,                      9999.9),
@@ -232,6 +236,6 @@ def batch_convert_v01_files(folder_path):
 if __name__ == "__main__":
     # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
     states = batch_convert_v01_files(pathlib.Path(
-        # "C:\\Users\\kerem.basaran\\OneDrive - PremiumSoundSolutions\\Documents\\SSC files"
-        "/home/kerem/Dropbox/Documents/Python/PSS Work/SSC files"
+        "C:\\Users\\kerem.basaran\\OneDrive - PremiumSoundSolutions\\Documents\\SSC files"
+        # "/home/kerem/Dropbox/Documents/Python/PSS Work/SSC files"
         ))
