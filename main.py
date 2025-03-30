@@ -623,6 +623,8 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(user_form_dict)
         elif open_user_file:
             self.load_state_from_file(open_user_file)
+        elif (default_startup_file := Path(PurePosixPath(settings.startup_state_file))).is_file():
+            self.load_state_from_file(default_startup_file, update_last_used_folder=False)
         else:
             self._update_model_button_clicked()
 
@@ -849,7 +851,7 @@ class MainWindow(qtw.QMainWindow):
         self.signal_good_beep.emit()
 
     @qtc.Slot(str)
-    def load_state_from_file(self, file_arg: (Path | str) = None):
+    def load_state_from_file(self, file_arg: (Path | str) = None, update_last_used_folder=True):
         # no file is provided as argumnent
         # raise a file selection menu
         if file_arg is None:
@@ -872,7 +874,8 @@ class MainWindow(qtw.QMainWindow):
         # file is ready as Path object at this point
 
         logger.info(f"Loading file '{file.name}'")
-        settings.update("last_used_folder", str(file.parent))
+        if update_last_used_folder:
+            settings.update("last_used_folder", str(file.parent))
 
         # backwards compatibility with v0.1
         suffix = file.suffixes[-1]
@@ -1614,8 +1617,6 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw = new_window(open_user_file=args.infile.name)
-    elif (default_startup_file := Path(PurePosixPath(settings.startup_state_file))).is_file():
-        new_window(open_user_file=default_startup_file)
     else:
         new_window()
 
