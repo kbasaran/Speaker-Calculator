@@ -727,22 +727,34 @@ class MainWindow(qtw.QMainWindow):
         
 
         lh_boxlayout.addWidget(self.input_form)
-        lh_boxlayout.addWidget(self.update_button)
+        self.input_form.setSizePolicy(
+            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
+
         lh_boxlayout.addSpacing(text_height)
         lh_boxlayout.addWidget(pwi.SunkenLine())
         lh_boxlayout.addSpacing(text_height / 2)
-        lh_boxlayout.addWidget(qtw.QLabel("<b>Title</b>"))
-        lh_boxlayout.addWidget(self.title_textbox)  # why is a line appearing under this box?
-        lh_boxlayout.addSpacing(text_height / 2)
-        lh_boxlayout.addWidget(qtw.QLabel("<b>Notes</b>"))
-        lh_boxlayout.addWidget(self.notes_textbox)
+        lh_boxlayout.addWidget(self.update_button)
+        self.update_button.setMinimumHeight(text_height * 8)
 
-        self.update_button.setMinimumHeight(text_height * 6)
-        self.input_form.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
-        self.notes_textbox.setSizePolicy(
-            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Preferred)
+        lh_boxlayout.addSpacing(text_height)
+        title_label = qtw.QLabel("<b>Title</b>")
+        title_label.setSizePolicy(
+            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)
+        lh_boxlayout.addWidget(title_label)
+
+        lh_boxlayout.addWidget(self.title_textbox)  # why is a line appearing under this box?
         self.title_textbox.setSizePolicy(
+            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)  # height is still not fixed somehow. why?
+        lh_boxlayout.addSpacing(text_height / 2)
+
+        lh_boxlayout.addSpacing(text_height)
+        notes_label = qtw.QLabel("<b>Notes</b>")
+        notes_label.setSizePolicy(
+            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)
+        lh_boxlayout.addWidget(notes_label)
+
+        lh_boxlayout.addWidget(self.notes_textbox)
+        self.notes_textbox.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Preferred)
 
         # Put a spacer line in between left hand saide with inputs and center column with results
