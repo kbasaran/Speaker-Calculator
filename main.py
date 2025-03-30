@@ -733,10 +733,10 @@ class MainWindow(qtw.QMainWindow):
         lh_boxlayout.addSpacing(text_height)
         lh_boxlayout.addWidget(pwi.SunkenLine())
         lh_boxlayout.addSpacing(text_height / 2)
-        lh_boxlayout.addWidget(self.update_button)
         self.update_button.setMinimumHeight(text_height * 8)
+        lh_boxlayout.addWidget(self.update_button)
 
-        lh_boxlayout.addSpacing(text_height)
+        lh_boxlayout.addSpacing(text_height / 2)
         title_label = qtw.QLabel("<b>Title</b>")
         title_label.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)
@@ -745,9 +745,8 @@ class MainWindow(qtw.QMainWindow):
         lh_boxlayout.addWidget(self.title_textbox)  # why is a line appearing under this box?
         self.title_textbox.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)  # height is still not fixed somehow. why?
+        
         lh_boxlayout.addSpacing(text_height / 2)
-
-        lh_boxlayout.addSpacing(text_height)
         notes_label = qtw.QLabel("<b>Notes</b>")
         notes_label.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)
@@ -917,7 +916,7 @@ class MainWindow(qtw.QMainWindow):
 
         self.notes_textbox.setPlainText(state.get("user_notes", "Error: NA"))
         self.title_textbox.setText(state.get("user_title", "Error: NA"))
-        
+
         self._update_model_button_clicked()
 
     def duplicate_window(self):
