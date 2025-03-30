@@ -1018,6 +1018,7 @@ class MainWindow(qtw.QMainWindow):
             self.results_textbox.setText("Update failed."
                                          "<br></br>"
                                          "See log for more details.")
+            self.graph.clear_graph()
             self.signal_bad_beep.emit()
     
     def _export_curve_clicked(self):
