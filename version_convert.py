@@ -197,6 +197,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "c2":                       ("c2",                      lambda x: x),
             
                     "user_curves":              ("user_curves",             translate_user_curves),
+                    "user_title":               (None,                      ""),
                     "user_notes":               ("user_notes",              lambda x: x),
 
         }
