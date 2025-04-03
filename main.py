@@ -1016,6 +1016,7 @@ class MainWindow(qtw.QMainWindow):
                                          "Check parameters if you updated the model."
                                          "<br></br>"
                                          "See log for more details.")
+            self.graph.clear_graph()
             self.signal_bad_beep.emit()
 
         except KeyError as e:
