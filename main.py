@@ -455,7 +455,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       ),
                      description="Former bottom ext. (mm)",
                      )
-
+        
         # spacer = qtw.QSpacerItem(0, 0, qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
         # form.add_row(spacer)
 
@@ -469,9 +469,15 @@ class InputSectionTabWidget(qtw.QTabWidget):
             form.interactable_widgets["h_former_under_coil"].setEnabled(is_define_coil)
             self.widget(0).interactable_widgets["dead_mass"].setEnabled(is_define_coil)
 
+        def combo_box_contents_are_obsoleted(*args):
+            combo_box=form.interactable_widgets["coil_options"]
+            combo_box.clear()
+            combo_box.addItem("----")
+
         form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(adjust_form_for_calc_type)
-        # adjustment at start -- not necessary because it starts all enabled from and in tab 1
-        # adjust_form_for_calc_type(form.interactable_widgets["motor_spec_type"].currentIndex())
+
+        for row_name in ["former_ID", "t_former", "w_stacking_coef", "Rs_leadwire", "reduce_per_layer", "h_winding_target"]:
+            form.interactable_widgets[row_name].valueChanged.connect(combo_box_contents_are_obsoleted)
 
         return form
 
