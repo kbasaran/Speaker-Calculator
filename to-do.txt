@@ -1,2 +1,6 @@
-for dof2 input f0 and not k2
-"analyze_clipboard_data" fonksiyonu signal_tools.py'den import kullanabilir.
+add placeholder vented/pr tab
+draw lumped model in libre draw
+write manual.md
+add pop-up window to manual.md
+add pop-up window to lumped model
+update force calculations
