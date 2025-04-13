@@ -516,20 +516,19 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.Title("Closed box specifications"))
 
-        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the enclosure."
-                                      + "\n**This value also affects the effective enclosure volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
+        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the enclosure.",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
                      description="Q<sub>a</sub> - internal absorption",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of the enclosure.",
-                                      decimals=1,
-                                      min_max=(0.1, None),
-                                      ),
-                     description="Q<sub>l</sub> - leakage losses",
-                     )
+        # form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of the enclosure.",
+        #                               decimals=1,
+        #                               min_max=(0.1, None),
+        #                               ),
+        #              description="Q<sub>l</sub> - leakage losses",
+        #              )
         
         # ---- Passive radiator
         form.add_row(pwi.SunkenLine())
@@ -541,7 +540,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # ---- Form logic
         def adjust_form_for_enclosure_type(toggled_id, checked):
             form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
-            form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
+            # form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
 
         form.interactable_widgets["enclosure_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start

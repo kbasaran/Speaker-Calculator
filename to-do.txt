@@ -4,3 +4,7 @@ write manual.md
 add pop-up window to manual.md
 add pop-up window to lumped model
 update force calculations
+
+these aren't nice:
+    "Vba": 1e99 if self.enclosure is None else self.enclosure.Vba(),
+    "Qa": 1e99 if self.enclosure is None else self.enclosure.Qa,
