@@ -189,7 +189,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "enclosure_type":           ("box_type",          translate_box_type),
                     "Vb":                       ("Vb",                      lambda x: x),
                     "Qa":                       ("Qa",                      lambda x: x),
-                    "Ql":                       (None,                      9999.9),
+                    # "Ql":                       (None,                      9999.9),
             
                     "parent_body":              ("dof",                     translate_parent_body),
                     "m2":                       ("m2",                      lambda x: x),

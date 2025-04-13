@@ -447,11 +447,15 @@ class Enclosure:
         return Sd**2 * self.settings.Kair / self.Vb
 
     def R(self, Sd, Mms, Kms):
-        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
+        # return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
+        return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
 
-    def Vba(self):  # acoustical volume higher than actual due to internal damping
-        # below formula is shown in GUI tooltip. Update tooltip if modifiying.
-        return self.Vb * (0.94/self.Qa + 1)  # based on results from UniBox. Original source of formula not found.
+    # def Vba(self):  # acoustical volume higher than actual due to internal damping
+    #     # below formula is shown in GUI tooltip. Update tooltip if modifiying.
+    #     return self.Vb * (0.94/self.Qa + 1)  # based on results from UniBox. Original source of formula not found.
+    
+    def Vba(self):  # effective acoustical volume
+        return self.Vb
 
 
 @dtc.dataclass
@@ -558,7 +562,7 @@ class SpeakerSystem:
         Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
         Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
         Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
-        P0, gamma, Vba, Qa, Ql = smp.symbols("P_0, gamma, V_ba, Q_a, Q_l", real=True, positive=True)
+        P0, gamma, Vba, Qa = smp.symbols("P_0, gamma, V_ba, Q_a", real=True, positive=True)
         Sd, Spr, Bl, Re, R_serial = smp.symbols("S_d, S_pr, Bl, R_e, R_serial", real=True, positive=True)
         dir_pr = smp.symbols("direction_pr")
         has_housing = smp.symbols("has_housing")
@@ -655,7 +659,7 @@ class SpeakerSystem:
 
             "Vba": 1e99 if self.enclosure is None else self.enclosure.Vba(),
             "Qa": 1e99 if self.enclosure is None else self.enclosure.Qa,
-            "Ql": 1e99 if self.enclosure is None else self.enclosure.Ql,
+            # "Ql": 1e99 if self.enclosure is None else self.enclosure.Ql,
             "has_housing": 0 if self.enclosure is None else 1,
 
             "P0": self.settings.P0,
@@ -675,10 +679,11 @@ class SpeakerSystem:
     def update_values(self, **kwargs):
         # ---- Use kwargs to update attributes of the object 'self'
 
+        # set the attributes of self with values in kwargs
         dataclass_field_names = [dataclass_field.name for dataclass_field in dtc.fields(self)]
         for key, val in kwargs.items():
             if key in dataclass_field_names:
-                setattr(self, key, val)  # set the attributes of self object with value in kwargs
+                setattr(self, key, val)
             else:
                 raise KeyError("Not familiar with key '{key}'")
 
@@ -1005,9 +1010,6 @@ def tests():
         if int(freq) == 200:
             print(f"{freqs[i]:.5g}Hz: {y_rms_for_10Vrms[i] * 1e3:.5g}mm RMS")
     return my_system
-
-    # to-do
-    # SPL calculation and comparing results against Unibox, finding out the Qa Ql mystery (Qa makes large bigger)
 
 
 if __name__ == "__main__":
