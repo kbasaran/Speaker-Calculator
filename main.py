@@ -483,31 +483,38 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
     def _make_form_for_enclosure_tab(form):
         form = pwi.UserForm()
+        
+        # Box volume - common input
+        form.add_row(pwi.FloatSpinBox("Vb", "Internal volume filled by air.\nFor vented calculations, the air in the vent is included in this value.",
+                                      decimals=3,
+                                      coeff_for_SI=1e-3,
+                                      ),
+                     description="Net internal volume (l)",
+                     )
 
         # ---- Enclosure type
         form.add_row(pwi.Title("Enclosure type"))
 
         enclosue_type_choice_buttons = pwi.ChoiceButtonGroup("enclosure_type",
-                                                        {0: "Free-air", 1: "Closed box"},
+                                                        {0: "Free-air", 1: "Closed box", 2: "Passive radiator", 3: "Vented"},
                                                         {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
                                                          1: "Speaker rear side coupled to a sealed enclosure.",
+                                                         2: "Speaker rear side coupled to an enclosure with a passive raditor or a bass-reflex vent.",
+                                                         3: "Speaker rear side coupled to an enclosure with a bass-reflex vent.",
                                                          },
                                                         vertical=False,
                                                         )
         enclosue_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         form.add_row(enclosue_type_choice_buttons)
 
+        # Disable PR vented options for now
+        form.interactable_widgets["enclosure_type"].buttons()[2].setEnabled(False)
+        form.interactable_widgets["enclosure_type"].buttons()[3].setEnabled(False)
+
         # ---- Closed box specs
         form.add_row(pwi.SunkenLine())
 
         form.add_row(pwi.Title("Closed box specifications"))
-
-        form.add_row(pwi.FloatSpinBox("Vb", "Internal volume filled by air.",
-                                      decimals=3,
-                                      coeff_for_SI=1e-3,
-                                      ),
-                     description="Net internal volume (l)",
-                     )
 
         form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the enclosure."
                                       + "\n**This value also affects the effective enclosure volume: 'Vba = Vb * (0.94 / Qa + 1)'**",
@@ -523,10 +530,16 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       ),
                      description="Q<sub>l</sub> - leakage losses",
                      )
+        
+        # ---- Passive radiator
+        form.add_row(pwi.SunkenLine())
+
+        form.add_row(pwi.Title("Passive radiator / Vented"))
+        form.add_row(qtw.QLabel("Not implemented yet."))
+        
 
         # ---- Form logic
         def adjust_form_for_enclosure_type(toggled_id, checked):
-            form.interactable_widgets["Vb"].setEnabled(toggled_id == 1 and checked is True)
             form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
             form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
 
