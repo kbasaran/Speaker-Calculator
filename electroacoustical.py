@@ -337,18 +337,21 @@ class SpeakerDriver:
     Xpeak: float = None
 
     def __post_init__(self):
+
+        # verification when speaker is specified without a motor object
         if self.motor is None and self.Rs != 0:
             raise RuntimeError("Do not define leadwire resistance Rs when Re is already defined.")
+
+        # when a motor object is provided
         if isinstance(self.motor, Motor) and self.dead_mass is not None:
-            available_from_Motor_object = ("Bl", "Re")
-            if not all([getattr(self, val) is None for val in available_from_Motor_object]):
+            # check if some parameters are specified twice
+            already_available_in_Motor = ("Bl", "Re")
+            if not all([getattr(self, val) is None for val in already_available_in_Motor]):
                 raise RuntimeError("These attributes should not be specified when motor is already specified:"
-                                   f"\n{available_from_Motor_object}")
+                                   f"\n{already_available_in_Motor}")
+            # derive parameters using info from Motor
             self.Bl = self.motor.coil.total_wire_length() * self.motor.Bavg
             self.Re = self.motor.coil.Re + self.Rs
-
-        # derived parameters
-        # Mms and Mmd
             try:
                 if "Mms" in locals().keys():
                     raise RuntimeError("Double definition. 'Mms' should not be defined in object instantiation"
@@ -357,15 +360,19 @@ class SpeakerDriver:
                 self.Mms = self.Mmd + calculate_air_mass(self.Sd)
             except NameError:
                 raise RuntimeError("Unable to calculate 'Mms' and/or 'Mmd' with known parameters.")
+        # no motor object is provided, directly Mms given    
         elif self.Mms is not None:
             if self.Mmd is not None:
                 raise RuntimeError("Not allowed to define both Mmd and Mms in 'SpeakerDriver' object instantion.")
             self.Mmd = self.Mms - calculate_air_mass(self.Sd)
+        # no motor object is provided, directly Mmd given
         elif self.Mmd is not None:
             self.Mms = self.Mmd + calculate_air_mass(self.Sd)
+        # not enough info provided
         else:
             raise ValueError("Insufficient parameters. Define [motor, dead_mass], Mmd or Mms.")
-        
+
+        # more derived parameters
         self.Kms = self.Mms * (self.fs * 2 * np.pi)**2
         self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
         self.Ces = self.Bl**2 / self.Re
@@ -375,28 +382,6 @@ class SpeakerDriver:
         self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
         self.Lm = calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd, self.settings.RHO, self.settings.c_air)  # sensitivity per W@Re
         self.Vas = self.settings.Kair / self.Kms * self.Sd**2
-
-    def get_summary_old(self) -> list:
-        "Give a summary for acoustical and mechanical properties as two items of a list."
-        
-        # Make a string for acoustical summary
-        summary_ace = f"Re: {self.Re:.3g} ohm    Lm: {self.Lm:.2f} dBSPL    Bl: {self.Bl:.4g} Tm"
-        summary_ace += f"\nQts: {self.Qts:.3g}    Qes: {self.Qes:.3g}"
-        if np.iscomplex(self.fs_damped):
-            summary_ace += "    (overdamped)"
-        summary_ace += f"\nKms: {self.Kms / 1000:.4g} N/mm    Rms: {self.Rms:.3g} kg/s    Mms/Mmd: {self.Mms*1000:.4g}/{self.Mmd*1000:.4g} g"
-        if self.motor is not None:
-            summary_ace += f"\nWindings: {self.motor.coil.mass*1000:.4g} g"
-
-        summary_ace += f"\nXpeak: {self.Xpeak*1000:.3g} mm    Bl²/Re: {self.Bl**2/self.Re:.3g} N²/W"
-
-        # Make a string for mechanical summary
-        summary_mec = ""
-        if self.motor is not None:
-            Xmech = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary_mec = f"Minimum {Xmech*1000:.3g} mm clearance under coil recommended"
-
-        return "\n\n".join(["<b>Speaker driver</b>\n", summary_ace, summary_mec])
 
     def get_summary(self) -> str:
         "Summary in markup language."
