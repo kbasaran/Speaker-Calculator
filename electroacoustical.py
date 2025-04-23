@@ -564,54 +564,67 @@ class SpeakerSystem:
         x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
+        p_t = smp.diff(p, t)
+
 
         # define state space system
         eqns = [    
 
-                (- Mms * x1_tt
+                (
+                 - Mms * x1_tt
                  - Rms*(x1_t - x2_t)
                  - Kms*(x1 - x2)
-                 + p * Sd
+
+                 + p * Sd * has_housing
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
-                (- M2 * x2_tt
+                (
+                 - M2 * x2_tt
                  - R2 * x2_t
                  - K2 * x2
+                 
                  - Rms*(x2_t - x1_t)
                  - Kms*(x2 - x1)
-                 - p * Sd
-                 - p * Spr * dir_pr
+
+                 # these are causing nans or infs
+                 # - Rpr*(x2_t - xpr_t * dir_pr)
+                 # - Kpr*(x2 - xpr * dir_pr)
+                 
+                 - p * Sd * has_housing
+                 - p * Spr * has_housing
+
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
                  - (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
-                (- Mpr * xpr_tt
+                (
+                 - Mpr * xpr_tt
                  - Rpr * xpr_t
                  - Kpr * xpr
+
                  + p * Spr
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
                  ),
 
                 (
-                 + p
-                 + P0 * gamma / Vba * Sd * x1
-                 + P0 * gamma / Vba * Spr * xpr
-                ),
+                 - p
+                 - P0 * gamma / Vba * Sd * x1 * has_housing
+                 - P0 * gamma / Vba * Spr * xpr * has_housing
+                 ),
                 
                 ]
 
         state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t, p]  # state variables
         input_vars = [Vsource]  # input variables
-        state_diffs = [var.diff() for var in (x1, x1_t, x2, x2_t, xpr, xpr_t)]  # state differentials
+        state_diffs = [var.diff() for var in state_vars]  # state differentials
 
         # dictionary of all sympy symbols used in model
         self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
         
         # solve for state differentials
-        # this is a heavy task and slow
         sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
         if len(sols) == 0:
             raise RuntimeError("No solution found for the equation.")
@@ -620,6 +633,7 @@ class SpeakerSystem:
         sols[x1_t] = x1_t
         sols[x2_t] = x2_t
         sols[xpr_t] = xpr_t
+        sols[p_t] = p_t
         
         # ---- SS model with symbols
         A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
@@ -990,7 +1004,7 @@ def tests():
                               )
 
     my_system.update_values(speaker=my_speaker,
-                            Rs=10,
+                            Rs=1,
                             enclosure = enclosure,
                             parent_body = parent_body,
                             passive_radiator = None,
@@ -1005,8 +1019,8 @@ def tests():
 
     w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
     import matplotlib.pyplot as plt
-    y_for_10Vrms = np.abs(y) * 2**0.5 * 10
     y_rms_for_10Vrms = np.abs(y) * 10
+    y_for_10Vrms = y_rms_for_10Vrms * 2**0.5
     plt.semilogx(freqs, y_for_10Vrms)
     for i, freq in enumerate(freqs):
         if int(freq) == 200:
