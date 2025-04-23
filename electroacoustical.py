@@ -557,6 +557,7 @@ class SpeakerSystem:
         # Dynamic symbols
         x1, x2 = mech.dynamicsymbols("x(1:3)")
         xpr = mech.dynamicsymbols("x_pr")
+        p = mech.dynamicsymbols("p")
         Vsource = mech.dynamicsymbols("V_source", real=True)
 
         # Derivatives
@@ -568,27 +569,43 @@ class SpeakerSystem:
         eqns = [    
 
                 (- Mms * x1_tt
-                 - Rms*(x1_t - x2_t) - Kms*(x1 - x2)
-                 - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
+                 - Rms*(x1_t - x2_t)
+                 - Kms*(x1 - x2)
+                 + p * Sd
+                 # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
-                (- M2 * x2_tt - R2 * x2_t - K2 * x2
-                 - Rms*(x2_t - x1_t) - Kms*(x2 - x1)
-                 + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
-                 + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
+                (- M2 * x2_tt
+                 - R2 * x2_t
+                 - K2 * x2
+                 - Rms*(x2_t - x1_t)
+                 - Kms*(x2 - x1)
+                 - p * Sd
+                 - p * Spr * dir_pr
+                 # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
+                 # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
                  - (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
-                (- Mpr * xpr_tt - Rpr * xpr_t - Kpr * xpr
-                 - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
+                (- Mpr * xpr_tt
+                 - Rpr * xpr_t
+                 - Kpr * xpr
+                 + p * Spr
+                 # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
                  ),
+
+                (
+                 + p
+                 + P0 * gamma / Vba * Sd * x1
+                 + P0 * gamma / Vba * Spr * xpr
+                ),
                 
                 ]
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t, p]  # state variables
         input_vars = [Vsource]  # input variables
-        state_diffs = [var.diff() for var in state_vars]  # state differentials
+        state_diffs = [var.diff() for var in (x1, x1_t, x2, x2_t, xpr, xpr_t)]  # state differentials
 
         # dictionary of all sympy symbols used in model
         self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
