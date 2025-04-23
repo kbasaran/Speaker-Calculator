@@ -473,15 +473,14 @@ class ParentBody:
 @dtc.dataclass
 class PassiveRadiator:
     # All units are SI
-    m: float  # without coupled air mass
-    k: float
-    c: float
+    m: float  # without coupled air mass. a.k.a mmd_pr.
+    k: float  # kmpr
+    c: float  # rmpr
     Spr: float  # surface area
-    direction: int = 1
 
         
     def m_s(self):
-        # passive radiator with coupled air mass included
+        # passive radiator with coupled air mass included. a.k.a. mpr.
         return self.m + calculate_air_mass(self.Sp)
     
     def f(self):
@@ -536,6 +535,7 @@ class SpeakerSystem:
     enclosure: None | Enclosure = None
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
+    dir_pr: int = 1
 
     def __post_init__(self):
         self.settings = self.speaker.settings
@@ -549,7 +549,6 @@ class SpeakerSystem:
         Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
         P0, gamma, Vba, Qa = smp.symbols("P_0, gamma, V_ba, Q_a", real=True, positive=True)
         Sd, Spr, Bl, Re, R_serial = smp.symbols("S_d, S_pr, Bl, R_e, R_serial", real=True, positive=True)
-        dir_pr = smp.symbols("direction_pr")
         has_housing = smp.symbols("has_housing")
         # Direction coefficient for passive radiator
         # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
@@ -565,7 +564,6 @@ class SpeakerSystem:
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
         p_t = smp.diff(p, t)
-
 
         # define state space system
         eqns = [    
@@ -585,12 +583,11 @@ class SpeakerSystem:
                  - R2 * x2_t
                  - K2 * x2
                  
-                 - Rms*(x2_t - x1_t)
-                 - Kms*(x2 - x1)
+                 + Rms*(x1_t - x2_t)
+                 + Kms*(x1 - x2)
 
-                 # these are causing nans or infs
-                 # - Rpr*(x2_t - xpr_t * dir_pr)
-                 # - Kpr*(x2 - xpr * dir_pr)
+                 + Rpr * (xpr_t - x2_t)
+                 + Kpr * (xpr - x2)
                  
                  - p * Sd * has_housing
                  - p * Spr * has_housing
@@ -602,8 +599,8 @@ class SpeakerSystem:
 
                 (
                  - Mpr * xpr_tt
-                 - Rpr * xpr_t
-                 - Kpr * xpr
+                 - Rpr * (xpr_t - x2_t)
+                 - Kpr * (xpr - x2)
 
                  + p * Spr
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
@@ -667,16 +664,14 @@ class SpeakerSystem:
             "K2": np.inf if self.parent_body is None else self.parent_body.k,
             "R2": np.inf if self.parent_body is None else self.parent_body.c,
 
-            "Mpr": np.inf if self.passive_radiator is None else self.passive_radiator.m,
+            "Mpr": np.inf if self.passive_radiator is None else self.passive_radiator.m_s(),  # with air coupled
             "Kpr": np.inf if self.passive_radiator is None else self.passive_radiator.k,
             "Rpr": np.inf if self.passive_radiator is None else self.passive_radiator.c,
-            "Spr": 1e-99 if self.passive_radiator is None else self.passive_radiator.Spr,
-            "dir_pr": 0 if self.passive_radiator is None else self.passive_radiator.direction,
+            "Spr": np.nan if self.passive_radiator is None else self.passive_radiator.Spr,
+            "dir_pr": self.dir_pr,
 
-            "Vba": 1e99 if self.enclosure is None else self.enclosure.Vba(),
-            "Qa": 1e99 if self.enclosure is None else self.enclosure.Qa,
-            # "Ql": 1e99 if self.enclosure is None else self.enclosure.Ql,
-            "has_housing": 0 if self.enclosure is None else 1,
+            "Vba": np.inf if self.enclosure is None else self.enclosure.Vba(),
+            "Qa": np.inf if self.enclosure is None else self.enclosure.Qa,
 
             "P0": self.settings.P0,
             "gamma": self.settings.GAMMA,
