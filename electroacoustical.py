@@ -481,7 +481,7 @@ class PassiveRadiator:
         
     def m_s(self):
         # passive radiator with coupled air mass included. a.k.a. mpr.
-        return self.m + calculate_air_mass(self.Sp)
+        return self.m + calculate_air_mass(self.Spr)
     
     def f(self):
         return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
@@ -547,9 +547,8 @@ class SpeakerSystem:
         Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
         Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
         Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
-        P0, gamma, Vba, Qa = smp.symbols("P_0, gamma, V_ba, Q_a", real=True, positive=True)
+        P0, gamma, Vba, Rb = smp.symbols("P_0, gamma, V_ba, R_b", real=True, positive=True)
         Sd, Spr, Bl, Re, R_serial = smp.symbols("S_d, S_pr, Bl, R_e, R_serial", real=True, positive=True)
-        has_housing = smp.symbols("has_housing")
         # Direction coefficient for passive radiator
         # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
 
@@ -570,10 +569,10 @@ class SpeakerSystem:
 
                 (
                  - Mms * x1_tt
-                 - Rms*(x1_t - x2_t)
-                 - Kms*(x1 - x2)
+                 - (Rms + Rb) * (x1_t - x2_t)
+                 - Kms * (x1 - x2)
 
-                 + p * Sd * has_housing
+                 + p * Sd
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
@@ -583,14 +582,14 @@ class SpeakerSystem:
                  - R2 * x2_t
                  - K2 * x2
                  
-                 + Rms*(x1_t - x2_t)
-                 + Kms*(x1 - x2)
+                 + (Rms + Rb) * (x1_t - x2_t)
+                 + Kms * (x1 - x2)
 
-                 + Rpr * (xpr_t - x2_t)
+                 + (Rpr + Rb) * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
                  
-                 - p * Sd * has_housing
-                 - p * Spr * has_housing
+                 - p * Sd
+                 - p * Spr
 
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
@@ -599,7 +598,7 @@ class SpeakerSystem:
 
                 (
                  - Mpr * xpr_tt
-                 - Rpr * (xpr_t - x2_t)
+                 - (Rpr + Rb) * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
 
                  + p * Spr
@@ -608,8 +607,8 @@ class SpeakerSystem:
 
                 (
                  - p
-                 - P0 * gamma / Vba * Sd * x1 * has_housing
-                 - P0 * gamma / Vba * Spr * xpr * has_housing
+                 - P0 * gamma / Vba * Sd * x1
+                 - P0 * gamma / Vba * Spr * xpr
                  ),
                 
                 ]
@@ -631,7 +630,7 @@ class SpeakerSystem:
         sols[x2_t] = x2_t
         sols[xpr_t] = xpr_t
         sols[p_t] = p_t
-        
+    
         # ---- SS model with symbols
         A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
         B_sym = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
@@ -639,7 +638,7 @@ class SpeakerSystem:
         for i, state_var in enumerate(state_vars):
             C[state_var] = np.eye(len(state_vars))[i]
         D = np.zeros(1)  # no feedforward
-        
+
         self._symbolic_ss = {"A": A_sym,  # system matrix
                              "B": B_sym,  # input matrix
                              "C": C,  # output matrices dictionary, one per state variable
@@ -661,17 +660,21 @@ class SpeakerSystem:
             "Re": self.speaker.Re,
 
             "M2": np.inf if self.parent_body is None else self.parent_body.m,
-            "K2": np.inf if self.parent_body is None else self.parent_body.k,
-            "R2": np.inf if self.parent_body is None else self.parent_body.c,
+            "K2": 0 if self.parent_body is None else self.parent_body.k,
+            "R2": 0 if self.parent_body is None else self.parent_body.c,
 
             "Mpr": np.inf if self.passive_radiator is None else self.passive_radiator.m_s(),  # with air coupled
-            "Kpr": np.inf if self.passive_radiator is None else self.passive_radiator.k,
-            "Rpr": np.inf if self.passive_radiator is None else self.passive_radiator.c,
-            "Spr": np.nan if self.passive_radiator is None else self.passive_radiator.Spr,
+            "Kpr": 0 if self.passive_radiator is None else self.passive_radiator.k,
+            "Rpr": 0 if self.passive_radiator is None else self.passive_radiator.c,
+            "Spr": 0 if self.passive_radiator is None else self.passive_radiator.Spr,
             "dir_pr": self.dir_pr,
 
             "Vba": np.inf if self.enclosure is None else self.enclosure.Vba(),
-            "Qa": np.inf if self.enclosure is None else self.enclosure.Qa,
+            "Rb": 0 if self.enclosure is None else self.enclosure.R(
+                self.speaker.Sd,
+                self.speaker.Mms,
+                self.speaker.Kms,
+                ),
 
             "P0": self.settings.P0,
             "gamma": self.settings.GAMMA,
@@ -688,9 +691,7 @@ class SpeakerSystem:
         return {symbol: parameter_names_to_values[name] for name, symbol in self.symbols.items()}
 
     def update_values(self, **kwargs):
-        # ---- Use kwargs to update attributes of the object 'self'
-
-        # set the attributes of self with values in kwargs
+        # ---- set the attributes of self with values in kwargs
         dataclass_field_names = [dataclass_field.name for dataclass_field in dtc.fields(self)]
         for key, val in kwargs.items():
             if key in dataclass_field_names:
@@ -698,7 +699,7 @@ class SpeakerSystem:
             else:
                 raise KeyError("Not familiar with key '{key}'")
 
-        # Update scalars
+        # ---- Update scalars
         self.R_sys = self.speaker.Re + self.Rs
 
         # ---- Substitute values into system matrix and input matrix
@@ -716,7 +717,7 @@ class SpeakerSystem:
             fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms+self.enclosure.K(self.speaker.Sd)) / self.speaker.Mms)**0.5
 
             fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
-            if np.iscomplex(fb_damped):  # means overdamped I think
+            if np.iscomplex(fb_damped):  # means overdamped
                 fb_damped = np.nan
 
             self.fb = fb_undamped
@@ -725,9 +726,12 @@ class SpeakerSystem:
         else:
             self.fb = np.nan
             self.Qtc = np.nan
+            A[6, :] = 0
+            A[:, 6] = 0
+            B[6, :] = 0
 
 
-        # ---- Updates in relation to passive radiator
+        # ---- Updates in relation to parent body
         if isinstance(self.parent_body, ParentBody):
             # Zeta is damping ratio. It is not damping coefficient (c) or quality factor (Q).
             # Zeta = c / 2 / (k*m)**0.5)
@@ -759,6 +763,7 @@ class SpeakerSystem:
             A[:, 2:4] = 0
             B[2:4] = 0
 
+
         # ---- Update passive radiator related attributes
         if isinstance(self.passive_radiator, PassiveRadiator):
             print("PR lumped calculations not ready yet")
@@ -768,6 +773,7 @@ class SpeakerSystem:
             A[:, 4:6] = 0
             B[4:6] = 0
 
+
         # ---- Build ss models
         self.ss_models = dict()
         for state_var in self._symbolic_ss["state_vars"]:
@@ -776,6 +782,7 @@ class SpeakerSystem:
                                                                 self._symbolic_ss["C"][state_var],
                                                                 self._symbolic_ss["D"],
                                                                 )
+
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = self.speaker.get_summary()
@@ -1001,10 +1008,38 @@ def tests():
     my_system.update_values(speaker=my_speaker,
                             Rs=1,
                             enclosure = enclosure,
+                            parent_body = None,
+                            passive_radiator = pr,
+                            )
+    
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = None,
+                            parent_body = parent_body,
+                            passive_radiator = pr,
+                            )
+    
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = enclosure,
+                            parent_body = None,
+                            passive_radiator = None,
+                            )
+    
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = None,
+                            parent_body = None,
+                            passive_radiator = pr,
+                            )
+    
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = None,
                             parent_body = parent_body,
                             passive_radiator = None,
                             )
-
+    
 
     # do test model for unibox - Qa / Ql
     # enclosure = Enclosure(0.05, 9999)
