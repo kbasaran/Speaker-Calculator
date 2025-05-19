@@ -8,3 +8,5 @@ update force calculations
 these aren't nice:
     "Vba": 1e99 if self.enclosure is None else self.enclosure.Vba(),
     "Qa": 1e99 if self.enclosure is None else self.enclosure.Qa,
+
+fb_damped goes down when dead mass is increased in older version of SSC. something incorrect...
