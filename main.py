@@ -716,6 +716,8 @@ class MainWindow(qtw.QMainWindow):
 
                                                        )
         self.graph_data_choice.buttons()[3].setEnabled(False)  # the relative button is disabled at start
+        
+        self.graph_data_choice.buttons()[4].setEnabled(False)  # forces disabled until calculations are complete
 
         self.graph_pushbuttons = pwi.PushButtonGroup({"export_curve": "Export curve",
                                                       "export_json": "Export model",
