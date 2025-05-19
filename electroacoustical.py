@@ -544,7 +544,7 @@ class SpeakerSystem:
         Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
         Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
         Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
-        P0, gamma, Vba, Rb = smp.symbols("P_0, gamma, V_ba, R_b", real=True, positive=True)
+        Kair, Vba, Rb = smp.symbols("Kair, V_ba, R_b", real=True, positive=True)
         Sd, Spr, Bl, Re, R_serial = smp.symbols("S_d, S_pr, Bl, R_e, R_serial", real=True, positive=True)
         # Direction coefficient for passive radiator
         # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
@@ -604,8 +604,8 @@ class SpeakerSystem:
 
                 (
                  - p
-                 - P0 * gamma / Vba * Sd * x1
-                 - P0 * gamma / Vba * Spr * xpr
+                 - Kair / Vba * Sd * x1
+                 - Kair / Vba * Spr * xpr
                  ),
                 
                 ]
@@ -634,7 +634,7 @@ class SpeakerSystem:
         C = dict()  # one per state variable -- scipy state space supports only a rank of 1 for output
         for i, state_var in enumerate(state_vars):
             C[state_var] = np.eye(len(state_vars))[i]
-        D = np.zeros(1)  # no feedforward
+        D = np.zeros(len(input_vars))  # no feedforward
 
         self._symbolic_ss = {"A": A_sym,  # system matrix
                              "B": B_sym,  # input matrix
@@ -642,6 +642,7 @@ class SpeakerSystem:
                              "D": D,  # feedforward
                              "state_vars": state_vars,
                             }
+        
 
     def _get_parameter_names_to_values(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
@@ -673,8 +674,7 @@ class SpeakerSystem:
                 self.speaker.Kms,
                 ),
 
-            "P0": self.settings.P0,
-            "gamma": self.settings.GAMMA,
+            "Kair": self.settings.Kair,
 
             "R_serial": self.Rs,
 
@@ -959,9 +959,9 @@ class SpeakerSystem:
 @dtc.dataclass
 class Settings:
     RHO: float = 1.1839  # density of air at 25 degrees celcius
-    Kair: float = 101325. * RHO
-    GAMMA: float = 1.401  # adiabatic index of air
     P0: int = 101325  # atmospheric pressure
+    Kair: float = P0 * RHO
+    GAMMA: float = 1.401  # adiabatic index of air
     c_air: float = (P0 * GAMMA / RHO)**0.5
 
 
