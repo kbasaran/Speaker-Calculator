@@ -483,14 +483,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
     def _make_form_for_enclosure_tab(form):
         form = pwi.UserForm()
-        
-        # Box volume - common input
-        form.add_row(pwi.FloatSpinBox("Vb", "Internal volume filled by air.\nFor vented calculations, the air in the vent is included in this value.",
-                                      decimals=3,
-                                      coeff_for_SI=1e-3,
-                                      ),
-                     description="Net internal volume (l)",
-                     )
+
 
         # ---- Enclosure type
         form.add_row(pwi.Title("Enclosure type"))
@@ -504,9 +497,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                                          },
                                                         vertical=False,
                                                         )
+        
         enclosue_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         form.add_row(enclosue_type_choice_buttons)
-
+        
         # Disable PR vented options for now
         form.interactable_widgets["enclosure_type"].buttons()[2].setEnabled(False)
         form.interactable_widgets["enclosure_type"].buttons()[3].setEnabled(False)
@@ -515,6 +509,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.SunkenLine())
 
         form.add_row(pwi.Title("Closed box specifications"))
+        
+        form.add_row(pwi.FloatSpinBox("Vb", "Internal volume filled by air.\nFor vented calculations, the air in the vent is included in this value.",
+                                      decimals=3,
+                                      coeff_for_SI=1e-3,
+                                      ),
+                     description="Net internal volume (l)",
+                     )
 
         form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the enclosure.",
                                       decimals=1,
@@ -539,8 +540,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         # ---- Form logic
         def adjust_form_for_enclosure_type(toggled_id, checked):
+            form.interactable_widgets["Vb"].setEnabled(toggled_id == 1 and checked is True)
             form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
-            # form.interactable_widgets["Ql"].setEnabled(toggled_id == 1 and checked is True)
 
         form.interactable_widgets["enclosure_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start
