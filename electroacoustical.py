@@ -424,9 +424,12 @@ class Enclosure:
     Vb: float
     Qa: float
     Ql: float = np.inf
+    
+    def Vba(self):  # effective acoustical volume
+        return self.Vb
 
     def K(self, Sd):
-        return Sd**2 * self.settings.Kair / self.Vb
+        return Sd**2 * self.settings.Kair / self.Vba()
 
     def R(self, Sd, Mms, Kms):
         # return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
@@ -435,9 +438,6 @@ class Enclosure:
     # def Vba(self):  # acoustical volume higher than actual due to internal damping
     #     # below formula is shown in GUI tooltip. Update tooltip if modifiying.
     #     return self.Vb * (0.94/self.Qa + 1)  # based on results from UniBox. Original source of formula not found.
-    
-    def Vba(self):  # effective acoustical volume
-        return self.Vb
 
 
 @dtc.dataclass
