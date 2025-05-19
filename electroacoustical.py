@@ -206,16 +206,13 @@ class Coil:
         windings_per_layer_subtext = "1" if len(self.N_windings) == 1 else f"1-{len(self.N_windings):d}"
         summary = ("#### Winding"
                    "<br></br>"
+                   f"{self.wire.name} - {self.wire.shape[0].upper() + self.wire.shape[1:]}"  
+                   "<br></br>"
                    f"N<sub>{windings_per_layer_subtext}</sub>: {self.N_windings}"
                    "<br></br>"
+                   f"{(self.mass * 1e3):.4g} g"
+                   "<br></br>"
                    f"Fill ratio: {self.fill_ratio * 100:.3g} %"
-
-                   "  \n"                   
-                   "##### Wire"
-                   "<br></br>"
-                   f"{self.wire.name}"
-                   "<br></br>"
-                   f"{self.wire.shape[0].upper() + self.wire.shape[1:]}"             
 
                    "  \n"                   
                    "##### Dimensions"
@@ -767,6 +764,7 @@ class SpeakerSystem:
         # ---- Update passive radiator related attributes
         if isinstance(self.passive_radiator, PassiveRadiator):
             print("PR lumped calculations not ready yet")
+            # maybe disable showing Qtc when it is a PR
         else:
             # make system coefficients related to xpr and xpr_t zero
             A[4:6, :] = 0
