@@ -559,7 +559,8 @@ class SpeakerSystem:
         x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
-        p_t = smp.diff(p, t)
+        
+        # p + Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr = 0
 
         # define state space system
         eqns = [    
@@ -569,7 +570,7 @@ class SpeakerSystem:
                  - (Rms + Rb) * (x1_t - x2_t)
                  - Kms * (x1 - x2)
 
-                 + p * Sd
+                 - (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Sd
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
@@ -585,8 +586,8 @@ class SpeakerSystem:
                  + (Rpr + Rb) * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
                  
-                 - p * Sd
-                 - p * Spr
+                 + (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Sd
+                 + (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Spr
 
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
@@ -598,19 +599,13 @@ class SpeakerSystem:
                  - (Rpr + Rb) * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
 
-                 + p * Spr
+                 - (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Spr
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
-                 ),
-
-                (
-                 - p
-                 - Kair / Vba * Sd * x1
-                 - Kair / Vba * Spr * xpr
                  ),
                 
                 ]
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t, p]  # state variables
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
         input_vars = [Vsource]  # input variables
         state_diffs = [var.diff() for var in state_vars]  # state differentials
 
@@ -626,7 +621,6 @@ class SpeakerSystem:
         sols[x1_t] = x1_t
         sols[x2_t] = x2_t
         sols[xpr_t] = xpr_t
-        sols[p_t] = p_t
     
         # ---- SS model with symbols
         A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
@@ -634,6 +628,7 @@ class SpeakerSystem:
         C = dict()  # one per state variable -- scipy state space supports only a rank of 1 for output
         for i, state_var in enumerate(state_vars):
             C[state_var] = np.eye(len(state_vars))[i]
+        # cabin pressure can also be added as an output..
         D = np.zeros(len(input_vars))  # no feedforward
 
         self._symbolic_ss = {"A": A_sym,  # system matrix
@@ -667,14 +662,14 @@ class SpeakerSystem:
             "Spr": 0 if self.passive_radiator is None else self.passive_radiator.Spr,
             "dir_pr": self.dir_pr,
 
-            "Vba": np.inf if self.enclosure is None else self.enclosure.Vba(),
+            "Vba": 0 if self.enclosure is None else self.enclosure.Vba(),  # in fact Vba is infinite when no enclosure. but infinite is not allowed.
             "Rb": 0 if self.enclosure is None else self.enclosure.R(
                 self.speaker.Sd,
                 self.speaker.Mms,
                 self.speaker.Kms,
                 ),
 
-            "Kair": self.settings.Kair,
+            "Kair": 0 if self.enclosure is None else self.settings.Kair,  # 0 is trickery a bit, to disable the housing formulas.
 
             "R_serial": self.Rs,
 
@@ -723,9 +718,6 @@ class SpeakerSystem:
         else:
             self.fb = np.nan
             self.Qtc = np.nan
-            A[6, :] = 0
-            A[:, 6] = 0
-            B[6, :] = 0
 
 
         # ---- Updates in relation to parent body
