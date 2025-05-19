@@ -99,7 +99,7 @@ def calculate_Lm(Bl, Re, Mms, Sd, RHO=1.1839, c_air=(101325 * 1.401 / 1.1839)**0
     if Sd == 0:
         return -np.inf
     elif Sd < 0:
-        raise RuntimeError("Surface ares cannot have a negative value: " + Sd)
+        raise RuntimeError("Surface area cannot have a negative value: " + Sd)
 
     w_ref = 10**-12
     I_1W_per_m2 = RHO * Bl**2 * Sd**2 / c_air / Re / Mms**2 / 2 / np.pi
