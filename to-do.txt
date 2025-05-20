@@ -10,3 +10,8 @@ these aren't nice:
     "Qa": 1e99 if self.enclosure is None else self.enclosure.Qa,
 
 fb_damped goes down when dead mass is increased in older version of SSC. something incorrect...
+
+voltage value shown on graphs seem too rounded for integers. E.g. 30 V.
+logo needs to be .ico
+remove washer thickness, airgap clearances
+update coil choices should be smarter and check if latest coil is available in the new results
