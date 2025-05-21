@@ -789,7 +789,7 @@ class SpeakerSystem:
                 "<br></br>"
                 f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
                 "<br></br>"
-                f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd):.4g} N/mm"
+                f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd)/1000:.4g} N/mm"
                 )
             if isinstance(self.passive_radiator, PassiveRadiator):
                 summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.Spr):.4g} N/mm"
