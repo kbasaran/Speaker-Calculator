@@ -324,12 +324,11 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("w_stacking_coef",
                                       "Stacking coefficient for additional winding layers put on."
-                                      "\nE.g. if this is set to 0.8 and the wire nominal thickness is 1mm"
-                                      "\nnominal thickness of windings that are 1,2,3 layers will be"
-                                      "\n1mm,1.8mm,2.6mm, respectively."
-                                      "\nFor stacking of ideal circular wires this value is 'sin(60)=0.5'"
-                                      "\nHas no effect on the total height of the winding."
-                                      "\nBut if it is 0.9 or less, each layer will have one less winding then the previous.",
+                                      "Applies only on thickness. For height, only the average height of the wire is used and this has no effect."
+                                      "\nE.g. if this is set to 0.8 and the average wire thickness is 1mm,"
+                                      "\nthickness of a winding that has 3 layers will be"
+                                      "\n 1 + 0.8 + 0.8 = 2.6mm. (applies not on first layer but consecutive layers only)"
+                                      "\nFor stacking of ideally circular wires this value is 'sin(60)=0.5'",
                                       min_max=(0, 1),
                                       ),
                      description="Stacking coefficient",
