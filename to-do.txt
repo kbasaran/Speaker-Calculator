@@ -13,10 +13,10 @@ add:
 - Peak displacement overall: 0.313 mm
 - F_motor(V_in) / F_suspension(Xmax/2) = 22%
 
-exit error thread destroyed while running
-
 clear f0 calculations of m2: child masses coupled??
 
 add forces graph
 
 when motor definition type changes to Bl and MMx, paste values from model into the widgets
+
+"legend is empty" error when updating graphs. why?

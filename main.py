@@ -1581,11 +1581,12 @@ def create_sound_engine(app):
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
-    sound_engine_thread.start(qtc.QThread.HighPriority)
-
-    # ---- Connections
+    
+    # Connections
     app.aboutToQuit.connect(sound_engine.release_all)
-    app.aboutToQuit.connect(sound_engine_thread.exit)
+    app.aboutToQuit.connect(sound_engine_thread.quit)  # for clean exit
+    
+    sound_engine_thread.start(qtc.QThread.HighPriority)
 
     return sound_engine, sound_engine_thread
 
