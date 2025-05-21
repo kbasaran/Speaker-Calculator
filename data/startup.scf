@@ -53,9 +53,9 @@
     "N_layer_options": "2",
     "w_stacking_coef": 1.0,
     "Rs_leadwire": 0.0,
-    "reduce_per_layer": 0.0,
+    "reduce_per_layer": 1.0,
     "coil_options": {
-        "current_index": 0,
+        "current_index": 3,
         "current_data": {
             "Bavg": 0.8,
             "airgap_clearance_inner": 0.00019999999999999998,
@@ -63,52 +63,52 @@
             "coil": {
                 "N_windings": [
                     33,
-                    33
+                    32
                 ],
                 "carrier_OD": 0.0252,
                 "w_stacking_coef": 1.0,
                 "wire": {
-                    "h_avg": 0.0002125,
-                    "mass_density": 0.0002425233933998093,
-                    "name": "SV180",
-                    "nominal_size": 0.00017999999999999998,
-                    "notes": "from wire definition KGO file  - received 20250102 Fabian",
-                    "resistance": 0.6775433933243736,
-                    "shape": "Circular",
-                    "w_avg": 0.0002125,
-                    "w_max": 0.00022099999999999998,
-                    "wire_type": "SV"
+                    "h_avg": 0.00021475,
+                    "mass_density": 0.00011070000000000001,
+                    "name": "CCAW190",
+                    "nominal_size": 0.00018999999999999998,
+                    "notes": NaN,
+                    "resistance": 0.88494,
+                    "shape": "circular",
+                    "w_avg": 0.00021475,
+                    "w_max": 0.0002185,
+                    "wire_type": "CCAW"
                 }
             },
             "h_former_under_coil": 0.0005,
             "h_top_plate": 0.003,
             "t_former": 9.999999999999999e-05
         },
-        "current_text": "2L SV180 -> Re=3.60, Lm=85.57, Qts=0.66",
+        "current_text": "2L CCAW190 -> Re=4.63, Lm=85.49, Qts=0.75",
         "items": [
             [
-                "2L SV180 -> Re=3.60, Lm=85.57, Qts=0.66",
+                "2L SV180 -> Re=3.61, Lm=85.67, Qts=0.64",
                 {
                     "Bavg": 0.8,
                     "airgap_clearance_inner": 0.00019999999999999998,
                     "airgap_clearance_outer": 0.00019999999999999998,
                     "coil": {
                         "N_windings": [
-                            33,
+                            34,
                             33
                         ],
                         "carrier_OD": 0.0252,
                         "w_stacking_coef": 1.0,
                         "wire": {
-                            "h_avg": 0.0002125,
-                            "mass_density": 0.0002425233933998093,
+                            "h_avg": 0.0002075,
+                            "mass_density": 0.00024,
                             "name": "SV180",
                             "nominal_size": 0.00017999999999999998,
-                            "notes": "from wire definition KGO file  - received 20250102 Fabian",
-                            "resistance": 0.6775433933243736,
-                            "shape": "Circular",
-                            "w_avg": 0.0002125,
-                            "w_max": 0.00022099999999999998,
+                            "notes": NaN,
+                            "resistance": 0.67,
+                            "shape": "circular",
+                            "w_avg": 0.0002075,
+                            "w_max": 0.000214,
                             "wire_type": "SV"
                         }
                     },
@@ -118,90 +118,28 @@
                 }
             ],
             [
-                "2L AL210 -> Re=3.77, Lm=85.51, Qts=0.76",
+                "2L CCAW200 -> Re=3.92, Lm=85.66, Qts=0.73",
                 {
                     "Bavg": 0.8,
                     "airgap_clearance_inner": 0.00019999999999999998,
                     "airgap_clearance_outer": 0.00019999999999999998,
                     "coil": {
                         "N_windings": [
-                            29,
-                            29
-                        ],
-                        "carrier_OD": 0.0252,
-                        "w_stacking_coef": 1.0,
-                        "wire": {
-                            "h_avg": 0.000243,
-                            "mass_density": 0.00011154436774074676,
-                            "name": "AL210",
-                            "nominal_size": 0.00020999999999999998,
-                            "notes": "from wire definition KGO file  - received 20250102 Fabian",
-                            "resistance": 0.8064705308752094,
-                            "shape": "Circular",
-                            "w_avg": 0.000243,
-                            "w_max": 0.000252,
-                            "wire_type": "AL"
-                        }
-                    },
-                    "h_former_under_coil": 0.0005,
-                    "h_top_plate": 0.003,
-                    "t_former": 9.999999999999999e-05
-                }
-            ],
-            [
-                "2L SV170 -> Re=4.28, Lm=85.43, Qts=0.68",
-                {
-                    "Bavg": 0.8,
-                    "airgap_clearance_inner": 0.00019999999999999998,
-                    "airgap_clearance_outer": 0.00019999999999999998,
-                    "coil": {
-                        "N_windings": [
-                            35,
-                            35
-                        ],
-                        "carrier_OD": 0.0252,
-                        "w_stacking_coef": 1.0,
-                        "wire": {
-                            "h_avg": 0.0002005,
-                            "mass_density": 0.00021623297527824316,
-                            "name": "SV170",
-                            "nominal_size": 0.00016999999999999999,
-                            "notes": "from wire definition KGO file  - received 20250102 Fabian",
-                            "resistance": 0.7595988215816506,
-                            "shape": "Circular",
-                            "w_avg": 0.0002005,
-                            "w_max": 0.00020899999999999998,
-                            "wire_type": "SV"
-                        }
-                    },
-                    "h_former_under_coil": 0.0005,
-                    "h_top_plate": 0.003,
-                    "t_former": 9.999999999999999e-05
-                }
-            ],
-            [
-                "2L CCAW200 -> Re=3.94, Lm=85.42, Qts=0.76",
-                {
-                    "Bavg": 0.8,
-                    "airgap_clearance_inner": 0.00019999999999999998,
-                    "airgap_clearance_outer": 0.00019999999999999998,
-                    "coil": {
-                        "N_windings": [
-                            30,
+                            31,
                             30
                         ],
                         "carrier_OD": 0.0252,
                         "w_stacking_coef": 1.0,
                         "wire": {
-                            "h_avg": 0.00023299999999999997,
-                            "mass_density": 0.00013138258287037023,
+                            "h_avg": 0.00022475,
+                            "mass_density": 0.0001189,
                             "name": "CCAW200",
                             "nominal_size": 0.00019999999999999998,
-                            "notes": "from wire definition KGO file  - received 20250102 Fabian",
-                            "resistance": 0.8134676365545379,
-                            "shape": "Circular",
-                            "w_avg": 0.00023299999999999997,
-                            "w_max": 0.000242,
+                            "notes": NaN,
+                            "resistance": 0.79821,
+                            "shape": "circular",
+                            "w_avg": 0.00022475,
+                            "w_max": 0.0002285,
                             "wire_type": "CCAW"
                         }
                     },
@@ -211,29 +149,29 @@
                 }
             ],
             [
-                "2L AL200 -> Re=4.30, Lm=85.28, Qts=0.80",
+                "2L SV170 -> Re=4.29, Lm=85.56, Qts=0.67",
                 {
                     "Bavg": 0.8,
                     "airgap_clearance_inner": 0.00019999999999999998,
                     "airgap_clearance_outer": 0.00019999999999999998,
                     "coil": {
                         "N_windings": [
-                            30,
-                            30
+                            36,
+                            35
                         ],
                         "carrier_OD": 0.0252,
                         "w_stacking_coef": 1.0,
                         "wire": {
-                            "h_avg": 0.00023299999999999997,
-                            "mass_density": 0.00010203382430053437,
-                            "name": "AL200",
-                            "nominal_size": 0.00019999999999999998,
-                            "notes": "from wire definition KGO file  - received 20250102 Fabian",
-                            "resistance": 0.8891337602899181,
-                            "shape": "Circular",
-                            "w_avg": 0.00023299999999999997,
-                            "w_max": 0.000242,
-                            "wire_type": "AL"
+                            "h_avg": 0.00019649999999999998,
+                            "mass_density": 0.00021,
+                            "name": "SV170",
+                            "nominal_size": 0.00016999999999999999,
+                            "notes": NaN,
+                            "resistance": 0.752,
+                            "shape": "circular",
+                            "w_avg": 0.00019649999999999998,
+                            "w_max": 0.000204,
+                            "wire_type": "SV"
                         }
                     },
                     "h_former_under_coil": 0.0005,
@@ -242,28 +180,28 @@
                 }
             ],
             [
-                "2L CCAW190 -> Re=4.50, Lm=85.18, Qts=0.80",
+                "2L CCAW190 -> Re=4.63, Lm=85.49, Qts=0.75",
                 {
                     "Bavg": 0.8,
                     "airgap_clearance_inner": 0.00019999999999999998,
                     "airgap_clearance_outer": 0.00019999999999999998,
                     "coil": {
                         "N_windings": [
-                            31,
-                            31
+                            33,
+                            32
                         ],
                         "carrier_OD": 0.0252,
                         "w_stacking_coef": 1.0,
                         "wire": {
-                            "h_avg": 0.000223,
-                            "mass_density": 0.00011943653543342566,
+                            "h_avg": 0.00021475,
+                            "mass_density": 0.00011070000000000001,
                             "name": "CCAW190",
                             "nominal_size": 0.00018999999999999998,
-                            "notes": "from wire definition KGO file  - received 20250102 Fabian",
-                            "resistance": 0.9013491817778811,
-                            "shape": "Circular",
-                            "w_avg": 0.000223,
-                            "w_max": 0.000232,
+                            "notes": NaN,
+                            "resistance": 0.88494,
+                            "shape": "circular",
+                            "w_avg": 0.00021475,
+                            "w_max": 0.0002185,
                             "wire_type": "CCAW"
                         }
                     },
@@ -284,8 +222,8 @@
     "airgap_clearance_inner": 0.00019999999999999998,
     "airgap_clearance_outer": 0.00019999999999999998,
     "h_former_under_coil": 0.0005,
-    "Vb": 0.002,
     "enclosure_type": 1,
+    "Vb": 0.002,
     "Qa": 999.0,
     "parent_body": 1,
     "m2": 0.1,
@@ -298,7 +236,7 @@
         "version": "0.2.0rc0",
         "description": "Loudspeaker design and calculations",
         "copyright": "Copyright (C) 2025 Kerem Basaran",
-        "icon_path": "images/logo.ico",
+        "icon_path": "images/logo2025.png",
         "author": "Kerem Basaran",
         "author_short": "kbasaran",
         "email": "kbasaran@gmail.com",
