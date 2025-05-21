@@ -1,0 +1,288 @@
+{
+    "fs": 100.0,
+    "Qms": 9.0,
+    "Xpeak": 0.009000000000000001,
+    "dead_mass": 0.004,
+    "Sd": 0.0099,
+    "excitation_type": {
+        "current_index": 0,
+        "current_data": "V",
+        "current_text": "Volts",
+        "items": [
+            [
+                "Volts",
+                "V"
+            ],
+            [
+                "Watts @Re",
+                "W"
+            ],
+            [
+                "Watts @Rnom",
+                "Wn"
+            ]
+        ]
+    },
+    "excitation_value": 2.0,
+    "Rnom": 0.01,
+    "R_serial": 0.0,
+    "motor_spec_type": {
+        "current_index": 0,
+        "current_data": "define_coil",
+        "current_text": "Define Coil Dimensions and Average B",
+        "items": [
+            [
+                "Define Coil Dimensions and Average B",
+                "define_coil"
+            ],
+            [
+                "Define Bl, Re, Mmd",
+                "define_Bl_Re_Mmd"
+            ],
+            [
+                "Define Bl, Re, Mms",
+                "define_Bl_Re_Mms"
+            ]
+        ]
+    },
+    "target_Re": 14.0,
+    "former_ID": 0.025,
+    "t_former": 9.999999999999999e-05,
+    "h_winding_target": 0.02875,
+    "B_average": 1.0,
+    "N_layer_options": "4",
+    "w_stacking_coef": 0.8999999999999999,
+    "Rs_leadwire": 0.0,
+    "reduce_per_layer": 2.0,
+    "coil_options": {
+        "current_index": 0,
+        "current_data": {
+            "Bavg": 1.0,
+            "airgap_clearance_inner": 0.0003,
+            "airgap_clearance_outer": 0.0003,
+            "coil": {
+                "N_windings": [
+                    100,
+                    98,
+                    96,
+                    94
+                ],
+                "carrier_OD": 0.0252,
+                "w_stacking_coef": 0.8999999999999999,
+                "wire": {
+                    "h_avg": 0.0002875,
+                    "mass_density": 0.0002009,
+                    "name": "CCAW260",
+                    "nominal_size": 0.00026,
+                    "notes": NaN,
+                    "resistance": 0.47187,
+                    "shape": "circular",
+                    "w_avg": 0.0002875,
+                    "w_max": 0.00029099999999999997,
+                    "wire_type": "CCAW"
+                }
+            },
+            "h_former_under_coil": 0.0005,
+            "h_top_plate": 0.003,
+            "t_former": 9.999999999999999e-05
+        },
+        "current_text": "4L CCAW260 -> Re=15.10, Lm=96.36, Qts=0.11",
+        "items": [
+            [
+                "4L CCAW260 -> Re=15.10, Lm=96.36, Qts=0.11",
+                {
+                    "Bavg": 1.0,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            100,
+                            98,
+                            96,
+                            94
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 0.8999999999999999,
+                        "wire": {
+                            "h_avg": 0.0002875,
+                            "mass_density": 0.0002009,
+                            "name": "CCAW260",
+                            "nominal_size": 0.00026,
+                            "notes": NaN,
+                            "resistance": 0.47187,
+                            "shape": "circular",
+                            "w_avg": 0.0002875,
+                            "w_max": 0.00029099999999999997,
+                            "wire_type": "CCAW"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ],
+            [
+                "4L CCAW270 -> Re=13.46, Lm=96.32, Qts=0.10",
+                {
+                    "Bavg": 1.0,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            96,
+                            94,
+                            92,
+                            90
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 0.8999999999999999,
+                        "wire": {
+                            "h_avg": 0.000298,
+                            "mass_density": 0.0002173,
+                            "name": "CCAW270",
+                            "nominal_size": 0.00027,
+                            "notes": NaN,
+                            "resistance": 0.43806,
+                            "shape": "circular",
+                            "w_avg": 0.000298,
+                            "w_max": 0.00030199999999999997,
+                            "wire_type": "CCAW"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ],
+            [
+                "4L SV220 -> Re=16.65, Lm=93.31, Qts=0.14",
+                {
+                    "Bavg": 1.0,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            116,
+                            114,
+                            112,
+                            110
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 0.8999999999999999,
+                        "wire": {
+                            "h_avg": 0.000248,
+                            "mass_density": 0.00035,
+                            "name": "SV220",
+                            "nominal_size": 0.00021999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.449,
+                            "shape": "circular",
+                            "w_avg": 0.000248,
+                            "w_max": 0.000256,
+                            "wire_type": "SV"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ],
+            [
+                "4L SV230 -> Re=14.55, Lm=93.11, Qts=0.14",
+                {
+                    "Bavg": 1.0,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            111,
+                            109,
+                            107,
+                            105
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 0.8999999999999999,
+                        "wire": {
+                            "h_avg": 0.00026,
+                            "mass_density": 0.00039000000000000005,
+                            "name": "SV230",
+                            "nominal_size": 0.00022999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.41,
+                            "shape": "circular",
+                            "w_avg": 0.00026,
+                            "w_max": 0.000266,
+                            "wire_type": "SV"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ],
+            [
+                "4L SV240 -> Re=12.78, Lm=93.09, Qts=0.13",
+                {
+                    "Bavg": 1.0,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            106,
+                            104,
+                            102,
+                            100
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 0.8999999999999999,
+                        "wire": {
+                            "h_avg": 0.000271,
+                            "mass_density": 0.00042,
+                            "name": "SV240",
+                            "nominal_size": 0.00023999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.377,
+                            "shape": "circular",
+                            "w_avg": 0.000271,
+                            "w_max": 0.000278,
+                            "wire_type": "SV"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ]
+        ]
+    },
+    "Bl_p2": 4.0,
+    "Re_p2": 4.0,
+    "Mmd_p2": 0.004,
+    "Bl_p3": 3.0,
+    "Re_p3": 4.0,
+    "Mms_p3": 0.004,
+    "h_top_plate": 0.003,
+    "airgap_clearance_inner": 0.0003,
+    "airgap_clearance_outer": 0.0003,
+    "h_former_under_coil": 0.0005,
+    "enclosure_type": 1,
+    "Vb": 0.001,
+    "Qa": 99.0,
+    "parent_body": 0,
+    "m2": 0.1,
+    "k2": 10000.0,
+    "c2": 3.0,
+    "user_notes": "",
+    "user_title": "",
+    "application_data": {
+        "app_name": "Speaker Calculator",
+        "version": "0.2.0rc0",
+        "description": "Loudspeaker design and calculations",
+        "copyright": "Copyright (C) 2025 Kerem Basaran",
+        "icon_path": "images/logo2025.png",
+        "author": "Kerem Basaran",
+        "author_short": "kbasaran",
+        "email": "kbasaran@gmail.com",
+        "website": "https://github.com/kbasaran"
+    }
+}
