@@ -6,3 +6,15 @@ voltage value shown on graphs seem too rounded for integers. E.g. 30 V.
 logo needs to be .ico
 remove washer thickness, airgap clearances
 update coil choices should be smarter and check if latest coil is available in the new results
+
+add:
+- recommended Xcrash
+- Peak displacement at 1020Hz: 0.0143 mm
+- Peak displacement overall: 0.313 mm
+- F_motor(V_in) / F_suspension(Xmax/2) = 22%
+
+exit error thread destroyed while running
+
+clear f0 calculations of m2: child masses coupled??
+
+add forces graph

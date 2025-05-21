@@ -823,14 +823,14 @@ class SpeakerSystem:
 
         x1 = signal.freqresp(self.ss_models["x1(t)"], w=w)[1] * V_source
 
-        disps["Diaphragm, RMS, absolute"] = x1 * 1e3
         disps["Diaphragm, peak, absolute"] = x1 * 2**0.5 * 1e3
+        disps["Diaphragm, RMS, absolute"] = x1 * 1e3
 
         if self.parent_body is not None:  # in fact, better return these even when no parnt_body, and filter in plotting
             x2 = signal.freqresp(self.ss_models["x2(t)"], w=w)[1] * V_source
             disps["Parent body, RMS, absolute"] = x2 * 1e3
-            disps["Diaphragm, RMS, relative to parent"] = (x1 - x2) * 1e3
             disps["Diaphragm, peak, relative to parent"] = (x1 - x2) * 2**0.5 * 1e3
+            disps["Diaphragm, RMS, relative to parent"] = (x1 - x2) * 1e3
             # disps["Parent body, peak, absolute"] = x2 * 2**0.5 * 1e3
 
         if self.passive_radiator is not None:  # remove later and return always
@@ -838,8 +838,8 @@ class SpeakerSystem:
             disps["PR/vent, RMS, absolute"] = xpr * 1e3
             disps["PR/vent, peak, absolute"] = xpr * 2**0.5 * 1e3
             if self.parent_body is not None:
-                disps["PR/vent, RMS, relative to parent"] = (xpr - x2) * 1e3
                 disps["PR/vent, peak, relative to parent"] = (xpr - x2) * 2**0.5 * 1e3
+                disps["PR/vent, RMS, relative to parent"] = (xpr - x2) * 1e3
                 
         return disps
 

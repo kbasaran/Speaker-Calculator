@@ -1088,8 +1088,8 @@ class MainWindow(qtw.QMainWindow):
                                                        spk_sys.speaker.Sd,
                                                        )
     
-                curves.update({"SPL piston mode": SPL,
-                               "SPL piston mode, Xpeak limited": SPL_Xmax_limited,
+                curves.update({"SPL piston mode, Xpeak limited": SPL_Xmax_limited,
+                               "SPL piston mode": SPL,
                                })
 
                 self.graph.set_y_limits_policy("SPL")
