@@ -18,3 +18,5 @@ exit error thread destroyed while running
 clear f0 calculations of m2: child masses coupled??
 
 add forces graph
+
+when motor definition type changes to Bl and MMx, paste values from model into the widgets
