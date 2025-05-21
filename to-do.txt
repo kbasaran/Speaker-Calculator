@@ -2,7 +2,6 @@ write manual.md
 add pop-up window to manual.md
 add pop-up window to lumped model
 
-voltage value shown on graphs seem too rounded for integers. E.g. 30 V.
 logo needs to be .ico
 remove washer thickness, airgap clearances
 update coil choices should be smarter and check if latest coil is available in the new results

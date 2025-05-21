@@ -1072,8 +1072,18 @@ class MainWindow(qtw.QMainWindow):
         W_spk = V_spk**2 / R_spk
 
         if checked_id == 0:
+            
+            if spk_sys.speaker.Sd == 0:  # shaker or other with no diaphragm
+                accs = spk_sys.get_accelerations(V_source, freqs)
+              
+                curves.update({key.replace("Diaphragm", "Moving mass"): 20*np.log10(np.abs(acc)/1e-6) \
+                               for key, acc in accs.items() if "relative" not in key})
+                
+                self.graph.set_y_limits_policy("SPL")
+                self.graph.set_title(f"Acceleration, {V_source:.4g} V, {W_spk:.3g} Watt@Re")
+                self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$ m/s²")
 
-            if spk_sys.speaker.Sd > 0:  # speaker
+            else:  # speaker
                 velocs = spk_sys.get_velocities(V_source, freqs)
                 w = 2 * np.pi * freqs
                 Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
@@ -1099,16 +1109,6 @@ class MainWindow(qtw.QMainWindow):
                     title = f"SPL@1m, Half-space\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V, {W_spk:.3g} Watt@Re"
                 self.graph.set_title(title)
                 self.graph.ax.set_ylabel("dBSPL")
-
-            elif spk_sys.speaker.Sd == 0:  # shaker or other with no diaphragm
-                accs = spk_sys.get_accelerations(V_source, freqs)
-              
-                curves.update({key.replace("Diaphragm", "Moving mass"): 20*np.log10(np.abs(acc)/1e-6) \
-                               for key, acc in accs.items() if "relative" not in key})
-                
-                self.graph.set_y_limits_policy("SPL")
-                self.graph.set_title(f"Acceleration, {V_source:.4g} V, {W_spk:.3g} Watt@Re")
-                self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$ m/s²")
 
         elif checked_id == 1:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
