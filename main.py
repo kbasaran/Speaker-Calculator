@@ -332,7 +332,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\nBut if it is 0.9 or less, each layer will have one less winding then the previous.",
                                       min_max=(0, 1),
                                       ),
-                     description="Stacking coeff. for additional layers",
+                     description="Stacking coefficient",
                      into_form=motor_definition_p1,
                      )
         form.interactable_widgets["w_stacking_coef"].setValue(1)
