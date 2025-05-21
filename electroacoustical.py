@@ -699,7 +699,6 @@ class SpeakerSystem:
         A = np.array(self._symbolic_ss["A"].subs(symbols_to_values)).astype(float)
         B = np.array(self._symbolic_ss["B"].subs(symbols_to_values)).astype(float)
 
-
         # ---- Updates in relation to enclosure
         if isinstance(self.enclosure, Enclosure):
             zeta_boxed_speaker = (self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms) \
@@ -952,9 +951,9 @@ class SpeakerSystem:
 class Settings:
     RHO: float = 1.1839  # density of air at 25 degrees celcius
     P0: int = 101325  # atmospheric pressure
-    Kair: float = P0 * RHO
     GAMMA: float = 1.401  # adiabatic index of air
-    c_air: float = (P0 * GAMMA / RHO)**0.5
+    Kair: float = P0 * GAMMA
+    c_air: float = (Kair / RHO)**0.5
 
 
 def tests():

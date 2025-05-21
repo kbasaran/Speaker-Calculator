@@ -65,8 +65,8 @@ class Settings:
     GAMMA: float = 1.401  # adiabatic index of air
     P0: int = 101325  # atmospheric pressure
     RHO: float = 1.1839  # density of air at 25 degrees celcius
-    Kair: float = 101325. * RHO
-    c_air: float = (P0 * GAMMA / RHO)**0.5
+    Kair: float = 101325. * GAMMA
+    c_air: float = (Kair / RHO)**0.5
     vc_table_file = "./data/wire table.ods"  # posix path
     startup_state_file = "./data/startup.scf"  # posix path
     f_min: int = 10
