@@ -564,6 +564,7 @@ class SpeakerSystem:
         x1, x2 = mech.dynamicsymbols("x(1:3)")
         xpr = mech.dynamicsymbols("x_pr")
         p = mech.dynamicsymbols("p")
+        i_c = mech.dynamicsymbols("i_c")
         Vsource = mech.dynamicsymbols("V_source", real=True)
 
         # Derivatives
@@ -575,52 +576,58 @@ class SpeakerSystem:
         eqns = [    
 
                 (
-                 - Mms * x1_tt
-                 - (Rms + Rb) * (x1_t - x2_t)
-                 - Kms * (x1 - x2)
+                - Mms * x1_tt
+                - (Rms + Rb) * (x1_t - x2_t)
+                - Kms * (x1 - x2)
 
-                 + p * Sd
-                 # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
-                 + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
-                 ),
-
-                (
-                 - M2 * x2_tt
-                 - R2 * x2_t
-                 - K2 * x2
-                 
-                 + (Rms + Rb) * (x1_t - x2_t)
-                 + Kms * (x1 - x2)
-
-                 + (Rpr + Rb) * (xpr_t - x2_t)
-                 + Kpr * (xpr - x2)
-                 
-                 - p * Sd
-                 - p * Spr
-
-                 # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
-                 # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
-                 - (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
-                 ),
+                + p * Sd
+                # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
+                + i_c * Bl
+                ),
 
                 (
-                 - Mpr * xpr_tt
-                 - (Rpr + Rb) * (xpr_t - x2_t)
-                 - Kpr * (xpr - x2)
+                - M2 * x2_tt
+                - R2 * x2_t
+                - K2 * x2
+                
+                + (Rms + Rb) * (x1_t - x2_t)
+                + Kms * (x1 - x2)
 
-                 + p * Spr
-                 # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
-                 ),
+                + (Rpr + Rb) * (xpr_t - x2_t)
+                + Kpr * (xpr - x2)
+                
+                - p * Sd
+                - p * Spr
+
+                # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
+                # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
+                - i_c * Bl
+                ),
+
+                (
+                - Mpr * xpr_tt
+                - (Rpr + Rb) * (xpr_t - x2_t)
+                - Kpr * (xpr - x2)
+
+                + p * Spr
+                # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
+                ),
                 
                 (
-                 + p
-                 + Kair / Vba * Sd * x1
-                 + Kair / Vba * Spr * xpr
-                 ),
+                + p
+                + Kair / Vba * Sd * x1
+                + Kair / Vba * Spr * xpr
+                ),
+                
+                (
+                + Vsource
+                - i_c * (R_serial + Re)
+                - Bl * (x1_t - x2_t)
+                ),
                 
                 ]
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t, p]  # state variables
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t, p, i_c]  # state variables
         input_vars = [Vsource]  # input variables
         state_diffs = [var.diff() for var in state_vars]  # state differentials
 
@@ -1008,34 +1015,34 @@ def tests():
                               passive_radiator=None,
                               )
 
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = enclosure,
-                            parent_body = None,
-                            passive_radiator = pr,
-                            )
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = enclosure,
+    #                         parent_body = None,
+    #                         passive_radiator = pr,
+    #                         )
     
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = None,
-                            parent_body = parent_body,
-                            passive_radiator = pr,
-                            )
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = None,
+    #                         parent_body = parent_body,
+    #                         passive_radiator = pr,
+    #                         )
 
     
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = None,
-                            parent_body = None,
-                            passive_radiator = pr,
-                            )
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = None,
+    #                         parent_body = None,
+    #                         passive_radiator = pr,
+    #                         )
     
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = None,
-                            parent_body = parent_body,
-                            passive_radiator = None,
-                            )
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = None,
+    #                         parent_body = parent_body,
+    #                         passive_radiator = None,
+    #                         )
         
     my_system.update_values(speaker=my_speaker,
                             Rs=1,
