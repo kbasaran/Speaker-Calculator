@@ -509,7 +509,7 @@ def make_state_matrix_A(state_vars, state_diffs, sols):
     return smp.Matrix(matrix)
 
 
-def make_state_matrix_B(state_diffs, input_vars, sols):
+def make_state_matrix_B(state_vars, state_diffs, input_vars, sols):
     # Input matrix
 
     matrix = []
@@ -517,15 +517,21 @@ def make_state_matrix_B(state_diffs, input_vars, sols):
         # Each row corresponds to the differential of a state variable
         # as listed in state_diffs
         # e.g. x1_t, x1_tt, x2_t, x2_tt
-
-        # find coefficients of each state variable
-        if state_diff in sols.keys():
-            coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+        
+        # # find coefficients of each state variable
+        if state_diff not in sols.keys():
+            coeffs = np.zeros(len(input_vars))
         else:
-            np.zeros(len(state_diffs))
+            coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+
+        # # find coefficients of each state variable
+        # if state_diff in sols.keys():
+        #     coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+        # else:
+        #     coeffs = np.zeros(len(input_vars))
 
         matrix.append(coeffs)
-
+        
     return smp.Matrix(matrix)
 
 
@@ -627,13 +633,14 @@ class SpeakerSystem:
             raise RuntimeError("No solution found for the equation.")
 
         # correction to exact variables in solutions
-        sols[x1_t] = x1_t
-        sols[x2_t] = x2_t
-        sols[xpr_t] = xpr_t
+        # for key, val in sols.items():
+        #     if key in state_vars:
+        #         sols[key] = key
+        #         print(key)
     
         # ---- SS model with symbols
         A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
-        B_sym = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
+        B_sym = make_state_matrix_B(state_vars, state_diffs, input_vars, sols)  # input matrix
         C = dict()  # one per state variable -- scipy state space supports only a rank of 1 for output
         for i, state_var in enumerate(state_vars):
             C[state_var] = np.eye(len(state_vars))[i]
@@ -645,7 +652,6 @@ class SpeakerSystem:
                              "D": D,  # feedforward
                              "state_vars": state_vars,
                             }
-        
 
     def _get_parameter_names_to_values(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
