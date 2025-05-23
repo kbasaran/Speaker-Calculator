@@ -499,8 +499,10 @@ def make_state_matrix_A(state_vars, state_diffs, sols):
         # find coefficients of each state variable
         if state_diff in state_vars:
             coeffs = [int(state_vars[i] == state_diff) for i in range(len(state_vars))]
-        else:
+        elif state_diff in sols.keys():
             coeffs = [sols[state_diff].coeff(state_var) for state_var in state_vars]
+        else:
+            np.zeros(len(state_vars))
 
         matrix.append(coeffs)
 
@@ -517,7 +519,10 @@ def make_state_matrix_B(state_diffs, input_vars, sols):
         # e.g. x1_t, x1_tt, x2_t, x2_tt
 
         # find coefficients of each state variable
-        coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+        if state_diff in sols.keys():
+            coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+        else:
+            np.zeros(len(state_diffs))
 
         matrix.append(coeffs)
 
@@ -559,8 +564,6 @@ class SpeakerSystem:
         x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
-        
-        # p + Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr = 0
 
         # define state space system
         eqns = [    
@@ -570,7 +573,7 @@ class SpeakerSystem:
                  - (Rms + Rb) * (x1_t - x2_t)
                  - Kms * (x1 - x2)
 
-                 - (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Sd
+                 + p * Sd
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
@@ -586,8 +589,8 @@ class SpeakerSystem:
                  + (Rpr + Rb) * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
                  
-                 + (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Sd
-                 + (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Spr
+                 - p * Sd
+                 - p * Spr
 
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
@@ -599,13 +602,19 @@ class SpeakerSystem:
                  - (Rpr + Rb) * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
 
-                 - (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Spr
+                 + p * Spr
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
+                 ),
+                
+                (
+                 + p
+                 + Kair / Vba * Sd * x1
+                 + Kair / Vba * Spr * xpr
                  ),
                 
                 ]
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t, p]  # state variables
         input_vars = [Vsource]  # input variables
         state_diffs = [var.diff() for var in state_vars]  # state differentials
 
@@ -628,7 +637,6 @@ class SpeakerSystem:
         C = dict()  # one per state variable -- scipy state space supports only a rank of 1 for output
         for i, state_var in enumerate(state_vars):
             C[state_var] = np.eye(len(state_vars))[i]
-        # cabin pressure can also be added as an output..
         D = np.zeros(len(input_vars))  # no feedforward
 
         self._symbolic_ss = {"A": A_sym,  # system matrix
@@ -1007,13 +1015,7 @@ def tests():
                             parent_body = parent_body,
                             passive_radiator = pr,
                             )
-    
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = enclosure,
-                            parent_body = None,
-                            passive_radiator = None,
-                            )
+
     
     my_system.update_values(speaker=my_speaker,
                             Rs=1,
@@ -1028,7 +1030,13 @@ def tests():
                             parent_body = parent_body,
                             passive_radiator = None,
                             )
-    
+        
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = enclosure,
+                            parent_body = None,
+                            passive_radiator = None,
+                            )
 
     # do test model for unibox - Qa / Ql
     # enclosure = Enclosure(0.05, 9999)
