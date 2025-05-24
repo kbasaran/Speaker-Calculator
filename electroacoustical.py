@@ -200,6 +200,12 @@ class Coil:
         else:
             self.fill_ratio = np.nan
             raise ValueError("Unrecognized shape definition for wire {self.wire.name}: {self.wire.shape}")
+    
+    def get_wire_name_and_layers(self):
+        return (
+            self.wire.name,
+            self.N_layers,
+            )
 
     def get_summary(self) -> str:
         "Summary in markup language."

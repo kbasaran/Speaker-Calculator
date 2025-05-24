@@ -4,7 +4,6 @@ add pop-up window to lumped model
 
 logo needs to be .ico
 remove washer thickness, airgap clearances
-update coil choices should be smarter and check if latest coil is available in the new results
 
 add:
 - recommended Xcrash
