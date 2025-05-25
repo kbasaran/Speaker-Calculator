@@ -931,20 +931,20 @@ class SpeakerSystem:
         
         forces = {}
         forces["Lorentz force"] = force_coil
-        forces["Force from speaker to parent body"] = - np.abs(force_speaker)
+        forces["Force from speaker to parent body"] = force_speaker
         
         if self.passive_radiator is None:
             force_pr = np.zeros(len(force_speaker))
         else:
             force_pr = accs["PR/vent, RMS, absolute"] * self.passive_radiator.m_s()  # inertial force
-            forces["Force from passive radiator to parent body"] = - np.abs(force_pr)
+            forces["Force from passive radiator to parent body"] = force_pr
             # forces["Reaction force from reference frame"] += force_pr
 
         if self.parent_body is None:
             force_pb = np.zeros(len(force_speaker))
         else:
             force_pb = accs["Parent body, RMS, absolute"] * self.parent_body.m  # inertial force
-            forces["Force from parent body to reference frame"] = - np.abs(force_pb + force_pr + force_speaker)
+            forces["Force from parent body to reference frame"] = force_pb + force_pr + force_speaker
 
         return forces
 
@@ -1056,7 +1056,7 @@ def tests():
     
     import matplotlib.pyplot as plt
     t = np.arange(0, 0.1, 1/100000)
-    u = np.sin(200 * t)
+    u = 2**0.5 * np.sin(25 * 2 * np.pi * t)
     youts = {}
     for i, (key, model) in enumerate(my_system.ss_models.items()):
         _, _, yout = signal.lsim(model, U=u, T=t)
@@ -1065,9 +1065,21 @@ def tests():
     plt.plot(t, youts['x1(t)'])
     plt.plot(t, youts['x2(t)'])
     plt.plot(t, youts['x_pr(t)'])
+    plt.grid()
     plt.show()
     
     print(max(youts['x1(t)'] - youts['x2(t)']) * 1000)  # mm
+
+    disps = my_system.get_displacements(1, 25 * 2 * np.pi)
+    disp_x1 = disps["Diaphragm, peak, absolute"]
+    disp_x2 = disps["Parent body, RMS, absolute"] * 2**0.5
+    print("disps: real, abs")
+    print(np.real(disp_x1 - disp_x2), np.abs(disp_x1 - disp_x2))
+
+    
+    forces = my_system.get_forces(1, 25 * 2 * np.pi)
+    print("forces: real, abs")
+    print(np.real(forces["Force from parent body to reference frame"]), np.abs(forces["Force from parent body to reference frame"]))
 
     # w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
     # y_rms_for_10Vrms = np.abs(y) * 10
