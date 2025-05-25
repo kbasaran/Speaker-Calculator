@@ -1002,7 +1002,7 @@ def tests():
 
     # # do test model 3
     enclosure = Enclosure(settings, 0.001, 1e99, 99999)
-    parent_body = ParentBody(0.1, 1, 1)
+    parent_body = ParentBody(0.01, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(settings, 100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
     my_system = SpeakerSystem(my_speaker,
@@ -1061,22 +1061,24 @@ def tests():
         _, _, yout = signal.lsim(model, U=u, T=t)
         youts[key] = yout[:, i]
     
+    print("relative disps: min, max")
+    print(min(youts['x1(t)'] - youts['x2(t)']), max(youts['x1(t)'] - youts['x2(t)']))
     plt.plot(t, youts['x1(t)'])
     plt.plot(t, youts['x2(t)'])
+    plt.plot(t, youts['x1(t)'] - youts['x2(t)'])
     plt.plot(t, youts['x_pr(t)'])
     plt.grid()
     plt.show()
-    
-    print(max(youts['x1(t)'] - youts['x2(t)']) * 1000)  # mm
 
-    disps = my_system.get_displacements(1, 25 * 2 * np.pi)
+    
+    disps = my_system.get_displacements(1, 25)
     disp_x1 = disps["Diaphragm, peak, absolute"]
     disp_x2 = disps["Parent body, RMS, absolute"] * 2**0.5
     print("disps: real, abs")
     print(np.real(disp_x1 - disp_x2), np.abs(disp_x1 - disp_x2))
 
     
-    forces = my_system.get_forces(1, 25 * 2 * np.pi)
+    forces = my_system.get_forces(1, 25)
     print("forces: real, abs")
     print(np.real(forces["Force from parent body to reference frame"]), np.abs(forces["Force from parent body to reference frame"]))
 
