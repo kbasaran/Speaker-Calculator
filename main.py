@@ -716,8 +716,6 @@ class MainWindow(qtw.QMainWindow):
 
                                                        )
         self.graph_data_choice.buttons()[3].setEnabled(False)  # the relative button is disabled at start
-        
-        # self.graph_data_choice.buttons()[4].setEnabled(False)  # forces disabled until calculations are complete
 
         self.graph_pushbuttons = pwi.PushButtonGroup({"export_curve": "Export curve",
                                                       "export_json": "Export model",
@@ -1121,9 +1119,9 @@ class MainWindow(qtw.QMainWindow):
                 self.graph.ax.set_ylabel("dBSPL")
 
         elif checked_id == 1:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
+            curves.update({key: np.real(val) for key, val in spk_sys.get_Z(freqs).items()})
             self.graph.set_y_limits_policy("impedance")
-            self.graph.set_title("Electrical impedance - no inductance")
+            self.graph.set_title("Electrical impedance, real part - no inductance")
             self.graph.ax.set_ylabel("ohm")
 
         elif checked_id == 2:
@@ -1153,7 +1151,7 @@ class MainWindow(qtw.QMainWindow):
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 4:
-            curves.update({key: val for key, val in spk_sys.get_forces(V_source, freqs).items()})
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
                 title = f"Forces\n{V_spk:.4g} V"
