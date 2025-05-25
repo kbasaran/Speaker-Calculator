@@ -702,7 +702,7 @@ class MainWindow(qtw.QMainWindow):
                                                        {0: "SPL",
                                                         1: "Impedance",
                                                         2: "Displacements",
-                                                        3: "Relative",
+                                                        3: "Absolute",
                                                         4: "Forces",
                                                         5: "Velocities",
                                                         6: "Phase",
@@ -721,9 +721,9 @@ class MainWindow(qtw.QMainWindow):
         self.graph_data_choice.buttons()[3].setEnabled(False)  # the relative button is disabled at start
         
         # disabled until calculations are complete (forces etc.)
-        
         self.graph_data_choice.buttons()[4].setEnabled(False)
         self.graph_data_choice.buttons()[5].setEnabled(False)
+
 
         self.graph_pushbuttons = pwi.PushButtonGroup({"export_curve": "Export curve",
                                                       "export_json": "Export model",
@@ -1127,39 +1127,39 @@ class MainWindow(qtw.QMainWindow):
                 self.graph.ax.set_ylabel("dBSPL")
 
         elif checked_id == 1:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
+            curves.update({key: np.real(val) for key, val in spk_sys.get_Z(freqs).items()})
             self.graph.set_y_limits_policy("impedance")
-            self.graph.set_title("Electrical impedance - no inductance")
+            self.graph.set_title("Electrical impedance, real part - no inductance")
             self.graph.ax.set_ylabel("ohm")
 
         elif checked_id == 2:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "absolute" in key: 
-                    curves[key] = np.abs(val)
+                if "relative" in key: 
+                    curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Displacements\n{V_spk:.4g} V"
+                title = f"Relative Displacements\n{V_spk:.4g} V"
             else:
-                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Relative Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 3:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "relative" in key: 
-                    curves[key] = np.abs(val)
+                if "absolute" in key: 
+                    curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Displacements\n{V_spk:.4g} V"
+                title = f"Absolute Displacements\n{V_spk:.4g} V"
             else:
-                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Absolute Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 4:
-            curves.update({key: val for key, val in spk_sys.get_forces(V_source, freqs).items()})
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
                 title = f"Forces\n{V_spk:.4g} V"
@@ -1182,9 +1182,9 @@ class MainWindow(qtw.QMainWindow):
             curves.update(spk_sys.get_phases(freqs).items())
             self.graph.set_y_limits_policy("phase")
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Phase, displacements\n{V_spk:.4g} V"
+                title = f"Phase for displacements\n{V_spk:.4g} V"
             else:
-                title = f"Phase, displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Phase for displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("degrees")
 
