@@ -820,13 +820,13 @@ class SpeakerSystem:
                 "<br/>  \n"
                 "### Parent body"
                 "\n"
-                "##### Coupled child masses"
-                "<br></br>"
-                f"Q<sub>pb,c</sub>: {self.parent_body.Q(coupled_masses):.4g}      f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
-                "\n"
-                "##### Decoupled child masses"
+                "##### Assuming child masses are decoupled"
                 "<br></br>"
                 f"Q<sub>pb</sub>: {self.parent_body.Q():.4g}      f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
+                "\n"
+                "##### Assuming child masses are coupled"
+                "<br></br>"
+                f"Q<sub>pb,c</sub>: {self.parent_body.Q(coupled_masses):.4g}      f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
                 )
 
         return summary
