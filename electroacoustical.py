@@ -922,28 +922,25 @@ class SpeakerSystem:
         else:
             x1t_relative_x2t = velocs["Diaphragm, RMS, relative to parent"]
 
-        force_coil = self.speaker.Bl * (V_source - self.speaker.Bl * np.real(x1t_relative_x2t)) / self.R_sys
-        force_coil_2 = np.abs(self.speaker.Bl * (V_source - self.speaker.Bl * x1t_relative_x2t) / self.R_sys)
-        print("Which force coil calculation???")
-        print(min(force_coil / force_coil_2))
+        force_coil = np.abs(self.speaker.Bl * (V_source - self.speaker.Bl * x1t_relative_x2t) / self.R_sys)
         force_speaker = accs["Diaphragm, RMS, absolute"] * self.speaker.Mms  # inertial force
         
         forces = {}
         forces["Lorentz force"] = force_coil
-        forces["Force from speaker to parent body"] = force_speaker
+        forces["Force from speaker to parent body, RMS"] = force_speaker
         
         if self.passive_radiator is None:
             force_pr = np.zeros(len(force_speaker))
         else:
             force_pr = accs["PR/vent, RMS, absolute"] * self.passive_radiator.m_s()  # inertial force
-            forces["Force from passive radiator to parent body"] = force_pr
+            forces["Force from passive radiator to parent body, RMS"] = force_pr
             # forces["Reaction force from reference frame"] += force_pr
 
         if self.parent_body is None:
             force_pb = np.zeros(len(force_speaker))
         else:
             force_pb = accs["Parent body, RMS, absolute"] * self.parent_body.m  # inertial force
-            forces["Force from parent body to reference frame"] = force_pb + force_pr + force_speaker
+            forces["Force from parent body to reference frame, RMS"] = force_pb + force_pr + force_speaker
 
         return forces
 
