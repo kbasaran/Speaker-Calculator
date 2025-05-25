@@ -1129,7 +1129,7 @@ class MainWindow(qtw.QMainWindow):
         elif checked_id == 2:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
                 if "relative" in key: 
-                    curves[key] = np.abs(val)
+                    curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
@@ -1142,7 +1142,7 @@ class MainWindow(qtw.QMainWindow):
         elif checked_id == 3:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
                 if "absolute" in key: 
-                    curves[key] = np.abs(val)
+                    curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
