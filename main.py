@@ -42,7 +42,7 @@ import pandas as pd
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.2.0rc0",
+                   "version": "0.2.0rc-build20250525",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
@@ -629,7 +629,10 @@ class MainWindow(qtw.QMainWindow):
 
     def __init__(self, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
-        self.setWindowTitle(app_definitions["app_name"])
+        self.setWindowTitle(" - ".join(
+            (app_definitions["app_name"],
+             app_definitions["version"])
+            ))
         self.signal_bad_beep.connect(sound_engine.bad_beep)
         self.signal_good_beep.connect(sound_engine.good_beep)
         self._create_menu_bar()
