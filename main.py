@@ -42,7 +42,7 @@ import pandas as pd
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.2.0rc0",
+                   "version": "0.2.0rc-build20250525",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
@@ -468,15 +468,15 @@ class InputSectionTabWidget(qtw.QTabWidget):
             form.interactable_widgets["h_former_under_coil"].setEnabled(is_define_coil)
             self.widget(0).interactable_widgets["dead_mass"].setEnabled(is_define_coil)
 
-        def combo_box_contents_are_obsoleted(*args):
-            combo_box=form.interactable_widgets["coil_options"]
-            combo_box.clear()
-            combo_box.addItem("----")
+        # def combo_box_contents_are_obsoleted(*args):
+        #     combo_box=form.interactable_widgets["coil_options"]
+        #     combo_box.clear()
+        #     combo_box.addItem("----")
 
         form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(adjust_form_for_calc_type)
 
-        for row_name in ["former_ID", "t_former", "w_stacking_coef", "Rs_leadwire", "reduce_per_layer", "h_winding_target"]:
-            form.interactable_widgets[row_name].valueChanged.connect(combo_box_contents_are_obsoleted)
+        # for row_name in ["former_ID", "t_former", "w_stacking_coef", "Rs_leadwire", "reduce_per_layer", "h_winding_target"]:
+        #     form.interactable_widgets[row_name].valueChanged.connect(combo_box_contents_are_obsoleted)
 
         return form
 
@@ -629,7 +629,10 @@ class MainWindow(qtw.QMainWindow):
 
     def __init__(self, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
-        self.setWindowTitle(app_definitions["app_name"])
+        self.setWindowTitle(" - ".join(
+            (app_definitions["app_name"],
+             app_definitions["version"])
+            ))
         self.signal_bad_beep.connect(sound_engine.bad_beep)
         self.signal_good_beep.connect(sound_engine.good_beep)
         self._create_menu_bar()
@@ -699,7 +702,7 @@ class MainWindow(qtw.QMainWindow):
                                                        {0: "SPL",
                                                         1: "Impedance",
                                                         2: "Displacements",
-                                                        3: "Relative",
+                                                        3: "Absolute",
                                                         4: "Forces",
                                                         5: "Velocities",
                                                         6: "Phase",
@@ -716,8 +719,6 @@ class MainWindow(qtw.QMainWindow):
 
                                                        )
         self.graph_data_choice.buttons()[3].setEnabled(False)  # the relative button is disabled at start
-        
-        self.graph_data_choice.buttons()[4].setEnabled(False)  # forces disabled until calculations are complete
 
         self.graph_pushbuttons = pwi.PushButtonGroup({"export_curve": "Export curve",
                                                       "export_json": "Export model",
@@ -998,9 +999,19 @@ class MainWindow(qtw.QMainWindow):
     def update_coil_choices_button_clicked(self):
         name_to_motor = find_feasible_coils(self.get_state(), wires)
         update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], name_to_motor)
+        if self.input_form.interactable_widgets["coil_options"].currentData():
+            self.signal_good_beep.emit()
+        
 
     def _update_model_button_clicked(self):
         self.results_textbox.clear()
+        
+        name_to_motor = find_feasible_coils(self.get_state(), wires)
+        update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], name_to_motor)
+        if not self.input_form.interactable_widgets["coil_options"].currentData():
+            self.signal_bad_beep.emit()
+            return
+        
         try:
             vals = self.get_state()
             speaker_driver = construct_SpeakerDriver(vals)
@@ -1111,39 +1122,39 @@ class MainWindow(qtw.QMainWindow):
                 self.graph.ax.set_ylabel("dBSPL")
 
         elif checked_id == 1:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()})
+            curves.update({key: np.real(val) for key, val in spk_sys.get_Z(freqs).items()})
             self.graph.set_y_limits_policy("impedance")
-            self.graph.set_title("Electrical impedance - no inductance")
+            self.graph.set_title("Electrical impedance, real part - no inductance")
             self.graph.ax.set_ylabel("ohm")
 
         elif checked_id == 2:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "absolute" in key: 
-                    curves[key] = np.abs(val)
+                if "relative" in key: 
+                    curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Displacements\n{V_spk:.4g} V"
+                title = f"Relative Displacements\n{V_spk:.4g} V"
             else:
-                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Relative Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 3:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "relative" in key: 
-                    curves[key] = np.abs(val)
+                if "absolute" in key: 
+                    curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Displacements\n{V_spk:.4g} V"
+                title = f"Absolute Displacements\n{V_spk:.4g} V"
             else:
-                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Absolute Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
         elif checked_id == 4:
-            curves.update({key: val for key, val in spk_sys.get_forces(V_source, freqs).items()})
+            curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
                 title = f"Forces\n{V_spk:.4g} V"
@@ -1166,9 +1177,9 @@ class MainWindow(qtw.QMainWindow):
             curves.update(spk_sys.get_phases(freqs).items())
             self.graph.set_y_limits_policy("phase")
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Phase, displacements\n{V_spk:.4g} V"
+                title = f"Phase for displacements\n{V_spk:.4g} V"
             else:
-                title = f"Phase, displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Phase for displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("degrees")
 
@@ -1423,25 +1434,36 @@ def find_feasible_coils(vals, wires):
     name_to_motor = dict()
     for speaker in speaker_options:
         name = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
-        name_to_motor[name] = dataclasses.asdict(speaker.motor)
+        name_to_motor[name] = speaker.motor
     
     return name_to_motor  # keys: friendly name values: motor object as a dictionary. contains coil and wire in it.
-            
+
 
 def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, name_to_motor: dict):
+    if combo_box.currentData():
+        last_selected = (
+            combo_box.currentData()["coil"]["wire"]["name"],
+            len(combo_box.currentData()["coil"]["N_windings"]),
+            )
+    else:
+        last_selected = (None, None)
+        
     combo_box.clear()
+
+    found_last_selected_index = -1
     # Add the coils to the combobox (with their userData)
-    for name, motor_as_dict in name_to_motor.items():
+    for i, (name, motor) in enumerate(name_to_motor.items()):
         # Make a string for the text to show on the combo box
-        combo_box.addItem(name, motor_as_dict)
+        combo_box.addItem(name, dataclasses.asdict(motor))
+        if motor.coil.get_wire_name_and_layers() == last_selected:
+            found_last_selected_index = i
+    
+    if found_last_selected_index > -1:
+        combo_box.setCurrentIndex(found_last_selected_index)
     
     # if nothing to add to combobox
     if combo_box.count() == 0:
-        mw.signal_bad_beep.emit()
         combo_box.addItem("--no solution found--")
-    
-    else:
-        mw.signal_good_beep.emit()
 
 
 def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:

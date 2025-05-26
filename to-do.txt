@@ -4,15 +4,12 @@ add pop-up window to lumped model
 
 logo needs to be .ico
 remove washer thickness, airgap clearances
-update coil choices should be smarter and check if latest coil is available in the new results
 
 add:
 - recommended Xcrash
 - Peak displacement at 1020Hz: 0.0143 mm
 - Peak displacement overall: 0.313 mm
 - F_motor(V_in) / F_suspension(Xmax/2) = 22%
-
-clear f0 calculations of m2: child masses coupled??
 
 add forces graph
 
@@ -21,3 +18,5 @@ when motor definition type changes to Bl and MMx, paste values from model into t
 "legend is empty" error when updating graphs. why?
 
 save as doesn't add file extension scf in windows
+
+add sine sweep time signal of displacements

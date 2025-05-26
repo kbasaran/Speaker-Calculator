@@ -200,6 +200,12 @@ class Coil:
         else:
             self.fill_ratio = np.nan
             raise ValueError("Unrecognized shape definition for wire {self.wire.name}: {self.wire.shape}")
+    
+    def get_wire_name_and_layers(self):
+        return (
+            self.wire.name,
+            self.N_layers,
+            )
 
     def get_summary(self) -> str:
         "Summary in markup language."
@@ -499,15 +505,17 @@ def make_state_matrix_A(state_vars, state_diffs, sols):
         # find coefficients of each state variable
         if state_diff in state_vars:
             coeffs = [int(state_vars[i] == state_diff) for i in range(len(state_vars))]
-        else:
+        elif state_diff in sols.keys():
             coeffs = [sols[state_diff].coeff(state_var) for state_var in state_vars]
+        else:
+            np.zeros(len(state_vars))
 
         matrix.append(coeffs)
 
     return smp.Matrix(matrix)
 
 
-def make_state_matrix_B(state_diffs, input_vars, sols):
+def make_state_matrix_B(state_vars, state_diffs, input_vars, sols):
     # Input matrix
 
     matrix = []
@@ -515,12 +523,21 @@ def make_state_matrix_B(state_diffs, input_vars, sols):
         # Each row corresponds to the differential of a state variable
         # as listed in state_diffs
         # e.g. x1_t, x1_tt, x2_t, x2_tt
+        
+        # # find coefficients of each state variable
+        if state_diff not in sols.keys():
+            coeffs = np.zeros(len(input_vars))
+        else:
+            coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
 
-        # find coefficients of each state variable
-        coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+        # # find coefficients of each state variable
+        # if state_diff in sols.keys():
+        #     coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+        # else:
+        #     coeffs = np.zeros(len(input_vars))
 
         matrix.append(coeffs)
-
+        
     return smp.Matrix(matrix)
 
 
@@ -559,8 +576,6 @@ class SpeakerSystem:
         x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
-        
-        # p + Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr = 0
 
         # define state space system
         eqns = [    
@@ -570,7 +585,7 @@ class SpeakerSystem:
                  - (Rms + Rb) * (x1_t - x2_t)
                  - Kms * (x1 - x2)
 
-                 - (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Sd
+                 + p * Sd
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
@@ -586,8 +601,8 @@ class SpeakerSystem:
                  + (Rpr + Rb) * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
                  
-                 + (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Sd
-                 + (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Spr
+                 - p * Sd
+                 - p * Spr
 
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
                  # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
@@ -599,13 +614,19 @@ class SpeakerSystem:
                  - (Rpr + Rb) * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
 
-                 - (Kair / Vba * Sd * x1 + Kair / Vba * Spr * xpr) * Spr
+                 + p * Spr
                  # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
+                 ),
+                
+                (
+                 + p
+                 + Kair / Vba * Sd * x1
+                 + Kair / Vba * Spr * xpr
                  ),
                 
                 ]
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t, p]  # state variables
         input_vars = [Vsource]  # input variables
         state_diffs = [var.diff() for var in state_vars]  # state differentials
 
@@ -618,17 +639,17 @@ class SpeakerSystem:
             raise RuntimeError("No solution found for the equation.")
 
         # correction to exact variables in solutions
-        sols[x1_t] = x1_t
-        sols[x2_t] = x2_t
-        sols[xpr_t] = xpr_t
+        # for key, val in sols.items():
+        #     if key in state_vars:
+        #         sols[key] = key
+        #         print(key)
     
         # ---- SS model with symbols
         A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
-        B_sym = make_state_matrix_B(state_diffs, input_vars, sols)  # input matrix
+        B_sym = make_state_matrix_B(state_vars, state_diffs, input_vars, sols)  # input matrix
         C = dict()  # one per state variable -- scipy state space supports only a rank of 1 for output
         for i, state_var in enumerate(state_vars):
             C[state_var] = np.eye(len(state_vars))[i]
-        # cabin pressure can also be added as an output..
         D = np.zeros(len(input_vars))  # no feedforward
 
         self._symbolic_ss = {"A": A_sym,  # system matrix
@@ -637,7 +658,6 @@ class SpeakerSystem:
                              "D": D,  # feedforward
                              "state_vars": state_vars,
                             }
-        
 
     def _get_parameter_names_to_values(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
@@ -800,13 +820,13 @@ class SpeakerSystem:
                 "<br/>  \n"
                 "### Parent body"
                 "\n"
-                "##### Coupled child masses"
-                "<br></br>"
-                f"Q<sub>pb,c</sub>: {self.parent_body.Q(coupled_masses):.4g}      f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
-                "\n"
-                "##### Decoupled child masses"
+                "##### Assuming child masses are decoupled"
                 "<br></br>"
                 f"Q<sub>pb</sub>: {self.parent_body.Q():.4g}      f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
+                "\n"
+                "##### Assuming child masses are coupled"
+                "<br></br>"
+                f"Q<sub>pb,c</sub>: {self.parent_body.Q(coupled_masses):.4g}      f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
                 )
 
         return summary
@@ -817,29 +837,28 @@ class SpeakerSystem:
     
     def get_displacements(self, V_source, freqs: np.array) -> dict:
         # Voltage argument given in RMS
-        # outputs in mm
+        # outputs in m
         disps = dict()
         w = 2 * np.pi * np.array(freqs)
 
         x1 = signal.freqresp(self.ss_models["x1(t)"], w=w)[1] * V_source
 
-        disps["Diaphragm, peak, absolute"] = x1 * 2**0.5 * 1e3
-        disps["Diaphragm, RMS, absolute"] = x1 * 1e3
+        disps["Diaphragm, peak, absolute"] = x1 * 2**0.5
+        disps["Diaphragm, RMS, absolute"] = x1
 
         if self.parent_body is not None:  # in fact, better return these even when no parnt_body, and filter in plotting
             x2 = signal.freqresp(self.ss_models["x2(t)"], w=w)[1] * V_source
-            disps["Parent body, RMS, absolute"] = x2 * 1e3
-            disps["Diaphragm, peak, relative to parent"] = (x1 - x2) * 2**0.5 * 1e3
-            disps["Diaphragm, RMS, relative to parent"] = (x1 - x2) * 1e3
-            # disps["Parent body, peak, absolute"] = x2 * 2**0.5 * 1e3
+            disps["Parent body, RMS, absolute"] = x2
+            disps["Diaphragm, peak, relative to parent"] = (x1 - x2) * 2**0.5
+            disps["Diaphragm, RMS, relative to parent"] = (x1 - x2)
 
         if self.passive_radiator is not None:  # remove later and return always
             xpr = signal.freqresp(self.ss_models["x_pr(t)"], w=w)[1] * V_source
-            disps["PR/vent, RMS, absolute"] = xpr * 1e3
-            disps["PR/vent, peak, absolute"] = xpr * 2**0.5 * 1e3
+            disps["PR/vent, RMS, absolute"] = xpr
+            disps["PR/vent, peak, absolute"] = xpr * 2**0.5
             if self.parent_body is not None:
-                disps["PR/vent, peak, relative to parent"] = (xpr - x2) * 2**0.5 * 1e3
-                disps["PR/vent, RMS, relative to parent"] = (xpr - x2) * 1e3
+                disps["PR/vent, peak, relative to parent"] = (xpr - x2) * 2**0.5
+                disps["PR/vent, RMS, relative to parent"] = (xpr - x2)
                 
         return disps
 
@@ -889,46 +908,41 @@ class SpeakerSystem:
     
         return imps
 
-    # def get_forces(self, V_source, freqs: np.array) -> dict:
-    #     # Voltage argument given in RMS
-    #     # force coil means force generated by coil
-    #     # force speaker means force generated by speaker (inertial forces)
-    #     forces = dict()
-    #     velocs = self.get_velocities(V_source, freqs)
-    #     accs_abs = {key: np.abs(val) for key, val in self.get_accelerations(V_source, freqs).items()}
+    def get_forces(self, V_source, freqs: np.array) -> dict:
+        # Voltage argument given in RMS
+        # force coil means force generated by coil
+        # force speaker means force generated by speaker (inertial forces)
+        forces = dict()
+        velocs = self.get_velocities(V_source, freqs)
+        accs = self.get_accelerations(V_source, freqs)
 
-    #     # relative velocity of coil (x1) to magnetic field (parent body, x2)
-    #     if self.parent_body is None:
-    #         x1t_relative_x2t = velocs["Diaphragm, RMS, absolute"]
-    #     else:
-    #         x1t_relative_x2t = velocs["Diaphragm, RMS, relative to parent"]
+        # relative velocity of coil (x1) to magnetic field (parent body, x2)
+        if self.parent_body is None:
+            x1t_relative_x2t = velocs["Diaphragm, RMS, absolute"]
+        else:
+            x1t_relative_x2t = velocs["Diaphragm, RMS, relative to parent"]
 
-    #     force_coil = self.speaker.Bl * np.real(V_source - self.speaker.Bl * x1t_relative_x2t) / self.R_sys
-    #     force_speaker = accs_abs["Diaphragm, RMS, absolute"] * self.speaker.Mms  # inertial force
+        force_coil = np.abs(self.speaker.Bl * (V_source - self.speaker.Bl * x1t_relative_x2t) / self.R_sys)
+        force_speaker = accs["Diaphragm, RMS, absolute"] * self.speaker.Mms  # inertial force
         
+        forces = {}
+        forces["Lorentz force"] = force_coil
+        forces["Force from speaker to parent body, RMS"] = force_speaker
         
-    #     # I AM COMPLETELY LOOST HERE #
+        if self.passive_radiator is None:
+            force_pr = np.zeros(len(force_speaker))
+        else:
+            force_pr = accs["PR/vent, RMS, absolute"] * self.passive_radiator.m_s()  # inertial force
+            forces["Force from passive radiator to parent body, RMS"] = force_pr
+            # forces["Reaction force from reference frame"] += force_pr
 
-    #     forces = {}
-    #     forces["Lorentz force"] = force_coil
-    #     forces["Force from speaker to parent body"] = - force_speaker
-    #     # forces["Reaction force from reference frame"] = force_speaker
-    #     # forces["Reaction force from reference frame"] = force_speaker
-        
-    #     if self.passive_radiator is not None:
-    #         force_pr = accs_abs["PR/vent, RMS, absolute"] * self.passive_radiator.m_s()  # inertial force
-    #         forces["Force from passive radiator to parent body"] = - force_pr
-    #         # forces["Reaction force from reference frame"] += force_pr
+        if self.parent_body is None:
+            force_pb = np.zeros(len(force_speaker))
+        else:
+            force_pb = accs["Parent body, RMS, absolute"] * self.parent_body.m  # inertial force
+            forces["Force from parent body to reference frame, RMS"] = force_pb + force_pr + force_speaker
 
-    #     if self.parent_body is not None:
-    #         force_parent_body = accs_abs["Parent body, RMS, absolute"] * self.parent_body.m  # inertial force
-    #         forces["Force from parent body to reference frame"] = - force_parent_body
-    #         # forces["Reaction force from reference frame"] += force_parent_body
-    #         # forces["Reaction force from reference frame"] = force_parent_body
-
-    #     # forces["Reaction force from reference frame"] = forces.pop("Reaction force from reference frame")  # move to end
-
-    #     return forces
+        return forces
 
     def get_phases(self, freqs: np.array) -> dict:
         # Phase for displacements
@@ -985,7 +999,7 @@ def tests():
 
     # # do test model 3
     enclosure = Enclosure(settings, 0.001, 1e99, 99999)
-    parent_body = ParentBody(1, 1, 1)
+    parent_body = ParentBody(0.01, 1, 1)
     pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
     my_speaker = SpeakerDriver(settings, 100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
     my_system = SpeakerSystem(my_speaker,
@@ -994,56 +1008,84 @@ def tests():
                               passive_radiator=None,
                               )
 
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = enclosure,
-                            parent_body = None,
-                            passive_radiator = pr,
-                            )
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = enclosure,
+    #                         parent_body = None,
+    #                         passive_radiator = pr,
+    #                         )
     
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = None,
-                            parent_body = parent_body,
-                            passive_radiator = pr,
-                            )
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = None,
+    #                         parent_body = parent_body,
+    #                         passive_radiator = pr,
+    #                         )
+
     
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = enclosure,
-                            parent_body = None,
-                            passive_radiator = None,
-                            )
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = None,
+    #                         parent_body = None,
+    #                         passive_radiator = pr,
+    #                         )
     
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = None,
-                            parent_body = None,
-                            passive_radiator = pr,
-                            )
-    
-    my_system.update_values(speaker=my_speaker,
-                            Rs=1,
-                            enclosure = None,
-                            parent_body = parent_body,
-                            passive_radiator = None,
-                            )
-    
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = None,
+    #                         parent_body = parent_body,
+    #                         passive_radiator = None,
+    #                         )
+        
+    # my_system.update_values(speaker=my_speaker,
+    #                         Rs=1,
+    #                         enclosure = enclosure,
+    #                         parent_body = None,
+    #                         passive_radiator = None,
+    #                         )
 
     # do test model for unibox - Qa / Ql
     # enclosure = Enclosure(0.05, 9999)
     # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=3, Re=4, Mms=7.7e-3)
     # my_system = SpeakerSystem(my_speaker, enclosure=enclosure)
     # x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
-
-    w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
+    
     import matplotlib.pyplot as plt
-    y_rms_for_10Vrms = np.abs(y) * 10
-    y_for_10Vrms = y_rms_for_10Vrms * 2**0.5
-    plt.semilogx(freqs, y_for_10Vrms)
-    for i, freq in enumerate(freqs):
-        if int(freq) == 200:
-            print(f"{freqs[i]:.5g}Hz: {y_rms_for_10Vrms[i] * 1e3:.5g}mm RMS")
+    t = np.arange(0, 0.1, 1/100000)
+    u = 2**0.5 * np.sin(25 * 2 * np.pi * t)
+    youts = {}
+    for i, (key, model) in enumerate(my_system.ss_models.items()):
+        _, _, yout = signal.lsim(model, U=u, T=t)
+        youts[key] = yout[:, i]
+    
+    print("relative disps: min, max")
+    print(min(youts['x1(t)'] - youts['x2(t)']), max(youts['x1(t)'] - youts['x2(t)']))
+    plt.plot(t, youts['x1(t)'])
+    plt.plot(t, youts['x2(t)'])
+    plt.plot(t, youts['x1(t)'] - youts['x2(t)'])
+    plt.plot(t, youts['x_pr(t)'])
+    plt.grid()
+    plt.show()
+
+    
+    disps = my_system.get_displacements(1, 25)
+    disp_x1 = disps["Diaphragm, peak, absolute"]
+    disp_x2 = disps["Parent body, RMS, absolute"] * 2**0.5
+    print("disps: real, abs")
+    print(np.real(disp_x1 - disp_x2), np.abs(disp_x1 - disp_x2))
+
+    
+    forces = my_system.get_forces(1, 25)
+    print("forces: real, abs")
+    print(np.real(forces["Force from parent body to reference frame"]), np.abs(forces["Force from parent body to reference frame"]))
+
+    # w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
+    # y_rms_for_10Vrms = np.abs(y) * 10
+    # y_for_10Vrms = y_rms_for_10Vrms * 2**0.5
+    # plt.semilogx(freqs, y_for_10Vrms)
+    # for i, freq in enumerate(freqs):
+    #     if int(freq) == 200:
+    #         print(f"{freqs[i]:.5g}Hz: {y_rms_for_10Vrms[i] * 1e3:.5g}mm RMS")
     return my_system
 
 
