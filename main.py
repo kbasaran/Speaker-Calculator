@@ -701,8 +701,8 @@ class MainWindow(qtw.QMainWindow):
                                                        
                                                        {0: "SPL",
                                                         1: "Impedance",
-                                                        2: "Displacements",
-                                                        3: "Absolute",
+                                                        2: "Displacements (rel.)",
+                                                        3: "Displacements",
                                                         4: "Forces",
                                                         5: "Velocities",
                                                         6: "Phase",
@@ -1100,7 +1100,7 @@ class MainWindow(qtw.QMainWindow):
                 Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
 
                 _, SPL = ac.calculate_SPL(settings,
-                                          (freqs, velocs["Diaphragm, RMS, absolute"]),
+                                          (freqs, velocs["Diaphragm, RMS"]),
                                           spk_sys.speaker.Sd,
                                           )
 
@@ -1142,14 +1142,14 @@ class MainWindow(qtw.QMainWindow):
 
         elif checked_id == 3:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "absolute" in key: 
+                if "relative" not in key: 
                     curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Absolute Displacements\n{V_spk:.4g} V"
+                title = f"Displacements\n{V_spk:.4g} V"
             else:
-                title = f"Absolute Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
