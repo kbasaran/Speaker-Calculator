@@ -718,7 +718,7 @@ class MainWindow(qtw.QMainWindow):
                                                         },
 
                                                        )
-        self.graph_data_choice.buttons()[3].setEnabled(False)  # the relative button is disabled at start
+        self.graph_data_choice.buttons()[2].setEnabled(False)  # the relative button is disabled at start
 
         self.graph_pushbuttons = pwi.PushButtonGroup({"export_curve": "Export curve",
                                                       "export_json": "Export model",
@@ -824,7 +824,7 @@ class MainWindow(qtw.QMainWindow):
         
         # disable the relative plots
         self.input_form.interactable_widgets["parent_body"].buttons()[1].toggled.connect(
-            self.graph_data_choice.buttons()[3].setEnabled)
+            self.graph_data_choice.buttons()[2].setEnabled)
         
         # Update graph when settings are changed
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
