@@ -13,8 +13,6 @@ add:
 
 when motor definition type changes to Bl and MMx, paste values from model into the widgets
 
-"legend is empty" error when updating graphs. why?
-
 add sine sweep time signal of displacements
 
 make notes box lower in height and make the whole thing smaller if possible
