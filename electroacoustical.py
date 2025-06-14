@@ -569,7 +569,6 @@ class SpeakerSystem:
         # Dynamic symbols
         x1, x2 = mech.dynamicsymbols("x(1:3)")
         xpr = mech.dynamicsymbols("x_pr")
-        p = mech.dynamicsymbols("p")
         Vsource = mech.dynamicsymbols("V_source", real=True)
 
         # Derivatives
@@ -585,8 +584,7 @@ class SpeakerSystem:
                  - (Rms + Rb) * (x1_t - x2_t)
                  - Kms * (x1 - x2)
 
-                 + p * Sd
-                 # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
+                 - (Kair / Vba * (Spr * xpr + Sd * x1)) * Sd
                  + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
@@ -601,11 +599,9 @@ class SpeakerSystem:
                  + (Rpr + Rb) * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
                  
-                 - p * Sd
-                 - p * Spr
+                 + (Kair / Vba * (Spr * xpr + Sd * x1)) * Sd
+                 + (Kair / Vba * (Spr * xpr + Sd * x1)) * Spr
 
-                 # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Sd
-                 # + has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr * dir_pr  # this is causing issues on systems with no pr but yes enclosure
                  - (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
                  ),
 
@@ -614,19 +610,14 @@ class SpeakerSystem:
                  - (Rpr + Rb) * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
 
-                 + p * Spr
-                 # - has_housing * P0 * gamma / Vba * (Sd * x1 + Spr * xpr) * Spr
-                 ),
-                
-                (
-                 + p
-                 + Kair / Vba * Sd * x1
-                 + Kair / Vba * Spr * xpr
+                 - (Kair / Vba * (Spr * xpr + Sd * x1)) * Spr
                  ),
                 
                 ]
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t, p]  # state variables
+        # p = - (Kair / Vba * (Spr * xpr + Sd * x1))
+
+        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
         input_vars = [Vsource]  # input variables
         state_diffs = [var.diff() for var in state_vars]  # state differentials
 
@@ -637,12 +628,6 @@ class SpeakerSystem:
         sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
         if len(sols) == 0:
             raise RuntimeError("No solution found for the equation.")
-
-        # correction to exact variables in solutions
-        # for key, val in sols.items():
-        #     if key in state_vars:
-        #         sols[key] = key
-        #         print(key)
     
         # ---- SS model with symbols
         A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
@@ -993,62 +978,45 @@ def tests():
     my_speaker = SpeakerDriver(settings, 111, 53.5e-4, 6.51, Bl=4.78, Re=4.18, Mms=5.09e-3)
     my_system = SpeakerSystem(my_speaker,
                               parent_body=None,
-                              enclosure=enclosure,
+                              enclosure=None,
                               passive_radiator=None,
                               )
-    
-    # # do test model 2
-    # enclosure = Enclosure(0.01, 5)
-    # parent_body = ParentBody(1, 1, 1)
-    # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    # my_system = SpeakerSystem(my_speaker, enclosure=enclosure, parent_body=parent_body)
 
-    # # do test model 3
-    # enclosure = Enclosure(settings, 0.001, 1e99, 99999)
-    # parent_body = ParentBody(0.01, 1, 1)
-    # pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
-    # my_speaker = SpeakerDriver(settings, 100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
-    # my_system = SpeakerSystem(my_speaker,
-    #                           parent_body=parent_body,
-    #                           enclosure=enclosure,
-    #                           passive_radiator=None,
-    #                           )
-
-    # my_system.update_values(speaker=my_speaker,
-    #                         Rs=1,
-    #                         enclosure = enclosure,
-    #                         parent_body = None,
-    #                         passive_radiator = pr,
-    #                         )
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = enclosure,
+                            parent_body = None,
+                            # passive_radiator = pr,
+                            )
     
-    # my_system.update_values(speaker=my_speaker,
-    #                         Rs=1,
-    #                         enclosure = None,
-    #                         parent_body = parent_body,
-    #                         passive_radiator = pr,
-    #                         )
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = None,
+                            parent_body = parent_body,
+                            # passive_radiator = pr,
+                            )
 
     
-    # my_system.update_values(speaker=my_speaker,
-    #                         Rs=1,
-    #                         enclosure = None,
-    #                         parent_body = None,
-    #                         passive_radiator = pr,
-    #                         )
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = None,
+                            parent_body = None,
+                            # passive_radiator = pr,
+                            )
     
-    # my_system.update_values(speaker=my_speaker,
-    #                         Rs=1,
-    #                         enclosure = None,
-    #                         parent_body = parent_body,
-    #                         passive_radiator = None,
-    #                         )
+    my_system.update_values(speaker=my_speaker,
+                            Rs=1,
+                            enclosure = None,
+                            parent_body = parent_body,
+                            passive_radiator = None,
+                            )
         
-    # my_system.update_values(speaker=my_speaker,
-    #                         Rs=1,
-    #                         enclosure = enclosure,
-    #                         parent_body = None,
-    #                         passive_radiator = None,
-    #                         )
+    my_system.update_values(speaker=my_speaker,
+                            Rs=0,
+                            enclosure = enclosure,
+                            parent_body = None,
+                            passive_radiator = None,
+                            )
 
     # do test model for unibox - Qa / Ql
     # enclosure = Enclosure(0.05, 9999)
@@ -1059,27 +1027,27 @@ def tests():
     import matplotlib.pyplot as plt
     
     # ---- Time signal
-    # t = np.arange(0, 0.1, 1/100000)
-    # u = 2**0.5 * np.sin(25 * 2 * np.pi * t)
-    # youts = {}
-    # for i, (key, model) in enumerate(my_system.ss_models.items()):
-    #     _, _, yout = signal.lsim(model, U=u, T=t)
-    #     youts[key] = yout[:, i]
+    t = np.arange(0, 0.1, 1/100000)
+    u = 2**0.5 * np.sin(25 * 2 * np.pi * t)
+    youts = {}
+    for i, (key, model) in enumerate(my_system.ss_models.items()):
+        _, _, yout = signal.lsim(model, U=u, T=t)
+        youts[key] = yout[:, i]
     
-    # print("relative disps: min, max")
-    # print(min(youts['x1(t)'] - youts['x2(t)']), max(youts['x1(t)'] - youts['x2(t)']))
-    # plt.plot(t, youts['x1(t)'])
-    # plt.plot(t, youts['x2(t)'])
-    # plt.plot(t, youts['x1(t)'] - youts['x2(t)'])
-    # plt.plot(t, youts['x_pr(t)'])
-    # plt.grid()
-    # plt.show()
+    print("relative disps: min, max")
+    print(min(youts['x1(t)'] - youts['x2(t)']), max(youts['x1(t)'] - youts['x2(t)']))
+    plt.plot(t, youts['x1(t)'])
+    plt.plot(t, youts['x2(t)'])
+    plt.plot(t, youts['x1(t)'] - youts['x2(t)'])
+    plt.plot(t, youts['x_pr(t)'])
+    plt.grid()
+    plt.show()
     
     # ---- Print out values at frequencies
     
-    disps = my_system.get_displacements(1, 25)
-    disp_x1 = disps["Diaphragm, peak"]
-    # disp_x2 = disps["Parent body, RMS"] * 2**0.5
+    # disps = my_system.get_displacements(1, 25)
+    # disp_x1 = disps["Diaphragm, peak"]
+    # # disp_x2 = disps["Parent body, RMS"] * 2**0.5
     # print("disps: real, abs")
     # print(np.real(disp_x1 - disp_x2), np.abs(disp_x1 - disp_x2))
 
