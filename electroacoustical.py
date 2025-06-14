@@ -508,7 +508,7 @@ def make_state_matrix_A(state_vars, state_diffs, sols):
         elif state_diff in sols.keys():
             coeffs = [sols[state_diff].coeff(state_var) for state_var in state_vars]
         else:
-            np.zeros(len(state_vars))
+            coeffs = np.zeros(len(state_vars))
 
         matrix.append(coeffs)
 
