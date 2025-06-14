@@ -488,7 +488,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.Title("Enclosure type"))
 
         enclosue_type_choice_buttons = pwi.ChoiceButtonGroup("enclosure_type",
-                                                        {0: "Free-air", 1: "Closed box", 2: "Passive radiator", 3: "Vented"},
+                                                        {0: "Free-air", 1: "Closed box", 2: "PR", 3: "Vented"},
                                                         {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
                                                          1: "Speaker rear side coupled to a sealed enclosure.",
                                                          2: "Speaker rear side coupled to an enclosure with a passive raditor or a bass-reflex vent.",
@@ -638,8 +638,11 @@ class MainWindow(qtw.QMainWindow):
         self._create_menu_bar()
         self._create_widgets()
         self._place_widgets()
+        self.resize(self.minimumSizeHint())  # is the GUI too large? do this.
         self._connect_widgets()
-        self._add_status_bar()
+        # self.setStatusBar(qtw.QStatusBar())
+        # self.statusBar().showMessage("Starting new window..", 2000)
+        
         if user_form_dict:
             self.set_state(user_form_dict)
         elif open_user_file:
@@ -751,13 +754,13 @@ class MainWindow(qtw.QMainWindow):
         self.input_form.setSizePolicy(
             qtw.QSizePolicy.Minimum, qtw.QSizePolicy.Fixed)
 
-        lh_boxlayout.addSpacing(text_height)
-        lh_boxlayout.addWidget(pwi.SunkenLine())
-        lh_boxlayout.addSpacing(text_height / 2)
-        self.update_button.setMinimumHeight(text_height * 8)
+        # lh_boxlayout.addSpacing(text_height / 2)
+        # lh_boxlayout.addWidget(pwi.SunkenLine())
+        self.update_button.setMinimumHeight(text_height * 5)
         lh_boxlayout.addWidget(self.update_button)
 
-        lh_boxlayout.addSpacing(text_height / 2)
+        lh_boxlayout.addWidget(pwi.SunkenLine())
+
         title_label = qtw.QLabel("<b>Title</b>")
         title_label.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)
@@ -767,7 +770,6 @@ class MainWindow(qtw.QMainWindow):
         self.title_textbox.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)  # height is still not fixed somehow. why?
         
-        lh_boxlayout.addSpacing(text_height / 2)
         notes_label = qtw.QLabel("<b>Notes</b>")
         notes_label.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)
@@ -775,7 +777,7 @@ class MainWindow(qtw.QMainWindow):
 
         lh_boxlayout.addWidget(self.notes_textbox)
         self.notes_textbox.setSizePolicy(
-            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Preferred)
+            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Expanding)
 
         # Put a spacer line in between left hand saide with inputs and center column with results
         sunken_line = qtw.QFrame()
@@ -787,17 +789,17 @@ class MainWindow(qtw.QMainWindow):
         
         # ---- Make center with results
         results_textbox_layout = qtw.QVBoxLayout()
-        results_textbox_layout.addSpacing(text_height * 2)
+        # results_textbox_layout.addSpacing(text_height * 1)
         results_textbox_layout.addWidget(self.results_textbox)
 
         mw_center_layout.addLayout(results_textbox_layout)
 
         expected_text_width = qtg.QFontMetrics(
             self.results_textbox.font()).horizontalAdvance(
-                "Bl : 55.55 Tm      Bl²/Re : 55.55 N²/W")
-        self.results_textbox.setMinimumWidth(int(expected_text_width * 1.25))
+                "Bl : 5.555 Tm        Bl²/Re : 5.55 N²/W")
+        self.results_textbox.setMinimumWidth(int(expected_text_width * 1))
         self.results_textbox.setSizePolicy(
-            qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
+            qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Preferred)
 
 
         # ---- Make right hand with graph
@@ -810,7 +812,7 @@ class MainWindow(qtw.QMainWindow):
         rh_layout.addWidget(self.graph_pushbuttons)
 
         self.graph.setSizePolicy(
-            qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)  
+            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)  
 
     def _connect_widgets(self):
         self.input_form.interactable_widgets["update_coil_choices"]\
@@ -831,10 +833,6 @@ class MainWindow(qtw.QMainWindow):
         
         # Drag and drop functionality
         self.input_form.signal_file_dropped.connect(self.load_state_from_file)
-
-    def _add_status_bar(self):
-        self.setStatusBar(qtw.QStatusBar())
-        self.statusBar().showMessage("Starting new window..", 2000)
 
     def get_state(self):
         logger.debug("Get states initiated.")
