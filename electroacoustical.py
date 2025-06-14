@@ -569,6 +569,8 @@ class SpeakerSystem:
         # Dynamic symbols
         x1, x2 = mech.dynamicsymbols("x(1:3)")
         xpr = mech.dynamicsymbols("x_pr")
+        p_housing = mech.dynamicsymbols("p_housing")
+        i_coil = mech.dynamicsymbols("i_coil")
         Vsource = mech.dynamicsymbols("V_source", real=True)
 
         # Derivatives
@@ -584,8 +586,8 @@ class SpeakerSystem:
                  - (Rms + Rb) * (x1_t - x2_t)
                  - Kms * (x1 - x2)
 
-                 - (Kair / Vba * (Spr * xpr + Sd * x1)) * Sd
-                 + (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
+                 + p_housing * Sd
+                 + i_coil * Bl
                  ),
 
                 (
@@ -599,10 +601,10 @@ class SpeakerSystem:
                  + (Rpr + Rb) * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
                  
-                 + (Kair / Vba * (Spr * xpr + Sd * x1)) * Sd
-                 + (Kair / Vba * (Spr * xpr + Sd * x1)) * Spr
+                 - p_housing * Sd
+                 - p_housing * Spr
 
-                 - (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re) * Bl
+                 - i_coil * Bl
                  ),
 
                 (
@@ -610,13 +612,20 @@ class SpeakerSystem:
                  - (Rpr + Rb) * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
 
-                 - (Kair / Vba * (Spr * xpr + Sd * x1)) * Spr
+                 + p_housing * Spr
                  ),
                 
                 ]
+        
+        temp_eqns = eqns.copy()
+        eqns = []
+        for eqn in temp_eqns:
+            temp = eqn.subs(p_housing, - (Kair / Vba * (Spr * xpr + Sd * x1)))
+            temp = temp.subs(i_coil, (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re))
+            eqns.append(temp)
 
-        # p = - (Kair / Vba * (Spr * xpr + Sd * x1))
-        # i = (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re)
+        # p_housing = - (Kair / Vba * (Spr * xpr + Sd * x1))
+        # i_coil = (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re)
         # p and i are not added as state variables because they are linearly dependent on the other state variables
         # they could be added as solutions by adding in C and D above formulas
 
