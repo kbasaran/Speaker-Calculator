@@ -984,13 +984,19 @@ def tests():
         freq_array = 1000*np.array(2**(np.arange(numStart, numEnd + 1)/ppo))
         return freq_array
     
-    freqs = generate_freq_list(10, 1500, 48*8)
+    freqs = generate_freq_list(10, 3000, 48*8)
 
 
-    # # do test model 1
-    # my_speaker = SpeakerDriver(100, 52e-4, 8, Bl=4, Re=4, Mms=8e-3)
-    # my_system = SpeakerSystem(my_speaker)
-
+    # ---- do default model of 0.1.6
+    enclosure = Enclosure(settings, 1e-3, 200)
+    parent_body = ParentBody(0.1, 25e3, 4)
+    my_speaker = SpeakerDriver(settings, 111, 53.5e-4, 6.51, Bl=4.78, Re=4.18, Mms=5.09e-3)
+    my_system = SpeakerSystem(my_speaker,
+                              parent_body=None,
+                              enclosure=enclosure,
+                              passive_radiator=None,
+                              )
+    
     # # do test model 2
     # enclosure = Enclosure(0.01, 5)
     # parent_body = ParentBody(1, 1, 1)
@@ -998,15 +1004,15 @@ def tests():
     # my_system = SpeakerSystem(my_speaker, enclosure=enclosure, parent_body=parent_body)
 
     # # do test model 3
-    enclosure = Enclosure(settings, 0.001, 1e99, 99999)
-    parent_body = ParentBody(0.01, 1, 1)
-    pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
-    my_speaker = SpeakerDriver(settings, 100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
-    my_system = SpeakerSystem(my_speaker,
-                              parent_body=parent_body,
-                              enclosure=enclosure,
-                              passive_radiator=None,
-                              )
+    # enclosure = Enclosure(settings, 0.001, 1e99, 99999)
+    # parent_body = ParentBody(0.01, 1, 1)
+    # pr = PassiveRadiator(20e-3, 1, 1, 100e-4)
+    # my_speaker = SpeakerDriver(settings, 100, 52e-4, 8, Bl=4.01, Re=4, Mms=0.00843)
+    # my_system = SpeakerSystem(my_speaker,
+    #                           parent_body=parent_body,
+    #                           enclosure=enclosure,
+    #                           passive_radiator=None,
+    #                           )
 
     # my_system.update_values(speaker=my_speaker,
     #                         Rs=1,
@@ -1051,42 +1057,49 @@ def tests():
     # x1 = signal.freqresp(my_system.ss_model, w=np.array([100, 200]))
     
     import matplotlib.pyplot as plt
-    t = np.arange(0, 0.1, 1/100000)
-    u = 2**0.5 * np.sin(25 * 2 * np.pi * t)
-    youts = {}
-    for i, (key, model) in enumerate(my_system.ss_models.items()):
-        _, _, yout = signal.lsim(model, U=u, T=t)
-        youts[key] = yout[:, i]
     
-    print("relative disps: min, max")
-    print(min(youts['x1(t)'] - youts['x2(t)']), max(youts['x1(t)'] - youts['x2(t)']))
-    plt.plot(t, youts['x1(t)'])
-    plt.plot(t, youts['x2(t)'])
-    plt.plot(t, youts['x1(t)'] - youts['x2(t)'])
-    plt.plot(t, youts['x_pr(t)'])
-    plt.grid()
-    plt.show()
+    # ---- Time signal
+    # t = np.arange(0, 0.1, 1/100000)
+    # u = 2**0.5 * np.sin(25 * 2 * np.pi * t)
+    # youts = {}
+    # for i, (key, model) in enumerate(my_system.ss_models.items()):
+    #     _, _, yout = signal.lsim(model, U=u, T=t)
+    #     youts[key] = yout[:, i]
+    
+    # print("relative disps: min, max")
+    # print(min(youts['x1(t)'] - youts['x2(t)']), max(youts['x1(t)'] - youts['x2(t)']))
+    # plt.plot(t, youts['x1(t)'])
+    # plt.plot(t, youts['x2(t)'])
+    # plt.plot(t, youts['x1(t)'] - youts['x2(t)'])
+    # plt.plot(t, youts['x_pr(t)'])
+    # plt.grid()
+    # plt.show()
+    
+    # ---- Print out values at frequencies
     
     disps = my_system.get_displacements(1, 25)
     disp_x1 = disps["Diaphragm, peak"]
-    disp_x2 = disps["Parent body, RMS"] * 2**0.5
-    print("disps: real, abs")
-    print(np.real(disp_x1 - disp_x2), np.abs(disp_x1 - disp_x2))
+    # disp_x2 = disps["Parent body, RMS"] * 2**0.5
+    # print("disps: real, abs")
+    # print(np.real(disp_x1 - disp_x2), np.abs(disp_x1 - disp_x2))
 
     
-    forces = my_system.get_forces(1, 25)
-    print("forces: real, abs")
-    print(np.real(forces["Force from parent body to reference frame"]), np.abs(forces["Force from parent body to reference frame"]))
+    # forces = my_system.get_forces(1, 25)
+    # print("forces: real, abs")
+    # print(np.real(forces["Force from parent body to reference frame, RMS"]), np.abs(forces["Force from parent body to reference frame, RMS"]))
 
-    # w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
-    # y_rms_for_10Vrms = np.abs(y) * 10
-    # y_for_10Vrms = y_rms_for_10Vrms * 2**0.5
-    # plt.semilogx(freqs, y_for_10Vrms)
-    # for i, freq in enumerate(freqs):
-    #     if int(freq) == 200:
-    #         print(f"{freqs[i]:.5g}Hz: {y_rms_for_10Vrms[i] * 1e3:.5g}mm RMS")
+    w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
+    y_rms_for_10Vrms = np.abs(y) * 10
+    y_for_10Vrms = y_rms_for_10Vrms * 2**0.5
+    plt.semilogx(freqs, y_rms_for_10Vrms)
+    plt.grid()
+    plt.title("x1(t), RMS")
+    for i, freq in enumerate(freqs):
+        if int(freq) == 200 or i==0 or i==len(freqs)-1:
+            print(f"{freqs[i]:.5g}Hz: {y_rms_for_10Vrms[i] * 1e3:.5g}mm RMS")
+    
     return my_system
 
 
 if __name__ == "__main__":
-    test_result = tests()
+    my_system = tests()
