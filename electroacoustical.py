@@ -398,6 +398,8 @@ class SpeakerDriver:
                    "<br></br>"
                    f"Q<sub>es</sub> : {self.Qes:.3g}        "
                    f"Q<sub>ts</sub> : {self.Qts:.3g}"
+                   "<br></br>"
+                   f"V<sub>as</sub> : {self.Vas * 1e3:.4g} l"
                    
                    "<br/>  \n"
                    f"#### Mass and suspension"
