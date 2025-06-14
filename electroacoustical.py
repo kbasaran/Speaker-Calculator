@@ -616,6 +616,9 @@ class SpeakerSystem:
                 ]
 
         # p = - (Kair / Vba * (Spr * xpr + Sd * x1))
+        # i = (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re)
+        # p and i are not added as state variables because they are linearly dependent on the other state variables
+        # they could be added as solutions by adding in C and D above formulas
 
         state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
         input_vars = [Vsource]  # input variables
@@ -628,7 +631,7 @@ class SpeakerSystem:
         sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
         if len(sols) == 0:
             raise RuntimeError("No solution found for the equation.")
-    
+
         # ---- SS model with symbols
         A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
         B_sym = make_state_matrix_B(state_vars, state_diffs, input_vars, sols)  # input matrix
