@@ -14,5 +14,3 @@ add:
 when motor definition type changes to Bl and MMx, paste values from model into the widgets
 
 add sine sweep time signal of displacements
-
-beeps have too much audio delay in Windows
