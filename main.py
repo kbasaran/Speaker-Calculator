@@ -828,9 +828,6 @@ class MainWindow(qtw.QMainWindow):
         self.input_form.interactable_widgets["parent_body"].buttons()[1].toggled.connect(
             self.graph_data_choice.buttons()[2].setEnabled)
         
-        # Update graph when settings are changed
-        self.signal_user_settings_changed.connect(self.graph.set_grid_type)
-        
         # Drag and drop functionality
         self.input_form.signal_file_dropped.connect(self.load_state_from_file)
 
