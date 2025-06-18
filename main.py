@@ -483,7 +483,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
     def _make_form_for_enclosure_tab(form):
         form = pwi.UserForm()
 
-
         # ---- Enclosure type
         form.add_row(pwi.Title("Enclosure type"))
 
@@ -1092,19 +1091,19 @@ class MainWindow(qtw.QMainWindow):
             else:  # speaker
                 velocs = spk_sys.get_velocities(V_source, freqs)
                 w = 2 * np.pi * freqs
-                Xmax_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
+                Xpeak_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
 
                 _, SPL = ac.calculate_SPL(settings,
                                           (freqs, velocs["Diaphragm, RMS"]),
                                           spk_sys.speaker.Sd,
                                           )
 
-                _, SPL_Xmax_limited = ac.calculate_SPL(settings,
-                                                       (freqs, Xmax_limited_velocities),
+                _, SPL_Xpeak_limited = ac.calculate_SPL(settings,
+                                                       (freqs, Xpeak_limited_velocities),
                                                        spk_sys.speaker.Sd,
                                                        )
     
-                curves.update({"SPL piston mode, Xpeak limited": SPL_Xmax_limited,
+                curves.update({"SPL piston mode, Xpeak limited": SPL_Xpeak_limited,
                                "SPL piston mode": SPL,
                                })
 
