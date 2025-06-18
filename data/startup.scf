@@ -224,7 +224,7 @@
     "h_former_under_coil": 0.0005,
     "enclosure_type": 1,
     "Vb": 0.002,
-    "Qa": 999.0,
+    "Qa": 100.0,
     "parent_body": 1,
     "m2": 0.1,
     "k2": 10000.0,
