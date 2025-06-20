@@ -6,7 +6,6 @@ logo needs to be .ico
 remove washer thickness, airgap clearances
 
 add:
-- recommended Xcrash
 - Peak displacement at 1020Hz: 0.0143 mm
 - Peak displacement overall: 0.313 mm
 - F_motor(V_in) / F_suspension(Xmax/2) = 22%
