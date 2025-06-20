@@ -209,14 +209,15 @@ class Coil:
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        windings_per_layer_subtext = "1" if len(self.N_windings) == 1 else f"1-{len(self.N_windings):d}"
         summary = ("#### Winding"
                    "<br></br>"
-                   f"{self.wire.name} - {self.wire.shape[0].upper() + self.wire.shape[1:]}"  
+                   f"{self.wire.name} - {self.wire.shape[0].upper() + self.wire.shape[1:]}"
                    "<br></br>"
-                   f"N<sub>{windings_per_layer_subtext}</sub>: {self.N_windings}"
+                   f"N<sub>windings_total</sub>: {sum(self.N_windings)}"
                    "<br></br>"
-                   f"{(self.mass * 1e3):.4g} g"
+                   f"N<sub>windings_per_layer</sub>:\n{self.N_windings}"
+                   "<br></br>"
+                   f"m<sub>windings</sub>: {(self.mass * 1e3):.4g} g"
                    "<br></br>"
                    f"Fill ratio: {self.fill_ratio * 100:.3g} %"
 
