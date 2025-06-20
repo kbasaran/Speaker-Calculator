@@ -183,7 +183,7 @@ class Coil:
         self.mass = self.total_wire_length() * self.wire.mass_density
         self.Re = self.total_wire_length() * self.wire.resistance
         
-        self.w_max = self.wire.w_max * (1 + (self.N_layers - 1) * self.w_stacking_coef)
+        self.w_max = self.wire.w_max * self.N_layers
         self.w_nom = self.wire.w_avg * (1 + (self.N_layers - 1) * self.w_stacking_coef)
 
         self.OD_nom = 2 * self.turn_radii[-1] + self.wire.w_avg
