@@ -329,7 +329,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\nthickness of a winding that has 3 layers will be"
                                       "\n 1 + 0.8 + 0.8 = 2.6mm. (applies not on first layer but consecutive layers only)"
                                       "\nFor stacking of ideally circular wires this value is 'sin(60)=0.5'",
-                                      min_max=(0, 1),
+                                      min_max=(0, 1.99),
                                       ),
                      description="Stacking coefficient",
                      into_form=motor_definition_p1,
@@ -351,7 +351,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                     ("Reduce the number of windings on each layer by this number."
                                      "\nFor round coils suggested value is 1.5. For rectangular coils suggested value is 0.5."),
                                       min_max=(0, None),
-                                      decimals=1,
+                                      decimals=2,
                                     ),
                      description="Reduce windings per layer",
                      into_form=motor_definition_p1,
