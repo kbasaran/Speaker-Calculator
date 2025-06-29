@@ -992,7 +992,7 @@ class MainWindow(qtw.QMainWindow):
     
     def update_coil_choices_button_clicked(self):
         name_to_motor = find_feasible_coils(self.get_state(), wires)
-        update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], name_to_motor)
+        update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"], self.input_form, name_to_motor)
         if self.input_form.interactable_widgets["coil_options"].currentData():
             self.signal_good_beep.emit()
         
@@ -1001,7 +1001,7 @@ class MainWindow(qtw.QMainWindow):
         self.results_textbox.clear()
         
         name_to_motor = find_feasible_coils(self.get_state(), wires)
-        update_coil_options_combobox(self, self.input_form.interactable_widgets["coil_options"], name_to_motor)
+        update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"], self.input_form, name_to_motor)
         if not self.input_form.interactable_widgets["coil_options"].currentData():
             self.signal_bad_beep.emit()
             return
@@ -1433,31 +1433,33 @@ def find_feasible_coils(vals, wires):
     return name_to_motor  # keys: friendly name values: motor object as a dictionary. contains coil and wire in it.
 
 
-def update_coil_options_combobox(mw: MainWindow, combo_box: qtw.QComboBox, name_to_motor: dict):
-    if combo_box.currentData():
+def update_coil_options_combobox(combo_box: qtw.QComboBox, input_form_tabbed: InputSectionTabWidget, name_to_motor: dict):
+    try:
         last_selected = (
             combo_box.currentData()["coil"]["wire"]["name"],
             len(combo_box.currentData()["coil"]["N_windings"]),
             )
-    else:
+    except (KeyError, AttributeError, TypeError):
         last_selected = (None, None)
         
     combo_box.clear()
 
-    found_last_selected_index = -1
+    index_to_select = -1
     # Add the coils to the combobox (with their userData)
     for i, (name, motor) in enumerate(name_to_motor.items()):
         # Make a string for the text to show on the combo box
         combo_box.addItem(name, dataclasses.asdict(motor))
         if motor.coil.get_wire_name_and_layers() == last_selected:
-            found_last_selected_index = i
+            index_to_select = i
     
-    if found_last_selected_index > -1:
-        combo_box.setCurrentIndex(found_last_selected_index)
+    combo_box.setCurrentIndex(index_to_select)
     
     # if nothing to add to combobox
     if combo_box.count() == 0:
         combo_box.addItem("--no solution found--")
+    elif index_to_select == -1:  # means a new coil needs to be selected by user
+        input_form_tabbed.setCurrentIndex(1)
+        combo_box.showPopup()
 
 
 def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
