@@ -74,29 +74,15 @@ def convert_v01_to_v02(file: Path) -> dict:
         ]
 
     def translate_excitation_type(value_v01):
-        match value_v01["name"]:
-
-            case "Volt":
-                current_text = "Volts"
-            case "Volts":
-                current_text = "Volts"
-
-            case "W@Rdc":
-                current_text = "Watts @Re"
-            case "W@Re":
-                current_text = "Watts @Re"
-            case "Watt@Rdc":
-                current_text = "Watts @Re"
-            case "Watt@Re":
-                current_text = "Watts @Re"
-
-            case "W@Rnom":
-                current_text = "Watts @Rnom"
-            case "Watt@Rnom":
-                current_text = "Watts @Rnom"
-
-            case _:
-                raise ValueError(f"No case matches: {value_v01}")
+        
+        if "volt" in value_v01["name"].lower():
+            current_text = "Volts"
+        elif "rnom" in value_v01["name"].lower():
+            current_text = "Watts @Rnom"
+        elif "re" in value_v01["name"].lower() or "rdc" in value_v01["name"].lower():
+            current_text = "Watts @Re"
+        else:
+            raise ValueError(f"No case matches: {value_v01}")
 
         excitation_type_combobox_setting = {"current_text": current_text,
                                             "current_data": value_v01["userData"],
@@ -227,16 +213,15 @@ def convert_v01_to_v02(file: Path) -> dict:
 def batch_convert_v01_files(folder_path):
 
     sscf_files = folder_path.glob("*.sscf")
-    states = []
+    states = {}
     for file in sscf_files:
         print()
-        states.append(convert_v01_to_v02(file))
+        states[file.name] = convert_v01_to_v02(file)
     return states
 
 
 if __name__ == "__main__":
     # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
     states = batch_convert_v01_files(pathlib.Path(
-        "C:\\Users\\kerem.basaran\\OneDrive - PremiumSoundSolutions\\Documents\\SSC files"
-        # "/home/kerem/Dropbox/Documents/Python/PSS Work/SSC files"
+        "./private/SSC files"
         ))
