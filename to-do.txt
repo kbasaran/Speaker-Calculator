@@ -14,3 +14,8 @@ when motor definition type changes to Bl and Mmx, paste values from model into t
 add sine sweep time signal of displacements
 
 coil choices T/S values may not match results box values
+
+add definition list for all the terms used into the electraoacoustics file.
+such as, V_in, V_spk, R_sys, R_nom, etc.
+
+Xpeak better be called xpeak
