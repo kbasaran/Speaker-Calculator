@@ -17,13 +17,11 @@ __email__ = "kbasaran@gmail.com"
 # License along with Speaker Calculator. If not, see <https://www.gnu.org/licenses/>
 
 import dataclasses as dtc
-from functools import cached_property
 import numpy as np
 import sympy as smp
 import sympy.physics.mechanics as mech
 from sympy.solvers import solve
 from scipy import signal
-import pandas as pd
 from sympy.abc import t
 
 
