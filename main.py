@@ -42,8 +42,7 @@ import pandas as pd
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.2.0rc1",
-                   # "version": "Test build " + today.strftime("%Y.%m.%d"),
+                   "version": "0.2.0",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": str(Path("./images/logo2025.png")),
@@ -52,6 +51,9 @@ app_definitions = {"app_name": "Speaker Calculator",
                    "email": "kbasaran@gmail.com",
                    "website": "https://github.com/kbasaran",
                    }
+
+# uncomment for release candidate builds
+app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 
 @dataclass
