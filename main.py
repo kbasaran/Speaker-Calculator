@@ -1002,11 +1002,14 @@ class MainWindow(qtw.QMainWindow):
     def _update_model_button_clicked(self):
         self.results_textbox.clear()
         
-        name_to_motor = find_feasible_coils(self.get_state(), wires)
-        update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"], self.input_form, name_to_motor)
-        if not self.input_form.interactable_widgets["coil_options"].currentData():
-            self.signal_bad_beep.emit()
-            return
+        if self.input_form.interactable_widgets["motor_spec_type"].currentData() == "define_coil":
+            update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"],
+                                         self.input_form,
+                                         find_feasible_coils(self.get_state(), wires),
+                                         )
+            if not self.input_form.interactable_widgets["coil_options"].currentData():
+                self.signal_bad_beep.emit()
+                return
         
         try:
             vals = self.get_state()
