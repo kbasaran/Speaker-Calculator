@@ -1073,10 +1073,9 @@ class MainWindow(qtw.QMainWindow):
             spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
 
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, settings.calc_ppo)
-        R_spk = spk_sys.speaker.Re
         W_sys = V_source**2 / spk_sys.R_sys
-        V_spk = V_source / spk_sys.R_sys * R_spk
-        W_spk = V_spk**2 / R_spk
+        V_spk = V_source / spk_sys.R_sys * spk_sys.speaker.Re
+        W_spk = V_spk**2 / spk_sys.speaker.Re
 
         if checked_id == 0:
             
@@ -1192,9 +1191,9 @@ class MainWindow(qtw.QMainWindow):
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
-        summary_all = self.speaker_model_state["system"].get_summary()
+        summary_all = self.speaker_model_state["system"].get_summary(self.speaker_model_state["V_source"])
         self.results_textbox.setText(summary_all)
-        
+
 
 class CurveExportMenu(qtw.QMenu):
     def __init__(self, curves, position, parent):
@@ -1206,7 +1205,6 @@ class CurveExportMenu(qtw.QMenu):
                                                           )
                            )
         self.popup(position)
-
 
 class SettingsDialog(qtw.QDialog):
     global settings

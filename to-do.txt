@@ -8,9 +8,8 @@ remove washer thickness, airgap clearances
 add:
 - Peak displacement at 1020Hz: 0.0143 mm
 - Peak displacement overall: 0.313 mm
-- F_motor(V_in) / F_suspension(Xmax/2) = 22%
 
-when motor definition type changes to Bl and MMx, paste values from model into the widgets
+when motor definition type changes to Bl and Mmx, paste values from model into the widgets
 
 add sine sweep time signal of displacements
 
