@@ -939,7 +939,7 @@ class SpeakerSystem:
         force_speaker = accs["Diaphragm, RMS"] * self.speaker.Mms  # inertial force
         
         forces = {}
-        forces["Lorentz force"] = force_coil
+        forces["Lorentz force, RMS"] = force_coil
         forces["Force from speaker to parent body, RMS"] = force_speaker
         
         if self.passive_radiator is None:
