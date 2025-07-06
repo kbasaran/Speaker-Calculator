@@ -172,37 +172,46 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # ---- General specs
         form.add_row(pwi.Title("General specifications"))
 
-        form.add_row(pwi.FloatSpinBox("fs", "Resonance frequency (undamped natural frequency) of the speaker in free-air condition",
+        form.add_row(pwi.FloatSpinBox("fs",
+                                      "Resonance frequency (undamped natural frequency) of the speaker in free-air condition."
+                                      "\nUnit is Hertz.",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
-                     description="f<sub>s</sub> (Hz)",
+                     description="f<sub>s</sub>",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Qms", "Quality factor of speaker, only the mechanical part",
+        form.add_row(pwi.FloatSpinBox("Qms",
+                                      "Quality factor of speaker, only the mechanical part."
+                                      "\nUnitless quantity.",
                                       ),
                      description="Q<sub>ms</sub>",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Xpeak", "Peak excursion allowed, one way",
+        form.add_row(pwi.FloatSpinBox("Xpeak",
+                                      "Peak excursion allowed, one way."
+                                      "\nUnit is millimeter.",
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="X<sub>peak</sub> (mm)",
+                     description="X<sub>peak</sub>",
                      )
 
         form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil windings and the air load on the diaphragm."
-                                                   "\nDead mass = Mmd - coil winding mass",
+                                                   "\n'Dead mass = Mmd - coil winding mass'"
+                                                   "\nUnit is millimeter.",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Dead mass (g)",
+                     description="Dead mass",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Sd", "Diaphragm effective surface area.\nUse a value of '0' if there is no diaphragm, e.g. a shaker.",
+        form.add_row(pwi.FloatSpinBox("Sd",
+                                      "Diaphragm effective surface area.\nUse a value of '0' if there is no diaphragm, e.g. a shaker."
+                                      "Unit is cm².",
                                       coeff_for_SI=1e-4,
                                       min_max=(0, None),
                                       ),
-                     description="S<sub>d</sub> (cm²)"
+                     description="S<sub>d</sub>"
                      )
 
         # ---- Electrical input
@@ -220,21 +229,23 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Unit",
                      )
 
-        form.add_row(pwi.FloatSpinBox("excitation_value", "The value for input excitation, in units chosen above",
+        form.add_row(pwi.FloatSpinBox("excitation_value", "The value for input excitation.\nUnit is as chosen above.",
                                       ),
                      description="Excitation value",
                      )
 
         form.add_row(pwi.FloatSpinBox("Rnom", "Nominal impedance of the system. This is necessary to calculate the voltage applied to the system"
-                                      "\nwhen 'Watts @Rnom' is selected as the input excitation unit.",
+                                      "\nwhen 'Watts @Rnom' is selected as the input excitation unit."
+                                      "\nUnit is ohm.",
                                       ),
                      description="Nominal impedance",
                      )
 
         form.add_row(pwi.FloatSpinBox("R_serial",
                                       "The resistance between the speaker terminal and the voltage source."
-                                      "\nMay be due to cables, connectors, amplifier etc."
-                                      "\nCauses resistive loss before arrival at the speaker terminals.",
+                                      "\nMay be due to cables in our outside the speaker housing, connectors, amplifier internals etc."
+                                      "\nCauses resistive loss of voltage appearing at speaker terminals."
+                                      "\nUnit is ohm.",
                                       min_max=(0, None),
                                       ),
                      description="External resistance",
@@ -256,7 +267,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form = pwi.UserForm()
 
         # Motor spec type
-        form.add_row(pwi.ComboBox("motor_spec_type", "Choose which parameters you want to input to make the motor strength calculation",
+        form.add_row(pwi.ComboBox("motor_spec_type",
+                                  "Choose which parameters you want to provide to make a motor definition.",
                                   [("Define Coil Dimensions and Average B", "define_coil"),
                                    ("Define Bl, Re, Mmd", "define_Bl_Re_Mmd"),
                                    ("Define Bl, Re, Mms", "define_Bl_Re_Mms"),
@@ -278,42 +290,55 @@ class InputSectionTabWidget(qtw.QTabWidget):
         motor_definition_p1 = pwi.SubForm()
         form.motor_definition_stacked.addWidget(motor_definition_p1)
 
-        form.add_row(pwi.FloatSpinBox("target_Re", "Re value that needs to be approached while calculating an appropriate coil and winding",
+        form.add_row(pwi.FloatSpinBox("target_Re",
+                                      "Desired Re value. Wire type and number of windings will be "
+                                      "calculated so as to best approach this value."
+                                      "\nUnit is ohm.",
                                       ),
-                     description="Target R<sub>e</sub> (ohm)",
+                     description="Target R<sub>e</sub>",
                      into_form=motor_definition_p1,
                      )
 
-        form.add_row(pwi.FloatSpinBox("former_ID", "Internal diameter of the coil former",
+        form.add_row(pwi.FloatSpinBox("former_ID",
+                                      "Internal diameter of the coil former."
+                                      "\nUnit is millimeter.",
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Coil Former ID (mm)",
+                     description="Coil former ID",
                      into_form=motor_definition_p1,
                      )
 
-        form.add_row(pwi.IntSpinBox("t_former", "Thickness of the coil former",
+        form.add_row(pwi.IntSpinBox("t_former",
+                                    "Thickness of the coil former."
+                                    "\nUnit is micrometer (\u03BCm).",
                                     coeff_for_SI=1e-6,
                                       min_max=(0, None)
                                     ),
-                     description="Former thickness (\u03BCm)",
+                     description="Former thickness",
                      into_form=motor_definition_p1,
                      )
 
-        form.add_row(pwi.FloatSpinBox("h_winding_target", "Desired height of the coil winding",
+        form.add_row(pwi.FloatSpinBox("h_winding_target",
+                                      "Desired height of the coil winding."
+                                      "\nUnit is millimeter.",
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Target winding height (mm)",
+                     description="Target winding height",
                      into_form=motor_definition_p1,
                      )
 
 
-        form.add_row(pwi.FloatSpinBox("B_average", "Average B field across the coil windings."
-                                      "\nNeeds to be calculated separately and input here.",
+        form.add_row(pwi.FloatSpinBox("B_average",
+                                      "Average of radial magnetic field across the coil winding."
+                                      "\nNeeds to be calculated separately and input here."
+                                      "\nE.g. a value of '0.9' would mean that a winding with a wire "
+                                      "that is 5m long will have a Bl of 4.5Tm."
+                                      "\nUnit is Tesla.",
                                       decimals=3,
                                       coeff_for_SI=1,
                                       min_max=(0, None),
                                       ),
-                     description="Average B field on coil (T)",
+                     description="Average B on coil",
                      into_form=motor_definition_p1,
                      )
 
@@ -330,7 +355,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\nE.g. if this is set to 0.8 and the average wire thickness is 1mm,"
                                       "\nthickness of a winding that has 3 layers will be"
                                       "\n 1 + 0.8 + 0.8 = 2.6mm. (applies not on first layer but consecutive layers only)"
-                                      "\nFor stacking of ideally circular wires this value is 'sin(60)=0.5'",
+                                      "\nFor stacking of ideally circular wires this value is 'sin(60)=0.5'.",
                                       min_max=(0, 1.99),
                                       ),
                      description="Stacking coefficient",
@@ -339,18 +364,19 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.interactable_widgets["w_stacking_coef"].setValue(1)
 
         form.add_row(pwi.FloatSpinBox("Rs_leadwire",
-                                      "Resistance between the coil and the speaker terminals, e.g. leadwire",
+                                      "Resistance between the coil and the speaker terminals, e.g. leadwire"
+                                      "\nUnit is ohm.",
                                       min_max=(0, None),
                                       # took the automatically assigned maximum from another widget
                                       # instead of typing n an arbitrary number
                                       # 'None' was not expected by the underlying 'setRange' method
                                       ),
-                     description="Leadwire resistance (ohm)",
+                     description="Leadwire resistance",
                      into_form=motor_definition_p1,
                      )
 
         form.add_row(pwi.FloatSpinBox("reduce_per_layer",
-                                    ("Reduce the number of windings on each layer by this number."
+                                    ("Reduce the number of windings on each consecutive winding layer by this number."
                                      "\nFor round coils suggested value is 1.5. For rectangular coils suggested value is 0.5."),
                                       min_max=(0, None),
                                       decimals=2,
@@ -362,14 +388,14 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         update_coil_choices_button = pwi.PushButton("update_coil_choices",
                                                     "Update coil choices",
-                                                    tooltip="Populate the below dropdown with possible coil choices for the given parameters",
+                                                    tooltip="Populate the below dropdown with possible coil choices based on given parameters.",
                                                     )
 
         form.add_row(update_coil_choices_button,
                      into_form=motor_definition_p1,
                      )
 
-        form.add_row(pwi.ComboBox("coil_options", "Select coil winding to be used for calculations",
+        form.add_row(pwi.ComboBox("coil_options", "Select coil winding to be used for calculations.",
                                   [],
                                   ),
                      into_form=motor_definition_p1,
@@ -379,24 +405,29 @@ class InputSectionTabWidget(qtw.QTabWidget):
         motor_definition_p2 = pwi.SubForm()
         form.motor_definition_stacked.addWidget(motor_definition_p2)
 
-        form.add_row(pwi.FloatSpinBox("Bl_p2", "Force factor",
+        form.add_row(pwi.FloatSpinBox("Bl_p2",
+                                      "Force factor"
+                                      "\nUnit is Tesla meter.",
                                       ),
-                     description="Bl (Tm)",
+                     description="Bl",
                      into_form=motor_definition_p2,
                      )
 
-        form.add_row(pwi.FloatSpinBox("Re_p2", "DC resistance",
+        form.add_row(pwi.FloatSpinBox("Re_p2",
+                                      "DC resistance"
+                                      "\nUnit is ohm.",
                                     ),
-                     description="R<sub>e</sub> (ohm)",
+                     description="R<sub>e</sub>",
                      into_form=motor_definition_p2,
                      )
 
         form.add_row(pwi.FloatSpinBox("Mmd_p2",
-                                      "Moving mass, excluding coupled air mass",
+                                      "Moving mass, excluding coupled air mass"
+                                      "\nUnit is gram.",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="M<sub>md</sub> (g)",
+                     description="M<sub>md</sub>",
                      into_form=motor_definition_p2,
                      )
 
@@ -405,25 +436,28 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.motor_definition_stacked.addWidget(motor_definition_p3)
 
         form.add_row(pwi.FloatSpinBox("Bl_p3",
-                                      "Force factor",
+                                      "Force factor"
+                                      "\nUnit is Tesla meter.",
                                       ),
-                     description="Bl (Tm)",
+                     description="Bl",
                      into_form=motor_definition_p3,
                      )
 
         form.add_row(pwi.FloatSpinBox("Re_p3",
-                                    "DC resistance",
+                                      "DC resistance"
+                                      "\nUnit is ohm.",
                                     ),
-                     description="R<sub>e</sub> (ohm)",
+                     description="R<sub>e</sub>",
                      into_form=motor_definition_p3,
                      )
 
         form.add_row(pwi.FloatSpinBox("Mms_p3",
-                                      "Moving mass, including coupled air mass",
+                                      "Moving mass, including coupled air mass"
+                                      "\nUnit is gram.",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="M<sub>ms</sub> (g)",
+                     description="M<sub>ms</sub>",
                      into_form=motor_definition_p3,
                      )
 
@@ -432,29 +466,37 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.Title("Motor mechanical specifications"))
 
-        form.add_row(pwi.FloatSpinBox("h_top_plate", "Thickness of the top plate",
+        form.add_row(pwi.FloatSpinBox("h_top_plate",
+                                      "Thickness of the top plate."
+                                      "\nUnit is millimeter.",
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Top plate thickness (mm)",
+                     description="Top plate thickness",
                      )
 
-        form.add_row(pwi.IntSpinBox("airgap_clearance_inner", "Clearance on the inner side of the coil former",
+        form.add_row(pwi.IntSpinBox("airgap_clearance_inner",
+                                    "Clearance on the inner side of the coil former."
+                                    "\nUnit is micrometer (\u03BCm).",
                                     coeff_for_SI=1e-6,
                                     ),
-                     description="Airgap inner clearance (\u03BCm)",
+                     description="Airgap inner clearance",
                      )
 
-        form.add_row(pwi.IntSpinBox("airgap_clearance_outer", "Clearance on the outer side of the coil windings",
+        form.add_row(pwi.IntSpinBox("airgap_clearance_outer",
+                                    "Clearance on the outer side of the coil windings."
+                                    "\nUnit is micrometer (\u03BCm).",
                                     coeff_for_SI=1e-6,
                                     ),
-                     description="Airgap outer clearance (\u03BCm)",
+                     description="Airgap outer clearance",
                      )
 
-        form.add_row(pwi.FloatSpinBox("h_former_under_coil", "Extension of the coil former below the coil windings",
+        form.add_row(pwi.FloatSpinBox("h_former_under_coil",
+                                      "Extension of the coil former below the coil windings."
+                                      "\nUnit is millimeter.",
                                       coeff_for_SI=1e-3,
                                       min_max=(0, None),
                                       ),
-                     description="Former bottom ext. (mm)",
+                     description="Former bottom ext.",
                      )
         
         # spacer = qtw.QSpacerItem(0, 0, qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
@@ -510,14 +552,19 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.Title("Closed box specifications"))
         
-        form.add_row(pwi.FloatSpinBox("Vb", "Internal volume filled by air.\nFor vented calculations, the air in the vent is included in this value.",
+        form.add_row(pwi.FloatSpinBox("Vb",
+                                      "Internal volume filled by air."
+                                      "\nFor vented calculations, the air in the vent is included in this value."
+                                      "\nUnit is liter.",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Net internal volume (l)",
+                     description="Net internal volume",
                      )
 
-        form.add_row(pwi.FloatSpinBox("Qa", "Quality factor of the speaker resulting from absorption losses inside the enclosure.",
+        form.add_row(pwi.FloatSpinBox("Qa",
+                                      "Quality factor of the speaker resulting from absorption losses inside the enclosure."
+                                      "\nUnitless quantity.",
                                       decimals=1,
                                       min_max=(0.1, None),
                                       ),
@@ -558,7 +605,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
         dof_choice_buttons = pwi.ChoiceButtonGroup("parent_body",
                                                    {0: "Rigid", 1: "Mobile"},
                                                    {0: "1 degree of freedom - only the loudspeaker moving mass has mobility.",
-                                                       1: "2 degrees of freedom - loudspeaker moving mass is attached to a parent lump mass that also has mobility."},
+                                                    1: "2 degrees of freedom - loudspeaker moving mass is attached to a parent lump mass that also has mobility."
+                                                    },
                                                    vertical=False,
                                                    )
         dof_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
@@ -566,22 +614,28 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         # ---- Parent body
 
-        form.add_row(pwi.FloatSpinBox("m2", "Mass of the parent body",
+        form.add_row(pwi.FloatSpinBox("m2",
+                                      "Mass of the parent body"
+                                      "\nUnit is gram.",
                                       coeff_for_SI=1e-3,
                                       ),
-                     description="Mass (g)",
+                     description="Mass",
                      )
 
-        form.add_row(pwi.FloatSpinBox("k2", "Stiffness between the parent body and the reference frame",
+        form.add_row(pwi.FloatSpinBox("k2",
+                                      "Stiffness between the parent body and the reference frame"
+                                      "\nUnit is Newtons per millimeter.",
                                       coeff_for_SI=1e3,
                                       ),
-                     description="Stiffness (N/mm)",
+                     description="Stiffness",
                      )
 
 
-        form.add_row(pwi.FloatSpinBox("c2", "Damping coefficient between the parent body and the reference frame",
+        form.add_row(pwi.FloatSpinBox("c2",
+                                      "Damping coefficient between the parent body and the reference frame"
+                                      "\nUnit is kilograms per second.",
                                       ),
-                     description="Damping coefficient (kg/s)",
+                     description="Damping coefficient",
                      )
         
         # ---- Form logic
