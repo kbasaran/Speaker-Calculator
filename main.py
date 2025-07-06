@@ -42,8 +42,7 @@ import pandas as pd
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.2.0rc1",
-                   # "version": "Test build " + today.strftime("%Y.%m.%d"),
+                   "version": "0.2.0",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": str(Path("./images/logo2025.png")),
@@ -52,6 +51,9 @@ app_definitions = {"app_name": "Speaker Calculator",
                    "email": "kbasaran@gmail.com",
                    "website": "https://github.com/kbasaran",
                    }
+
+# uncomment for release candidate builds
+app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 
 @dataclass
@@ -1000,11 +1002,14 @@ class MainWindow(qtw.QMainWindow):
     def _update_model_button_clicked(self):
         self.results_textbox.clear()
         
-        name_to_motor = find_feasible_coils(self.get_state(), wires)
-        update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"], self.input_form, name_to_motor)
-        if not self.input_form.interactable_widgets["coil_options"].currentData():
-            self.signal_bad_beep.emit()
-            return
+        if self.input_form.interactable_widgets["motor_spec_type"].currentData() == "define_coil":
+            update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"],
+                                         self.input_form,
+                                         find_feasible_coils(self.get_state(), wires),
+                                         )
+            if not self.input_form.interactable_widgets["coil_options"].currentData():
+                self.signal_bad_beep.emit()
+                return
         
         try:
             vals = self.get_state()
@@ -1071,10 +1076,9 @@ class MainWindow(qtw.QMainWindow):
             spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
 
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, settings.calc_ppo)
-        R_spk = spk_sys.speaker.Re
         W_sys = V_source**2 / spk_sys.R_sys
-        V_spk = V_source / spk_sys.R_sys * R_spk
-        W_spk = V_spk**2 / R_spk
+        V_spk = V_source / spk_sys.R_sys * spk_sys.speaker.Re
+        W_spk = V_spk**2 / spk_sys.speaker.Re
 
         if checked_id == 0:
             
@@ -1190,9 +1194,9 @@ class MainWindow(qtw.QMainWindow):
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
-        summary_all = self.speaker_model_state["system"].get_summary()
+        summary_all = self.speaker_model_state["system"].get_summary(self.speaker_model_state["V_source"])
         self.results_textbox.setText(summary_all)
-        
+
 
 class CurveExportMenu(qtw.QMenu):
     def __init__(self, curves, position, parent):
@@ -1204,7 +1208,6 @@ class CurveExportMenu(qtw.QMenu):
                                                           )
                            )
         self.popup(position)
-
 
 class SettingsDialog(qtw.QDialog):
     global settings

@@ -17,13 +17,11 @@ __email__ = "kbasaran@gmail.com"
 # License along with Speaker Calculator. If not, see <https://www.gnu.org/licenses/>
 
 import dataclasses as dtc
-from functools import cached_property
 import numpy as np
 import sympy as smp
 import sympy.physics.mechanics as mech
 from sympy.solvers import solve
 from scipy import signal
-import pandas as pd
 from sympy.abc import t
 
 
@@ -792,15 +790,29 @@ class SpeakerSystem:
                                                                 self._symbolic_ss["D"],
                                                                 )
 
-    def get_summary(self) -> str:
+    def get_summary(self, V_source:float=0) -> str:
         "Summary in markup language."
         summary = self.speaker.get_summary()
+            
+        if V_source > 0:
+            # Suspension feasibility
+            V_spk = V_source / self.R_sys * self.speaker.Re
+            summary += (
+                   "<br></br>"
+                   "\n"
+                   "#### Motor force vs. suspension"
+                   "<br></br>"
+                   "F<sub>motor, RMS</sub> / F<sub>suspension</sub>(X<sub>peak</sub>/2): "
+                   f"{self.speaker.Bl * V_spk / self.speaker.Re / self.speaker.Kms / (self.speaker.Xpeak / 2):.0%}"
+                    )
 
         summary += ("<br/>  \n"
                     "## System"
                     "<br></br>"
                     f"R<sub>sys</sub>: {self.R_sys:.2f} ohm"
                    )
+        
+
 
         if isinstance(self.enclosure, Enclosure):
             summary += (
@@ -813,6 +825,7 @@ class SpeakerSystem:
                 )
             if isinstance(self.passive_radiator, PassiveRadiator):
                 summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.Spr):.4g} N/mm"
+                
             
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
@@ -926,7 +939,7 @@ class SpeakerSystem:
         force_speaker = accs["Diaphragm, RMS"] * self.speaker.Mms  # inertial force
         
         forces = {}
-        forces["Lorentz force"] = force_coil
+        forces["Lorentz force, RMS"] = force_coil
         forces["Force from speaker to parent body, RMS"] = force_speaker
         
         if self.passive_radiator is None:
