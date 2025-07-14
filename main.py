@@ -1658,7 +1658,7 @@ def create_sound_engine(app):
     sound_engine.moveToThread(sound_engine_thread)
     
     # Connections
-    app.aboutToQuit.connect(sound_engine.release_all)
+    # app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.quit)  # for clean exit
     
     sound_engine_thread.start(qtc.QThread.HighPriority)
