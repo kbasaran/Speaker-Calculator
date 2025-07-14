@@ -615,16 +615,16 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         # ---- Parent body
 
-        form.add_row(pwi.FloatSpinBox("m2",
-                                      "Mass of the parent body"
+        form.add_row(pwi.FloatSpinBox("mpb",
+                                      "Mass of the parent body."
                                       "\nUnit is gram.",
                                       coeff_for_SI=1e-3,
                                       ),
                      description="Mass",
                      )
 
-        form.add_row(pwi.FloatSpinBox("k2",
-                                      "Stiffness between the parent body and the reference frame"
+        form.add_row(pwi.FloatSpinBox("kpb",
+                                      "Stiffness between the parent body and the reference frame."
                                       "\nUnit is Newtons per millimeter.",
                                       coeff_for_SI=1e3,
                                       ),
@@ -632,8 +632,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
 
 
-        form.add_row(pwi.FloatSpinBox("c2",
-                                      "Damping coefficient between the parent body and the reference frame"
+        form.add_row(pwi.FloatSpinBox("rpb",
+                                      "Damping coefficient between the parent body and the reference frame."
                                       "\nUnit is kilograms per second.",
                                       ),
                      description="Damping coefficient",
@@ -641,9 +641,9 @@ class InputSectionTabWidget(qtw.QTabWidget):
         
         # ---- Form logic
         def adjust_form_for_system_type(toggled_id, checked):
-            form.interactable_widgets["k2"].setEnabled(toggled_id == 1 and checked is True)
-            form.interactable_widgets["m2"].setEnabled(toggled_id == 1 and checked is True)
-            form.interactable_widgets["c2"].setEnabled(toggled_id == 1 and checked is True)
+            form.interactable_widgets["kpb"].setEnabled(toggled_id == 1 and checked is True)
+            form.interactable_widgets["mpb"].setEnabled(toggled_id == 1 and checked is True)
+            form.interactable_widgets["rpb"].setEnabled(toggled_id == 1 and checked is True)
 
         form.interactable_widgets["parent_body"].idToggled.connect(adjust_form_for_system_type)
         # adjustment at start
@@ -1599,9 +1599,9 @@ def build_or_update_SpeakerSystem(vals,
         enclosure = None
         
     if vals["parent_body"] == 1:
-        parent_body = ac.ParentBody(vals["m2"],
-                                    vals["k2"],
-                                    vals["c2"],
+        parent_body = ac.ParentBody(vals["mpb"],
+                                    vals["kpb"],
+                                    vals["rpb"],
                                     )
     else:
         parent_body = None
