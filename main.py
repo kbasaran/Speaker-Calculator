@@ -563,7 +563,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
 
         form.add_row(pwi.FloatSpinBox("Qa",
-                                      "Quality factor of the speaker resulting from absorption losses inside the enclosure."
+                                      "Quality factor of the speaker in enclosure resulting from absorption losses inside the enclosure."
+                                      "\nCalculated at f<sub>b</sub>."
                                       "\nUnitless quantity.",
                                       decimals=1,
                                       min_max=(0.1, None),
