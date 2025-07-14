@@ -1,21 +1,21 @@
+# Important features
 write manual.md
 add pop-up window to manual.md
 add pop-up window to lumped model
 
+add definition list for all the terms used into the electraoacoustics file.
+such as V_in, V_spk, R_sys, R_nom, etc.
+
+
+# Bugs
 logo needs to be .ico
-remove washer thickness, airgap clearances
 
-add:
-- Peak displacement at 1020Hz: 0.0143 mm
-- Peak displacement overall: 0.313 mm
 
+# Nice to have
 when motor definition type changes to Bl and Mmx, paste values from model into the widgets
 
 add sine sweep time signal of displacements
 
-coil choices T/S values may not match results box values
-
-add definition list for all the terms used into the electraoacoustics file.
-such as, V_in, V_spk, R_sys, R_nom, etc.
-
-Xpeak better be called xpeak
+add:
+- Peak displacement at 1020Hz: 0.0143 mm
+- Peak displacement overall: 0.313 mm
