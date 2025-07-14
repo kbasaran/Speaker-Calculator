@@ -226,9 +226,9 @@
     "Vb": 0.002,
     "Qa": 100.0,
     "parent_body": 1,
-    "m2": 0.1,
-    "k2": 10000.0,
-    "c2": 3.0,
+    "mpb": 0.1,
+    "kpb": 10000.0,
+    "rpb": 3.0,
     "user_notes": "",
     "user_title": "",
     "application_data": {

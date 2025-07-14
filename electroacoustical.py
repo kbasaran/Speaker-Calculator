@@ -87,7 +87,7 @@ Qp is the system's Q at Fb due to port losses (turbulence, viscosity, etc.).
 def calculate_air_mass(Sd: float) -> float:
     """
     Air mass on diaphragm; the difference between Mms and Mmd.
-    m2 in, kg out
+    m² in, kg out.
     """
     return 1.13*(Sd)**(3/2)
 
@@ -559,9 +559,12 @@ class SpeakerSystem:
 
     def _build_symbolic_ss_model(self):
         # Static symbols
-        Mms, M2, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
-        Kms, K2, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
-        Rms, R2, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
+        # s: speaker
+        # pb: parent body (second degree of freedom)
+        # pr: passive radiator (third degree of freedom)
+        Mms, Mpb, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
+        Kms, Kpb, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
+        Rms, Rpb, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
         Kair, Vba, Rb = smp.symbols("Kair, V_ba, R_b", real=True, positive=True)
         Sd, Spr, Bl, Re, R_serial = smp.symbols("S_d, S_pr, Bl, R_e, R_serial", real=True, positive=True)
         # Direction coefficient for passive radiator
@@ -592,9 +595,9 @@ class SpeakerSystem:
                  ),
 
                 (
-                 - M2 * x2_tt
-                 - R2 * x2_t
-                 - K2 * x2
+                 - Mpb * x2_tt
+                 - Rpb * x2_t
+                 - Kpb * x2
                  
                  + (Rms + Rb) * (x1_t - x2_t)
                  + Kms * (x1 - x2)
@@ -670,9 +673,9 @@ class SpeakerSystem:
             "Bl": self.speaker.Bl,
             "Re": self.speaker.Re,
 
-            "M2": np.inf if self.parent_body is None else self.parent_body.m,
-            "K2": 0 if self.parent_body is None else self.parent_body.k,
-            "R2": 0 if self.parent_body is None else self.parent_body.c,
+            "Mpb": np.inf if self.parent_body is None else self.parent_body.m,
+            "Kpb": 0 if self.parent_body is None else self.parent_body.k,
+            "Rpb": 0 if self.parent_body is None else self.parent_body.c,
 
             "Mpr": np.inf if self.passive_radiator is None else self.passive_radiator.m_s(),  # with air coupled
             "Kpr": 0 if self.passive_radiator is None else self.passive_radiator.k,

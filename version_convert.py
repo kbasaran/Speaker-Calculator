@@ -178,9 +178,9 @@ def convert_v01_to_v02(file: Path) -> dict:
                     # "Ql":                       (None,                      9999.9),
             
                     "parent_body":              ("dof",                     translate_parent_body),
-                    "m2":                       ("m2",                      lambda x: x),
-                    "k2":                       ("k2",                      lambda x: x),
-                    "c2":                       ("c2",                      lambda x: x),
+                    "mpb":                       ("m2",                      lambda x: x),
+                    "kpb":                       ("k2",                      lambda x: x),
+                    "rpb":                       ("c2",                      lambda x: x),
             
                     "user_curves":              ("user_curves",             translate_user_curves),
                     "user_title":               (None,                      ""),
