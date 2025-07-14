@@ -1144,8 +1144,8 @@ class MainWindow(qtw.QMainWindow):
                                for key, acc in accs.items() if "relative" not in key})
                 
                 self.graph.set_y_limits_policy("SPL")
-                self.graph.set_title(f"Acceleration, {V_source:.4g} V, {W_spk:.3g} Watt@Re")
-                self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$ m/s²")
+                self.graph.set_title(f"Acceleration, {V_source:.4g}V, {W_spk:.3g}Watt@Re")
+                self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$m/s²")
 
             else:  # speaker
                 velocs = spk_sys.get_velocities(V_source, freqs)
@@ -1168,9 +1168,9 @@ class MainWindow(qtw.QMainWindow):
 
                 self.graph.set_y_limits_policy("SPL")
                 if spk_sys.speaker.Re == spk_sys.R_sys:
-                    title = f"SPL@1m, Half-space\n{V_spk:.4g} V, {W_spk:.3g} Watt@Re"
+                    title = f"SPL@1m, Half-space\n{V_spk:.4g}V, {W_spk:.3g}Watt@Re"
                 else:
-                    title = f"SPL@1m, Half-space\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V, {W_spk:.3g} Watt@Re"
+                    title = f"SPL@1m, Half-space\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V, {W_spk:.3g}Watt@Re"
                 self.graph.set_title(title)
                 self.graph.ax.set_ylabel("dBSPL")
 
@@ -1187,9 +1187,9 @@ class MainWindow(qtw.QMainWindow):
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Relative Displacements\n{V_spk:.4g} V"
+                title = f"Relative Displacements\n{V_spk:.4g}V"
             else:
-                title = f"Relative Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Relative Displacements\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
@@ -1200,9 +1200,9 @@ class MainWindow(qtw.QMainWindow):
 
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Displacements\n{V_spk:.4g} V"
+                title = f"Displacements\n{V_spk:.4g}V"
             else:
-                title = f"Displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Displacements\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("mm")
 
@@ -1210,9 +1210,9 @@ class MainWindow(qtw.QMainWindow):
             curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Forces\n{V_spk:.4g} V"
+                title = f"Forces\n{V_spk:.4g}V"
             else:
-                title = f"Forces\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Forces\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("N")
             
@@ -1220,9 +1220,9 @@ class MainWindow(qtw.QMainWindow):
             curves.update({key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Velocities\n{V_spk:.4g} V"
+                title = f"Velocities\n{V_spk:.4g}V"
             else:
-                title = f"Velocities\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Velocities\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("m/s")
 
@@ -1230,9 +1230,9 @@ class MainWindow(qtw.QMainWindow):
             curves.update(spk_sys.get_phases(freqs).items())
             self.graph.set_y_limits_policy("phase")
             if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Phase for displacements\n{V_spk:.4g} V"
+                title = f"Phase for displacements\n{V_spk:.4g}V"
             else:
-                title = f"Phase for displacements\nSystem: {V_source:.4g} V, Speaker: {V_spk:.4g} V"
+                title = f"Phase for displacements\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("degrees")
 
