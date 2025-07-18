@@ -1249,7 +1249,7 @@ class MainWindow(qtw.QMainWindow):
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
-        summary_all = self.speaker_model_state["system"].get_summary(self.speaker_model_state["V_source"])
+        summary_all = self.speaker_model_state["system"].get_summary(settings, self.speaker_model_state["V_source"])
         self.results_textbox.setText(summary_all)
 
 
@@ -1471,8 +1471,7 @@ def find_feasible_coils(vals, wires):
                                  airgap_clearance_outer=vals["airgap_clearance_outer"],
                                  h_former_under_coil=vals["h_former_under_coil"],
                                  )
-                speaker = ac.SpeakerDriver(settings,
-                                           vals["fs"],
+                speaker = ac.SpeakerDriver(vals["fs"],
                                            vals["Sd"],
                                            vals["Qms"],
                                            motor=motor,
@@ -1482,10 +1481,10 @@ def find_feasible_coils(vals, wires):
                 speaker_options.append(speaker)
 
     # Sort the viable coil options
-    speaker_options.sort(key=lambda x: x.Lm, reverse=True)
+    speaker_options.sort(key=lambda x: x.Lm(settings), reverse=True)
     name_to_motor = dict()
     for speaker in speaker_options:
-        name = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm:.2f}, Qts={speaker.Qts:.2f}"
+        name = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm(settings):.2f}, Qts={speaker.Qts:.2f}"
         name_to_motor[name] = speaker.motor
     
     return name_to_motor  # keys: friendly name values: motor object as a dictionary. contains coil and wire in it.
@@ -1542,8 +1541,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
         except (TypeError, AttributeError) as e:  # doesn't have motor attribute or is None
             print(e)
             raise RuntimeError("Invalid motor object in coil options combobox")
-        speaker_driver = ac.SpeakerDriver(settings,
-                                          fs=vals["fs"],
+        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
 
@@ -1555,8 +1553,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           )
         
     elif motor_spec_type == "define_Bl_Re_Mmd":
-        speaker_driver = ac.SpeakerDriver(settings,
-                                          fs=vals["fs"],
+        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
 
@@ -1568,8 +1565,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           )
         
     elif motor_spec_type == "define_Bl_Re_Mms":
-        speaker_driver = ac.SpeakerDriver(settings,
-                                          fs=vals["fs"],
+        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
 
@@ -1590,11 +1586,9 @@ def build_or_update_SpeakerSystem(vals,
                                   spk_sys: (None, ac.SpeakerSystem) = None,
                                   ) -> ac.SpeakerSystem:    
     if vals["enclosure_type"] == 1:
-        enclosure = ac.Enclosure(speaker.settings,
-                             vals["Vb"],
-                             vals["Qa"],
-                             vals["Qa"],
-                             )
+        enclosure = ac.Enclosure(vals["Vb"],
+                                 vals["Qa"],
+                                 )
     else:
         enclosure = None
         
@@ -1612,19 +1606,20 @@ def build_or_update_SpeakerSystem(vals,
         passive_radiator = None
         
     if spk_sys is None:
-        return ac.SpeakerSystem(speaker,
-                                vals["R_serial"],
-                                enclosure,
-                                parent_body,
-                                passive_radiator,
-                                )   
+        return ac.SpeakerSystem(speaker=speaker,
+                                Rs=vals["R_serial"],
+                                enclosure=enclosure,
+                                parent_body=parent_body,
+                                passive_radiator=passive_radiator,
+                                )
     else:
         spk_sys.update_values(speaker=speaker,
-                                Rs = vals["R_serial"],
-                                enclosure = enclosure,
-                                parent_body = parent_body,
-                                passive_radiator = passive_radiator,
-                                )
+                              Rs=vals["R_serial"],
+                              enclosure=enclosure,
+                              parent_body=parent_body,
+                              passive_radiator=passive_radiator,
+                              settings=settings,
+                              )
 
     return spk_sys
 

@@ -6,6 +6,8 @@ add pop-up window to lumped model
 add definition list for all the terms used into the electraoacoustics file.
 such as V_in, V_spk, R_sys, R_nom, etc.
 
+either add pole piece and outer piece diameters or remove clearances from GUI
+
 
 # Bugs
 logo needs to be .ico
