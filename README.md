@@ -28,3 +28,12 @@ Written for Python 3.12.x
 ## Manual
 ### Underlying model
 The application uses a linear model with 3 degrees of freedom to do the calculations. To see how the model is built, see function `_build_symbolic_ss_model` in `electracoustical.py`.
+**ADD HERE THE PICTURE OF MODEL MADE IN LIBREDRAW"
+
+> [!IMPORTANT]
+> The third degree of freedom which represents the vented port or passive radiator is not included in this version.
+
+### Coil windings
+The application will give you options for different coil windings based on your required winding height and the coil resistance. To be able to do this, a separate table that has information on different wire types is provided by the user. This table is named `wire table.ods` and is located in the subfolder `data` in the installation folder.
+> [!TIP]
+> To see the location of the wire table in your computer go to *Help -> Show paths of assets..* from the top menu of the application.
