@@ -442,7 +442,7 @@ class Enclosure:
     Vb: float
     Qa: float
     # Ql: float = np.inf
-    
+
     def Vba(self):  # effective acoustical volume
         return self.Vb
 
@@ -503,14 +503,14 @@ class PassiveRadiator:
         return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
 
     def f_housed(self, settings, Vba):
-        return 1 / 2 / np.pi * ((self.k + self.k_air(settings, Vba)) / self.m_s())**0.5
+        return 1 / 2 / np.pi * ((self.k + self.k_box(settings, Vba)) / self.m_s())**0.5
 
-    def k_air(self, settings, Vba):
+    def k_box(self, settings, Vba):
         "Stiffness from air in enclosure."
         return self.Spr**2 * settings.Kair / Vba
 
     def R(self, settings, Vba):
-        return ((self.k_air(settings, Vba) + self.k) * self.m_s())**0.5 / self.Qp
+        return ((self.k_box(settings, Vba) + self.k) * self.m_s())**0.5 / self.Qp
         """
         Damping at fp due to port losses in case of vented box, or due to
         mechanical losses in case of passive raditor. Calculated from Qp.
@@ -569,7 +569,7 @@ def make_state_matrix_B(state_vars, state_diffs, input_vars, sols):
 @dtc.dataclass
 class SpeakerSystem:
     speaker: SpeakerDriver
-    Rs: float = 0  # series electrical resistance to the speaker terminals.
+    Rs: float = 0   # series electrical resistance to the speaker terminals.
                     # may be inside the amp or in the cables to the speaker terminals
     enclosure: None | Enclosure = None
     parent_body: None | ParentBody = None
@@ -589,7 +589,7 @@ class SpeakerSystem:
         Mms, Mpb, Mpr = smp.symbols("M_ms, M_2, M_pr", real=True, positive=True)
         Kms, Kpb, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
         Rms, Rpb, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
-        Kair, Vba, Rair = smp.symbols("Kair, V_ba, R_b", real=True, positive=True)
+        Kair, Vba, Rbox = smp.symbols("Kair, V_ba, R_box", real=True, positive=True)
         Sd, Spr, Bl, Re, R_serial = smp.symbols("S_d, S_pr, Bl, R_e, R_serial", real=True, positive=True)
         # Direction coefficient for passive radiator
         # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
@@ -611,7 +611,7 @@ class SpeakerSystem:
 
                 (
                  - Mms * x1_tt
-                 - (Rms + Rair) * (x1_t - x2_t)
+                 - (Rms + Rbox) * (x1_t - x2_t)
                  - Kms * (x1 - x2)
 
                  + p_housing * Sd
@@ -623,10 +623,10 @@ class SpeakerSystem:
                  - Rpb * x2_t
                  - Kpb * x2
                  
-                 + (Rms + Rair) * (x1_t - x2_t)
+                 + (Rms + Rbox) * (x1_t - x2_t)
                  + Kms * (x1 - x2)
 
-                 + (Rpr + Rair) * (xpr_t - x2_t)
+                 + (Rpr + Rbox) * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
                  
                  - p_housing * Sd
@@ -637,7 +637,7 @@ class SpeakerSystem:
 
                 (
                  - Mpr * xpr_tt
-                 - (Rpr + Rair) * (xpr_t - x2_t)
+                 - (Rpr + Rbox) * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
 
                  + p_housing * Spr
@@ -708,7 +708,7 @@ class SpeakerSystem:
             "dir_pr": self.dir_pr,
 
             "Vba": 0 if self.enclosure is None else self.enclosure.Vba(),  # in fact Vba is infinite when no enclosure. but infinite is not allowed.
-            "Rair": 0 if self.enclosure is None else self.enclosure.R(
+            "Rbox": 0 if self.enclosure is None else self.enclosure.R(
                 settings,
                 self.speaker.Sd,
                 self.speaker.Mms,
@@ -841,8 +841,6 @@ class SpeakerSystem:
                     f"R<sub>sys</sub>: {self.R_sys:.2f} ohm"
                    )
         
-
-
         if isinstance(self.enclosure, Enclosure):
             summary += (
                 "<br/>  \n"
@@ -855,7 +853,6 @@ class SpeakerSystem:
             if isinstance(self.passive_radiator, PassiveRadiator):
                 summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(settings, self.passive_radiator.Spr):.4g} N/mm"
                 
-            
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (

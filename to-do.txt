@@ -8,8 +8,6 @@ such as V_in, V_spk, R_sys, R_nom, etc.
 
 either add pole piece and outer piece diameters or remove clearances from GUI
 
-check enclosure and PR object methods
-
 continue manual
 
 
