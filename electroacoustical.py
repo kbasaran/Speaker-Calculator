@@ -216,20 +216,20 @@ class Coil:
 
     def get_summary(self) -> str:
         "Summary in markup language."
-        summary = ("#### Winding"
+        summary = ("#### Windings"
                    "<br></br>"
-                   f"{self.wire.name} - {self.wire.shape[0].upper() + self.wire.shape[1:]}"
+                   f"{self.wire.name}, {self.wire.shape[0].upper() + self.wire.shape[1:]}, N<sub>wind</sub>: {sum(self.N_windings)}"
                    "<br></br>"
-                   f"N<sub>windings_total</sub>: {sum(self.N_windings)}"
-                   "<br></br>"
-                   f"N<sub>windings_per_layer</sub>:\n{self.N_windings}"
+                   # f"N<sub>windings_total</sub>: {sum(self.N_windings)}"
+                   # "<br></br>"
+                   # f"N<sub>wind_per_layer</sub>:\n"
+                   f"{self.N_windings}"
                    "<br></br>"
                    f"m<sub>windings</sub>: {(self.mass * 1e3):.4g} g"
                    "<br></br>"
                    f"Fill ratio: {self.fill_ratio * 100:.3g} %"
 
-                   "  \n"                   
-                   "##### Dimensions"
+                   "<br></br>"
                    "<br></br>"
                    f"L<sub>total</sub>: {self.total_wire_length():.3g} m        "
                    f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
@@ -312,14 +312,14 @@ class Motor:
     def get_summary(self) -> str:
         "Summary in markup language."
         summary = (
-            "### Motor"
+            "## Motor"
             "<br></br>"
             f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm"
             "<br></br>"
             f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm"
             "<br></br>"
             f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
-            
+
             "<br/>  \n"
             f"{self.coil.get_summary()}"
             )
@@ -397,7 +397,7 @@ class SpeakerDriver:
     def Vas(self, settings):
         return settings.Kair / self.Kms * self.Sd**2
 
-    def get_summary(self, settings) -> str:
+    def get_summary(self, settings, V_spk=0) -> str:
         "Summary in markup language."
         summary = ("## Speaker unit"
                    "<br></br>"
@@ -422,15 +422,27 @@ class SpeakerDriver:
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
 
                    "<br/>  \n"
-                   "#### Displacement"
+                   "#### Displacements"
                    "<br></br>"
                    f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
                    )
-
+        
         if self.motor is not None:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
             summary += f"      X<sub>crash</sub> : {Xcrash*1000:.3g} mm (recomm.)"
-            summary += "<br/>  \n"
+        
+        if V_spk > 0:
+            # Suspension feasibility
+            summary += (
+                   # "\n"
+                   # "##### Motor force vs. suspension"
+                   "<br></br>"
+                   "F<sub>motor, RMS</sub> / F<sub>suspension</sub>(X<sub>peak</sub>/2): "
+                   f"{self.Bl * V_spk / self.Re / self.Kms / (self.Xpeak / 2):.0%}"
+                    )
+            
+        if self.motor is not None:       
+            summary += "\n----\n"
             summary += self.motor.get_summary()
 
         return summary
@@ -821,22 +833,11 @@ class SpeakerSystem:
 
     def get_summary(self, settings, V_source:float=0) -> str:
         "Summary in markup language."
-        summary = self.speaker.get_summary(settings)
-            
-        if V_source > 0:
-            # Suspension feasibility
-            V_spk = V_source / self.R_sys * self.speaker.Re
-            summary += (
-                   "<br></br>"
-                   "\n"
-                   "#### Motor force vs. suspension"
-                   "<br></br>"
-                   "F<sub>motor, RMS</sub> / F<sub>suspension</sub>(X<sub>peak</sub>/2): "
-                   f"{self.speaker.Bl * V_spk / self.speaker.Re / self.speaker.Kms / (self.speaker.Xpeak / 2):.0%}"
-                    )
+        V_spk = V_source / self.R_sys * self.speaker.Re
+        summary = self.speaker.get_summary(settings, V_spk)
 
-        summary += ("<br/>  \n"
-                    "## System"
+        summary += ("\n----\n"
+                    "#### System"
                     "<br></br>"
                     f"R<sub>sys</sub>: {self.R_sys:.2f} ohm"
                    )
@@ -844,7 +845,7 @@ class SpeakerSystem:
         if isinstance(self.enclosure, Enclosure):
             summary += (
                 "<br/>  \n"
-                "### Enclosure"
+                "#### Enclosure"
                 "<br></br>"
                 f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
                 "<br></br>"
@@ -857,7 +858,7 @@ class SpeakerSystem:
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (
                 "<br/>  \n"
-                "### Parent body"
+                "#### Parent body"
                 "\n"
                 "##### Assuming child masses are decoupled"
                 "<br></br>"
