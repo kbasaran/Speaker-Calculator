@@ -1,12 +1,8 @@
 # Important features
-write manual.md
 add pop-up window to manual.md
-add pop-up window to lumped model
 
 add definition list for all the terms used into the electraoacoustics file.
 such as V_in, V_spk, R_sys, R_nom, etc.
-
-add pole piece and outer piece diameters to results
 
 continue manual
 

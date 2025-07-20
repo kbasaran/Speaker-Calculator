@@ -309,8 +309,24 @@ class Motor:
     Bavg : float
         Average magnetic field on the total height of coil in rest position.
     """
+    
+    def __post_init__(self):
+        self.former_ID = self.coil.carrier_OD - self.t_former
+        self.air_gap_width = (self.airgap_clearance_inner
+                         + self.t_former
+                         + self.coil.w_max
+                         + self.airgap_clearance_outer
+                         )
+    
     def get_summary(self) -> str:
         "Summary in markup language."
+
+        self.airgap_radii = list((
+            self.former_ID/2 - self.airgap_clearance_inner,
+            self.air_gap_width,
+            self.former_ID/2 - self.airgap_clearance_inner + self.air_gap_width,
+         ))
+
         summary = (
             "## Motor"
             "<br></br>"
@@ -319,7 +335,12 @@ class Motor:
             f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm"
             "<br></br>"
             f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
-
+            "<br></br>"
+            "Airgap radii:"
+            "<br></br>"
+            f"{self.airgap_radii[0] * 1e3:.3f} + "
+            f"{self.airgap_radii[1] * 1e3:.3f} = "
+            f"{self.airgap_radii[2] * 1e3:.3f} mm"
             "<br/>  \n"
             f"{self.coil.get_summary()}"
             )
