@@ -141,7 +141,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "dead_mass":                ("dead_mass",               lambda x: x),
                     "Sd":                       ("Sd",                      lambda x: x),
     
-                    "R_serial":                 (None,                      0.),
+                    "R_ext":                 (None,                      0.),
                     "excitation_type":          ("excitation_unit",         translate_excitation_type),
                     "excitation_value":         ("excitation_value",        lambda x: x),
                     "Rnom":                     ("nominal_impedance",       lambda x: x),
@@ -153,7 +153,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "t_former":                 ("t_former",                lambda x: x),
                     "h_winding_target":         ("h_winding",               lambda x: x),
                     "w_stacking_coef":          (None,                      0.9),
-                    "Rs_leadwire":              (None,                      0.),
+                    "Rlw":                      (None,                      0.),
                     "B_average":                ("B_average",               lambda x: x),
                     "N_layer_options":          ("N_layer_options",         lambda x: x),
                     "coil_options":             ("coil_choice_box",         translate_coil_options),

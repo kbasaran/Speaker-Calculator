@@ -25,7 +25,7 @@
     },
     "excitation_value": 2.83,
     "Rnom": 0.01,
-    "R_serial": 0.0,
+    "Rext": 0.0,
     "motor_spec_type": {
         "current_index": 0,
         "current_data": "define_coil",
@@ -52,7 +52,7 @@
     "B_average": 0.8,
     "N_layer_options": "2",
     "w_stacking_coef": 1.0,
-    "Rs_leadwire": 0.0,
+    "Rlw": 0.0,
     "reduce_per_layer": 1.0,
     "coil_options": {
         "current_index": 3,

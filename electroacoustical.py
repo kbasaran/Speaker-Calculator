@@ -353,7 +353,7 @@ class SpeakerDriver:
     """
     Speaker driver class.
     Mostly to carry data. It also does some Thiele & Small calculations.
-    Does not make frequency dependent calculations such as SPL, Impedance.
+    Does not make frequency dependent calculations such as SPL, impedance.
     """
     fs: float
     Sd: float
@@ -364,14 +364,14 @@ class SpeakerDriver:
     Mmd: float = None  # provide only if both motor and Mms are None
     motor: None | Motor = None  # None or 'Motor' instance
     dead_mass: float = None  # provide only if motor is 'Motor' instance
-    Rs: float = 0  # resistance between the coil and the speaker terminals (leadwire etc.). provide only if motor is 'Motor' instance.
+    Rlw: float = 0  # series electrical resistance between the speaker terminals and the coil (leadwire etc.). provide only if motor is 'Motor' instance.
     Xpeak: float = None
 
     def __post_init__(self):
 
         # verification when speaker is specified without a motor object
-        if self.motor is None and self.Rs != 0:
-            raise RuntimeError("Do not define leadwire resistance Rs when Re is already defined.")
+        if self.motor is None and self.Rlw != 0:
+            raise RuntimeError("Do not define leadwire resistance Rlw when Re is already defined.")
 
         # when a motor object is provided
         if isinstance(self.motor, Motor) and self.dead_mass is not None:
@@ -382,7 +382,7 @@ class SpeakerDriver:
                                    f"\n{already_available_in_Motor}")
             # derive parameters using info from Motor
             self.Bl = self.motor.coil.total_wire_length() * self.motor.Bavg
-            self.Re = self.motor.coil.Re + self.Rs
+            self.Re = self.motor.coil.Re + self.Rlw
             try:
                 if "Mms" in locals().keys():
                     raise RuntimeError("Double definition. 'Mms' should not be defined in object instantiation"
@@ -602,8 +602,8 @@ def make_state_matrix_B(state_vars, state_diffs, input_vars, sols):
 @dtc.dataclass
 class SpeakerSystem:
     speaker: SpeakerDriver
-    Rs: float = 0   # series electrical resistance to the speaker terminals.
-                    # may be inside the amp or in the cables to the speaker terminals
+    Rext: float = 0   # series electrical resistance from voltage geenrator to the speaker terminals.
+                    # may be at the source amplifier or in the cables going to speaker terminals
     enclosure: None | Enclosure = None
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
@@ -623,7 +623,7 @@ class SpeakerSystem:
         Kms, Kpb, Kpr = smp.symbols("K_ms, K_2, K_pr", real=True, positive=True)
         Rms, Rpb, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
         Kair, Vba, Rbox = smp.symbols("Kair, V_ba, R_box", real=True, positive=True)
-        Sd, Spr, Bl, Re, R_serial = smp.symbols("S_d, S_pr, Bl, R_e, R_serial", real=True, positive=True)
+        Sd, Spr, Bl, Re, Rext = smp.symbols("S_d, S_pr, Bl, R_e, R_ext", real=True, positive=True)
         # Direction coefficient for passive radiator
         # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
 
@@ -682,11 +682,11 @@ class SpeakerSystem:
         eqns = []
         for eqn in temp_eqns:
             temp = eqn.subs(p_housing, - (Kair / Vba * (Spr * xpr + Sd * x1)))
-            temp = temp.subs(i_coil, (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re))
+            temp = temp.subs(i_coil, (Vsource - Bl*(x1_t - x2_t)) / (Rext + Re))
             eqns.append(temp)
 
         # p_housing = - (Kair / Vba * (Spr * xpr + Sd * x1))
-        # i_coil = (Vsource - Bl*(x1_t - x2_t)) / (R_serial + Re)
+        # i_coil = (Vsource - Bl*(x1_t - x2_t)) / (Rext + Re)
         # p and i are not added as state variables because they are linearly dependent on the other state variables
         # they could be added as solutions by adding in C and D above formulas
 
@@ -750,7 +750,7 @@ class SpeakerSystem:
 
             "Kair": 0 if self.enclosure is None else settings.Kair,  # 0 is trickery a bit, to disable the housing formulas.
 
-            "R_serial": self.Rs,
+            "Rext": self.Rext,
 
             }
 
@@ -771,7 +771,7 @@ class SpeakerSystem:
                 raise KeyError("Not familiar with key '{key}'")
 
         # ---- Update scalars
-        self.R_sys = self.speaker.Re + self.Rs
+        self.R_sys = self.speaker.Re + self.Rext
 
         # ---- Substitute values into system matrix and input matrix
         symbols_to_values = self.get_symbols_to_values(settings)
@@ -963,9 +963,9 @@ class SpeakerSystem:
         else:
             x1t_relative_x2t = velocs["Diaphragm, RMS, relative to parent"]
 
-        imps["Impedance speaker"] = self.R_sys / (1 - self.speaker.Bl * x1t_relative_x2t) - self.Rs  # speaker only
-        if self.Rs > 0:  # remove later and return always
-            imps["Impedance incl. source, cables"] = imps["Impedance speaker"] + self.Rs
+        imps["Impedance speaker"] = self.R_sys / (1 - self.speaker.Bl * x1t_relative_x2t) - self.Rext  # speaker only
+        if self.Rext > 0:  # remove later and return always
+            imps["Impedance incl. source, cables"] = imps["Impedance speaker"] + self.Rext
     
         return imps
 
@@ -1051,7 +1051,7 @@ def tests():
 
     my_system.update_values(settings,
                             speaker=my_speaker,
-                            Rs=1,
+                            Rext=1,
                             enclosure = enclosure,
                             parent_body = None,
                             # passive_radiator = pr,
@@ -1059,7 +1059,7 @@ def tests():
     
     my_system.update_values(settings,
                             speaker=my_speaker,
-                            Rs=1,
+                            Rext=1,
                             enclosure = None,
                             parent_body = parent_body,
                             # passive_radiator = pr,
@@ -1068,7 +1068,7 @@ def tests():
     
     my_system.update_values(settings,
                             speaker=my_speaker,
-                            Rs=1,
+                            Rext=1,
                             enclosure = None,
                             parent_body = None,
                             # passive_radiator = pr,
@@ -1076,7 +1076,7 @@ def tests():
     
     my_system.update_values(settings,
                             speaker=my_speaker,
-                            Rs=1,
+                            Rext=1,
                             enclosure = None,
                             parent_body = parent_body,
                             passive_radiator = None,
@@ -1084,7 +1084,7 @@ def tests():
         
     my_system.update_values(settings,
                             speaker=my_speaker,
-                            Rs=0,
+                            Rext=0,
                             enclosure = enclosure,
                             parent_body = None,
                             passive_radiator = None,
