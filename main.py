@@ -241,7 +241,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Nominal impedance",
                      )
 
-        form.add_row(pwi.FloatSpinBox("R_serial",
+        form.add_row(pwi.FloatSpinBox("Rext",
                                       "The resistance between the speaker terminal and the voltage source."
                                       "\nMay be due to cables in our outside the speaker housing, connectors, amplifier internals etc."
                                       "\nCauses resistive loss of voltage appearing at speaker terminals."
@@ -363,7 +363,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
         form.interactable_widgets["w_stacking_coef"].setValue(1)
 
-        form.add_row(pwi.FloatSpinBox("Rs_leadwire",
+        form.add_row(pwi.FloatSpinBox("Rlw",
                                       "Resistance between the coil and the speaker terminals, e.g. leadwire"
                                       "\nUnit is ohm.",
                                       min_max=(0, None),
@@ -519,7 +519,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(adjust_form_for_calc_type)
 
-        # for row_name in ["former_ID", "t_former", "w_stacking_coef", "Rs_leadwire", "reduce_per_layer", "h_winding_target"]:
+        # for row_name in ["former_ID", "t_former", "w_stacking_coef", "Rlw", "reduce_per_layer", "h_winding_target"]:
         #     form.interactable_widgets[row_name].valueChanged.connect(combo_box_contents_are_obsoleted)
 
         return form
@@ -1144,7 +1144,7 @@ class MainWindow(qtw.QMainWindow):
                                for key, acc in accs.items() if "relative" not in key})
                 
                 self.graph.set_y_limits_policy("SPL")
-                self.graph.set_title(f"Acceleration, {V_source:.4g}V, {W_spk:.3g}Watt@Re")
+                self.graph.set_title(f"Acceleration, {V_source:.4g}V {W_spk:.3g}Watt@Re")
                 self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$m/s²")
 
             else:  # speaker
@@ -1168,9 +1168,9 @@ class MainWindow(qtw.QMainWindow):
 
                 self.graph.set_y_limits_policy("SPL")
                 if spk_sys.speaker.Re == spk_sys.R_sys:
-                    title = f"SPL@1m, Half-space\n{V_spk:.4g}V, {W_spk:.3g}Watt@Re"
+                    title = f"SPL@1m, Half-space\n{V_spk:.4g}V {W_spk:.3g}Watt@Re"
                 else:
-                    title = f"SPL@1m, Half-space\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V, {W_spk:.3g}Watt@Re"
+                    title = f"SPL@1m, Half-space\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V {W_spk:.3g}Watt@Re"
                 self.graph.set_title(title)
                 self.graph.ax.set_ylabel("dBSPL")
 
@@ -1476,7 +1476,7 @@ def find_feasible_coils(vals, wires):
                                            vals["Qms"],
                                            motor=motor,
                                            dead_mass=vals["dead_mass"],
-                                           Rs=vals["Rs_leadwire"],
+                                           Rlw=vals["Rlw"],
                                            )
                 speaker_options.append(speaker)
 
@@ -1548,7 +1548,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           motor=motor,
                                           dead_mass=vals["dead_mass"],
 
-                                          Rs=vals["Rs_leadwire"],
+                                          Rlw=vals["Rlw"],
                                           Xpeak=vals["Xpeak"],
                                           )
         
@@ -1607,14 +1607,14 @@ def build_or_update_SpeakerSystem(vals,
         
     if spk_sys is None:
         return ac.SpeakerSystem(speaker=speaker,
-                                Rs=vals["R_serial"],
+                                Rext=vals["Rext"],
                                 enclosure=enclosure,
                                 parent_body=parent_body,
                                 passive_radiator=passive_radiator,
                                 )
     else:
         spk_sys.update_values(speaker=speaker,
-                              Rs=vals["R_serial"],
+                              Rext=vals["Rext"],
                               enclosure=enclosure,
                               parent_body=parent_body,
                               passive_radiator=passive_radiator,
