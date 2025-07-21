@@ -29,7 +29,7 @@ Written for Python 3.12.x
 ### Underlying model
 The application uses a linear model with 3 degrees of freedom to do the calculations. To see how the model is built, see function `_build_symbolic_ss_model` in `electracoustical.py`.
 
-![Image](./images/system_model.png)
+![Image](./images/system_model.webp)
 
 > [!IMPORTANT]
 > The third degree of freedom which represents the vented port or passive radiator is not included in this version.
