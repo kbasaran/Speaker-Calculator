@@ -34,7 +34,30 @@ The application uses a linear model with 3 degrees of freedom to do the calculat
 > [!IMPORTANT]
 > The third degree of freedom which represents the vented port or passive radiator is not included in this version.
 
-### Coil windings
-The application will give you options for different coil windings based on your required winding height and the coil resistance. To be able to do this, a separate table that has information on different wire types is provided by the user. This table is named `wire table.ods` and is located in the subfolder `data` in the installation folder.
 > [!TIP]
-> To see the location of the wire table in your computer go to *Help -> Show paths of assets..* from within the application.
+> Most parameters in the application include a tooltip. Hover your mouse on the parameter for a few seconds whenever you have doubts on what a parameter does.
+
+### Coil windings
+The application will give you coil winding options based on the winding height and the coil resistance you input as requirement. To be able to do this, a separate table that has information on different wire types needs to be provided by the user. This table is stored in `wire table.ods` which is located in subfolder `data` in the installation folder.
+
+> [!NOTE]
+> To see the location of `wire table.ods` in your computer go to *Help -> Show paths of assets..* from within the application.
+
+#### Wire table
+This workbook contains *Sheet1* which contains the following columns for each wire type.
+- **Unique name** : Common name used to refer to this wire. Must be unique in this column.
+- **Type** : Category for the wire
+- **Nominal size** : Expected size of the conductor.
+- **Shape** : Circular, square, rectangular etc.
+- **Average width** : This is the expected physical width including all the coatings and glues on the wire.
+- **Average height** : Similar to average width, but for height.
+- **Maximum width** : This is the maximum expected physical width including all the coatings and glues on the wire.
+- **Resistance**
+- **Mass density**
+- **Notes** : User notes for convenience. Not used by the application.
+
+> [!WARNING]
+> Make sure to **not** edit the first three rows of the wire table. Otherwise you may have import errors.
+
+> [!NOTE]
+> Average dimensions are used for electricity related calculations such as winding length. When it comes to mechanical clearances and e.g. airgap sizes, the maximum dimensions are used.
