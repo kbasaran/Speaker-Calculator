@@ -57,7 +57,7 @@ This workbook contains *Sheet1* which contains the following columns for each wi
 - **Notes** : User notes for convenience. Not used by the application.
 
 > [!WARNING]
-> Make sure to **not** edit the first three rows of the wire table. Otherwise you may have import errors.
+> Make sure to **not** edit the first three rows of the wire table. They contain import information for the application.
 
 > [!NOTE]
 > Average dimensions are used for electricity related calculations such as winding length. When it comes to mechanical clearances and e.g. airgap sizes, the maximum dimensions are used.
