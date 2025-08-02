@@ -1,6 +1,5 @@
 # Speaker Calculator
-**Calculation tool for loudspeaker design**
-Written for Python 3.12.x
+Lumped element calculation tool for loudspeaker design, made using Qt for Python.
 
 ## Features
 * Modelling of loudspeaker response in free-air and closed box.
@@ -25,7 +24,24 @@ Written for Python 3.12.x
 ![Image](./images/SC1.png)
 ![Image](./images/SC2.png)
 
+## Installation
+### Windows only
+Go to releases page to download the **.msi** installer. Run the installer and follow the steps in wizard. This will also associate the file extension **.scf** to this application.
+
+### Any Python environment
+Using Python 3.12.*,
+- Install the requirements for the application
+  - `pip install -r requirements.txt`
+- Run the application with `python main.py`
+
+> [!TIP]
+> It is recommended to use a separate virtual environment for this application. `venv` and `conda` are popular options to create one, `venv` being part of Python standard library.
+
 ## Manual
+
+> [!TIP]
+> Most parameters in the application include a tooltip. Hover your mouse on the parameter for a few seconds to learn more about what a parameter does.
+
 ### Underlying model
 The application uses a linear model with 3 degrees of freedom to do the calculations. To see how the model is built, see function `_build_symbolic_ss_model` in `electracoustical.py`.
 
@@ -34,17 +50,14 @@ The application uses a linear model with 3 degrees of freedom to do the calculat
 > [!IMPORTANT]
 > The third degree of freedom which represents the vented port or passive radiator is not included in this version.
 
-> [!TIP]
-> Most parameters in the application include a tooltip. Hover your mouse on the parameter for a few seconds whenever you have doubts on what a parameter does.
-
 ### Coil windings
 The application will give you coil winding options based on the winding height and the coil resistance you input as requirement. To be able to do this, a separate table that has information on different wire types needs to be provided by the user. This table is stored in `wire table.ods` which is located in subfolder `data` in the installation folder.
 
 > [!TIP]
 > To see the location of `wire table.ods` in your computer go to *Help -> Show paths of assets..* from within the application.
 
-### Wire table
-This workbook contains *Sheet1* which contains the following columns for each wire type.
+### Wire table file content
+This file contains *Sheet1* which contains the following columns for each wire type.
 - **Unique name** : Common name used to refer to this wire. Must be unique in this column.
 - **Type** : Category for the wire
 - **Nominal size** : Expected size of the conductor.
@@ -56,7 +69,8 @@ This workbook contains *Sheet1* which contains the following columns for each wi
 - **Mass density** : Mass per meter.
 - **Notes** : User notes for convenience. Not used by the application.
 
-User needs to input the correct information for the wires in this table. The top three rows of the spreadsheet contain title rows for import and they should not be modified.
+> [!WARNING]
+> The application is shipped with an incomplete wire table convenient for testing. User needs to change this to an accurate and complete wire table to be able to get good results. The top three rows of the spreadsheet contain title rows for import and they should not be modified.
 
 ### Basic wire dimensions
 ![Image](./images/coil_winding_1.webp)
