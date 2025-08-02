@@ -62,11 +62,11 @@ User needs to input the correct information for the wires in this table. The top
 ![Image](./images/coil_winding_1.webp)
 
 ### Winding dimensions
-For each layer, the **average** thickness of the wire *w_avg* is used to calculate a winding diameter passing through the center of the wire. This is shown with *Ø<sub>li</sub>* in image below.
+For each layer, the average thickness of the wire `w_avg` is used to calculate a winding diameter passing through the center of the wire. This diameter is shown with *Ø<sub>li</sub>* in image below.
 
-**In example A**, stacking coefficient is chosen as 1.0, which means the wires do not mesh into the previous layer of winding. Total thickness of winding is simply `2 * w_avg`.
+**In example A**, stacking coefficient is chosen as 1.0 by the user. This means the wires do not mesh into the previous layer of winding. Total thickness of winding is simply `2 * w_avg`.
 
-**Example B** has a stacking coefficient of 0.8. This causes all the layers consecutive to the first layer to have a thickness of `0.8 * w_avg`, instead of `w_avg`. Total thickness of winding becomes `1.8 * w_avg` in this example. If there were three layers it would have become `2.6 * w_avg`.
+**In example B** stacking coefficient is chosen as 0.8 by the user. This causes all the layers consecutive to the first layer to have a thickness of `0.8 * w_avg`. Total thickness of winding becomes `1.8 * w_avg` in this example. If there were three layers it would have become `2.6 * w_avg`.
 
 ![Image](./images/coil_winding_2.webp)
 
