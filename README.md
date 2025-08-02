@@ -59,4 +59,4 @@ This workbook contains *Sheet1* which contains the following columns for each wi
 User needs to input the correct information for the wires in this table. The top three rows of the spreadsheet contain title rows for import and they should not be modified.
 
 > [!NOTE]
-> Average dimensions are used for electricity related calculations such as winding length. When it comes to mechanical clearances and e.g. airgap sizes, the maximum dimensions are used.
+> Average dimensions are used for electricity related calculations such as winding length. When it comes to mechanical clearances and airgap sizes, the maximum dimensions are considered.
