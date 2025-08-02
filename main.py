@@ -1,5 +1,5 @@
 # Speaker Calculator - Loudspeaker design and calculations tool
-# Copyright (C) 2025 - Kerem Basaran
+# Copyright (C) 2026 - Kerem Basaran
 # https://github.com/kbasaran
 __email__ = "kbasaran@gmail.com"
 
@@ -53,7 +53,7 @@ app_definitions = {"app_name": "Speaker Calculator",
                    }
 
 # uncomment for release candidate builds
-app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 
 @dataclass

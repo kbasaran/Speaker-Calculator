@@ -1,5 +1,5 @@
 # This file is part of Speaker Calculator - Loudspeaker design and calculations tool
-# Copyright (C) 2025 - Kerem Basaran
+# Copyright (C) 2026 - Kerem Basaran
 # https://github.com/kbasaran
 __email__ = "kbasaran@gmail.com"
 
