@@ -3,13 +3,15 @@
 add definition list for all the terms used into the electraoacoustics file.
 such as V_in, V_spk, R_sys, R_nom, etc.
 
-update results in manual images with new version
-
 continue manual
 
 
+
+
 # Bugs
-logo needs to be .ico
+
+
+
 
 
 # Nice to have
