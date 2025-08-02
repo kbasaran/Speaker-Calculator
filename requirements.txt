@@ -1,4 +1,10 @@
+PySide6
 odfpy
 pandas
 sympy
 pyperclip
+matplotlib == 3.9.4
+acoustics >= 0.2.6
+scipy
+soundfile
+sounddevice
