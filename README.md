@@ -40,7 +40,7 @@ The application uses a linear model with 3 degrees of freedom to do the calculat
 ### Coil windings
 The application will give you coil winding options based on the winding height and the coil resistance you input as requirement. To be able to do this, a separate table that has information on different wire types needs to be provided by the user. This table is stored in `wire table.ods` which is located in subfolder `data` in the installation folder.
 
-> [!NOTE]
+> [!TIP]
 > To see the location of `wire table.ods` in your computer go to *Help -> Show paths of assets..* from within the application.
 
 #### Wire table
@@ -56,8 +56,7 @@ This workbook contains *Sheet1* which contains the following columns for each wi
 - **Mass density**
 - **Notes** : User notes for convenience. Not used by the application.
 
-> [!WARNING]
-> Make sure to **not** edit the first three rows of the wire table. They contain import information for the application.
+User needs to input the correct information for the wires in this table. The top three rows of the spreadsheet contain title rows for import and they should not be modified.
 
 > [!NOTE]
 > Average dimensions are used for electricity related calculations such as winding length. When it comes to mechanical clearances and e.g. airgap sizes, the maximum dimensions are used.
