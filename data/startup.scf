@@ -1,0 +1,245 @@
+{
+    "fs": 100.0,
+    "Qms": 8.0,
+    "Xpeak": 0.005,
+    "dead_mass": 0.004,
+    "Sd": 0.005200000000000001,
+    "excitation_type": {
+        "current_index": 0,
+        "current_data": "V",
+        "current_text": "Volts",
+        "items": [
+            [
+                "Volts",
+                "V"
+            ],
+            [
+                "Watts @Re",
+                "W"
+            ],
+            [
+                "Watts @Rnom",
+                "Wn"
+            ]
+        ]
+    },
+    "excitation_value": 2.83,
+    "Rnom": 0.01,
+    "Rext": 0.0,
+    "motor_spec_type": {
+        "current_index": 0,
+        "current_data": "define_coil",
+        "current_text": "Define Coil Dimensions and Average B",
+        "items": [
+            [
+                "Define Coil Dimensions and Average B",
+                "define_coil"
+            ],
+            [
+                "Define Bl, Re, Mmd",
+                "define_Bl_Re_Mmd"
+            ],
+            [
+                "Define Bl, Re, Mms",
+                "define_Bl_Re_Mms"
+            ]
+        ]
+    },
+    "target_Re": 4.0,
+    "former_ID": 0.025,
+    "t_former": 9.999999999999999e-05,
+    "h_winding_target": 0.007,
+    "B_average": 0.8,
+    "N_layer_options": "2",
+    "w_stacking_coef": 1.0,
+    "Rlw": 0.0,
+    "reduce_per_layer": 1.0,
+    "coil_options": {
+        "current_index": 3,
+        "current_data": {
+            "Bavg": 0.8,
+            "airgap_clearance_inner": 0.0003,
+            "airgap_clearance_outer": 0.0003,
+            "coil": {
+                "N_windings": [
+                    33,
+                    32
+                ],
+                "carrier_OD": 0.0252,
+                "w_stacking_coef": 1.0,
+                "wire": {
+                    "h_avg": 0.00021475,
+                    "mass_density": 0.00011070000000000001,
+                    "name": "CCAW190",
+                    "nominal_size": 0.00018999999999999998,
+                    "notes": NaN,
+                    "resistance": 0.88494,
+                    "shape": "circular",
+                    "w_avg": 0.00021475,
+                    "w_max": 0.0002185,
+                    "wire_type": "CCAW"
+                }
+            },
+            "h_former_under_coil": 0.0005,
+            "h_top_plate": 0.003,
+            "t_former": 9.999999999999999e-05
+        },
+        "current_text": "2L CCAW190 -> Re=4.63, Lm=85.49, Qts=0.75",
+        "items": [
+            [
+                "2L SV180 -> Re=3.61, Lm=85.67, Qts=0.64",
+                {
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            34,
+                            33
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.0002075,
+                            "mass_density": 0.00024,
+                            "name": "SV180",
+                            "nominal_size": 0.00017999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.67,
+                            "shape": "circular",
+                            "w_avg": 0.0002075,
+                            "w_max": 0.000214,
+                            "wire_type": "SV"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ],
+            [
+                "2L CCAW200 -> Re=3.92, Lm=85.66, Qts=0.73",
+                {
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            31,
+                            30
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.00022475,
+                            "mass_density": 0.0001189,
+                            "name": "CCAW200",
+                            "nominal_size": 0.00019999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.79821,
+                            "shape": "circular",
+                            "w_avg": 0.00022475,
+                            "w_max": 0.0002285,
+                            "wire_type": "CCAW"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ],
+            [
+                "2L SV170 -> Re=4.29, Lm=85.56, Qts=0.67",
+                {
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            36,
+                            35
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.00019649999999999998,
+                            "mass_density": 0.00021,
+                            "name": "SV170",
+                            "nominal_size": 0.00016999999999999999,
+                            "notes": NaN,
+                            "resistance": 0.752,
+                            "shape": "circular",
+                            "w_avg": 0.00019649999999999998,
+                            "w_max": 0.000204,
+                            "wire_type": "SV"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ],
+            [
+                "2L CCAW190 -> Re=4.63, Lm=85.49, Qts=0.75",
+                {
+                    "Bavg": 0.8,
+                    "airgap_clearance_inner": 0.0003,
+                    "airgap_clearance_outer": 0.0003,
+                    "coil": {
+                        "N_windings": [
+                            33,
+                            32
+                        ],
+                        "carrier_OD": 0.0252,
+                        "w_stacking_coef": 1.0,
+                        "wire": {
+                            "h_avg": 0.00021475,
+                            "mass_density": 0.00011070000000000001,
+                            "name": "CCAW190",
+                            "nominal_size": 0.00018999999999999998,
+                            "notes": NaN,
+                            "resistance": 0.88494,
+                            "shape": "circular",
+                            "w_avg": 0.00021475,
+                            "w_max": 0.0002185,
+                            "wire_type": "CCAW"
+                        }
+                    },
+                    "h_former_under_coil": 0.0005,
+                    "h_top_plate": 0.003,
+                    "t_former": 9.999999999999999e-05
+                }
+            ]
+        ]
+    },
+    "Bl_p2": 0.01,
+    "Re_p2": 0.01,
+    "Mmd_p2": 1e-06,
+    "Bl_p3": 3.0,
+    "Re_p3": 4.0,
+    "Mms_p3": 0.004,
+    "h_top_plate": 0.003,
+    "airgap_clearance_inner": 0.0003,
+    "airgap_clearance_outer": 0.0003,
+    "h_former_under_coil": 0.0005,
+    "enclosure_type": 1,
+    "Vb": 0.002,
+    "Qa": 100.0,
+    "parent_body": 1,
+    "mpb": 0.1,
+    "kpb": 10000.0,
+    "rpb": 3.0,
+    "user_notes": "",
+    "user_title": "",
+    "application_data": {
+        "app_name": "Speaker Calculator",
+        "version": "0.2.0",
+        "description": "Loudspeaker design and calculations",
+        "copyright": "Copyright (C) 2025 Kerem Basaran",
+        "icon_path": "images\\logo2025.png",
+        "author": "Kerem Basaran",
+        "author_short": "kbasaran",
+        "email": "kbasaran@gmail.com",
+        "website": "https://github.com/kbasaran"
+    }
+}
