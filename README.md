@@ -43,20 +43,37 @@ The application will give you coil winding options based on the winding height a
 > [!TIP]
 > To see the location of `wire table.ods` in your computer go to *Help -> Show paths of assets..* from within the application.
 
-#### Wire table
+### Wire table
 This workbook contains *Sheet1* which contains the following columns for each wire type.
 - **Unique name** : Common name used to refer to this wire. Must be unique in this column.
 - **Type** : Category for the wire
 - **Nominal size** : Expected size of the conductor.
 - **Shape** : Circular, square, rectangular etc.
-- **Average width** : This is the expected physical width including all the coatings and glues on the wire.
-- **Average height** : Similar to average width, but for height.
-- **Maximum width** : This is the maximum expected physical width including all the coatings and glues on the wire.
-- **Resistance**
-- **Mass density**
+- **Average width; w_avg** : This is the expected physical width including all the coatings and glues on the wire.
+- **Average height; h_avg** : Similar to average width, but for height.
+- **Maximum width; w_max** : This is the maximum expected physical width including all the coatings and glues on the wire.
+- **Resistance** : Resistance per meter.
+- **Mass density** : Mass per meter.
 - **Notes** : User notes for convenience. Not used by the application.
 
 User needs to input the correct information for the wires in this table. The top three rows of the spreadsheet contain title rows for import and they should not be modified.
 
+### Basic wire dimensions
+![Image](./images/coil_winding_1.webp)
+
+### Winding dimensions
+For each layer, the **average** thickness of the wire *w_avg* is used to calculate a winding diameter passing through the center of the wire. This is shown with *Ø<sub>li</sub>* in image below.
+
+**In example A**, stacking coefficient is chosen as 1.0, which means the wires do not mesh into the previous layer of winding. Total thickness of winding is simply `2 * w_avg`.
+
+**Example B** has a stacking coefficient of 0.8. This causes all the layers consecutive to the first layer to have a thickness of `0.8 * w_avg`, instead of `w_avg`. Total thickness of winding becomes `1.8 * w_avg` in this example. If there were three layers it would have become `2.6 * w_avg`.
+
+![Image](./images/coil_winding_2.webp)
+
 > [!NOTE]
-> Average dimensions are used for electricity related calculations such as winding length. When it comes to mechanical clearances and airgap sizes, the maximum dimensions are considered.
+> For electricity related calculations such as winding length, the average dimensions defined in wire table (i.e. `w_avg`, `h_avg`) are considered.
+
+### Mechanical clearances
+![Image](./images/coil_winding_3.webp)
+> [!NOTE]
+> For mechanical clearances and airgap sizes, the maximum dimensions defined in wire table (i.e. `w_max`) are considered.
