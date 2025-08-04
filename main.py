@@ -42,7 +42,7 @@ import pandas as pd
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.3.0",
+                   "version": "0.2.1",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": str(Path("./images/logo2025.ico")),
