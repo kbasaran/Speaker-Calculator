@@ -9,8 +9,8 @@ continue manual
 
 
 # Bugs
-
-
+no errors when the load file has invalid parameters like R_serial (R_serial is no more in use)
+drag and drop makes double beep
 
 
 
