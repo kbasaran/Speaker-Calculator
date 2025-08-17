@@ -42,7 +42,7 @@ import pandas as pd
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.3.1",
+                   "version": "0.3.2",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": "images/logo2025.ico",  # relative posix path
@@ -53,7 +53,7 @@ app_definitions = {"app_name": "Speaker Calculator",
                    }
 
 # uncomment for release candidate builds
-# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 
 @dataclass
