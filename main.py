@@ -30,7 +30,7 @@ from PySide6 import QtGui as qtg
 from generictools import signal_tools
 from generictools.graphing_widget import MatplotlibWidget
 import generictools.personalized_widgets as pwi
-from version_convert import convert_v01_to_v02
+from version_convert import convert_any
 
 import logging
 from pathlib import Path, PurePosixPath
@@ -53,7 +53,7 @@ app_definitions = {"app_name": "Speaker Calculator",
                    }
 
 # uncomment for release candidate builds
-app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 
 @dataclass
@@ -70,7 +70,7 @@ class Settings:
     Kair: float = 101325. * GAMMA
     c_air: float = (Kair / RHO)**0.5
     vc_table_file = "./data/wire table.ods"  # posix path
-    startup_state_file = "./data/startup.scf"  # posix path
+    startup_state_file = "./data/startup.sscf"  # posix path
     f_min: int = 10
     f_max: int = 3000
     A_beep: float = 0.25
@@ -903,13 +903,13 @@ class MainWindow(qtw.QMainWindow):
         global app_definitions
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
                                                           dir=settings.last_used_folder,
-                                                          filter='Speaker calculator files (*.scf)',
+                                                          filter='Speaker calculator files (*.sscf)',
                                                           )
 
         try:
             file_raw = path_unverified[0]
             if file_raw:
-                file = Path(file_raw + ".scf" if file_raw[-4:] != ".scf" else file_raw)
+                file = Path(file_raw + ".sscf" if file_raw[-4:] != ".sscf" else file_raw)
                 # filter not working as expected, saves files without file extension scf
                 # therefore above logic
                 assert file.parent.exists()
@@ -940,7 +940,7 @@ class MainWindow(qtw.QMainWindow):
         if file_arg is None:
             path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
                                                               dir=settings.last_used_folder,
-                                                              filter='Speaker calculator files (*.scf *.sscf)',
+                                                              filter='Speaker calculator files (*.sscf)',
                                                               )
             
             file_raw = path_unverified[0]
@@ -960,19 +960,10 @@ class MainWindow(qtw.QMainWindow):
         if update_last_used_folder:
             settings.update("last_used_folder", str(file.parent))
 
-        # backwards compatibility with v0.1
-        suffix = file.suffixes[-1]
-        if suffix == ".sscf":
-            state = convert_v01_to_v02(file)
-            self.set_state(state)
+        # backwards compatibility with older file versions
+        state = convert_any(file)
         
-        elif suffix == ".scf":
-            with open(file, "rt") as f:
-                state = json.load(f)
-            self.set_state(state)
-        else:
-            raise ValueError(f"Invalid suffix '{suffix}'")
-        
+        self.set_state(state)
         # self.statusBar().showMessage(f"Opened file '{file.name}'", 5000)
 
     def set_state(self, state: dict):
@@ -1639,7 +1630,7 @@ def parse_args(app_definitions):
                                      epilog={app_definitions['website']},
                                      )
     parser.add_argument('infile', nargs='?', type=Path,
-                        help="Path to a '*.scf' file. This will open with preset values.")
+                        help="Path to a '*.sscf' file. This will open with preset values.")
     parser.add_argument('-d', '--loglevel', nargs="?",
                         choices=["debug", "info", "warning", "error", "critical"],
                         help="Set logging level for Python logging. Valid values are debug, info, warning, error and critical.")
