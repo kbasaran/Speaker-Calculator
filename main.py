@@ -154,13 +154,14 @@ class InputSectionTabWidget(qtw.QTabWidget):
     def dropEvent(self, event: qtg.QDropEvent):
         """ Handle file drop event and load file contents """
         urls = event.mimeData().urls()
-
         if urls:
             paths = [url.toLocalFile().removesuffix("/") for url in urls]
-
             if os.name == "nt":
                 paths = [path.removesuffix("/") for path in paths]
-
+            # file_path = Path(urls[0].toLocalFile())  # Get first file
+            # self.load_file(file_path)
+            # print(file_path)
+            self.signal_good_beep.emit()
             for path in paths:
                 logger.info(f"User dropped file '{path}' onto InputSectionTabWidget.")
                 self.signal_file_dropped.emit(path)
