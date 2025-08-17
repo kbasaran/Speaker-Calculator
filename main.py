@@ -45,7 +45,7 @@ app_definitions = {"app_name": "Speaker Calculator",
                    "version": "0.3.0",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
-                   "icon_path": str(Path("./images/logo2025.ico")),
+                   "icon_path": "images/logo2025.ico",  # relative posix path
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
                    "email": "kbasaran@gmail.com",
@@ -69,8 +69,8 @@ class Settings:
     RHO: float = 1.1839  # density of air at 25 degrees celcius
     Kair: float = 101325. * GAMMA
     c_air: float = (Kair / RHO)**0.5
-    vc_table_file = "./data/wire table.ods"  # posix path
-    startup_state_file = "./data/startup.sscf"  # posix path
+    vc_table_file = "data/wire table.ods"  # relative posix path
+    startup_state_file = "data/startup.sscf"  # relative posix path
     f_min: int = 10
     f_max: int = 3000
     A_beep: float = 0.25
@@ -652,9 +652,9 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
 
 def show_file_paths(parent_window):
-    working_directory = Path.cwd()
-    coil_table_file = Path(PurePosixPath(settings.vc_table_file)).absolute()
-    startup_state_file = Path(PurePosixPath(settings.startup_state_file)).absolute()
+    working_directory = get_main_dir()
+    coil_table_file = get_main_dir().joinpath(settings.vc_table_file).absolute()
+    startup_state_file = get_main_dir().joinpath(settings.startup_state_file).absolute()
     
     result_text = (f"#### Installation folder<br></br>{working_directory}"
                    "<br></br>  \n"
@@ -702,7 +702,7 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(user_form_dict)
         elif open_user_file:
             self.load_state_from_file(open_user_file)
-        elif (default_startup_file := Path(PurePosixPath(settings.startup_state_file))).is_file():
+        elif (default_startup_file := get_main_dir().joinpath(settings.startup_state_file)).is_file():
             self.load_state_from_file(default_startup_file, update_last_used_folder=False)
         else:
             self._update_model_button_clicked()
@@ -1401,9 +1401,22 @@ class SettingsDialog(qtw.QDialog):
         self.accept()
 
 
+def get_main_dir():
+    
+    if getattr(sys, 'frozen', False):
+        # The application is frozen
+        return Path(sys.executable).parent
+        
+    else:
+        # The application is not frozen
+        return Path(__file__).parent
+
+
 def read_wire_table(wire_table_file: Path) -> pd.DataFrame:
+
     if not wire_table_file.exists():
-        raise FileNotFoundError(f"Wire table file not found: {Path}")
+        raise FileNotFoundError(f"Wire table file not found: {wire_table_file}")
+
     imported_wire_table = pd.read_excel(wire_table_file, "Sheet1", skiprows=range(2), index_col=0)
     coeff_for_SI = {
         "nominal_size": 1e-6,
@@ -1685,14 +1698,15 @@ def main():
     args = parse_args(app_definitions)
     logger = setup_logging(args=args)
     settings = Settings(app_definitions["app_name"])
-    wires = read_wire_table(Path(PurePosixPath(settings.vc_table_file)))
+    wires = read_wire_table(get_main_dir().joinpath(settings.vc_table_file))
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to do the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
-        app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
+        icon_path = str(get_main_dir().joinpath(app_definitions["icon_path"]))
+        app.setWindowIcon(qtg.QIcon(icon_path))
 
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerDeveloper(app, logger)

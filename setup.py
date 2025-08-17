@@ -10,8 +10,8 @@ from pathlib import Path
 files_to_include = [
     (str(Path("./LICENSE")), str(Path("./LICENSE"))),
     (str(Path("./README.md")), str(Path("./README.md"))),
-    (app_definitions["icon_path"], app_definitions["icon_path"]),
-    *[(str(file.relative_to(Path.cwd())),) * 2 for file in Path.cwd().rglob("data/*")],
+    (str(Path(app_definitions["icon_path"])), str(Path(app_definitions["icon_path"]))),
+    *[(str(file.relative_to(Path(__file__).parent)),) * 2 for file in Path(__file__).parent.joinpath("data").rglob("*")],
     ]
 
 print("Warning.. Adding following additional files to package:")
