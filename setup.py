@@ -27,11 +27,8 @@ build_exe_options = {
 }
 
 bdist_msi_options = {
-    "extensions": [{"extension": "sscf",
-                    "verb": "load",
-                    "argument": '"%1"',
-                    "executable": "main.exe",
-                    }]
+    # "initial_target_dir": "[ProgramFiles64Folder]" + app_definitions['version'],  # didn't work
+    # https://cx-freeze.readthedocs.io/en/7.0.0/bdist_msi.html
     }
 
 # base="Win32GUI" should be used only for Windows GUI app
