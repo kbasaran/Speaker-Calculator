@@ -21,7 +21,7 @@ print()
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
-    # "packages": ["numpy"],
+    "packages": ["numpy"],
     "include_files": files_to_include,
     "silent_level": 1,
 }
