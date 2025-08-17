@@ -909,9 +909,7 @@ class MainWindow(qtw.QMainWindow):
         try:
             file_raw = path_unverified[0]
             if file_raw:
-                file = Path(file_raw)
-                if file.suffix != ".sscf":
-                    file = file.with_suffix(".sscf") 
+                file = Path(file_raw + ".sscf" if file_raw[-4:] != ".sscf" else file_raw)
                 # filter not working as expected, saves files without file extension scf
                 # therefore above logic
                 assert file.parent.exists()
