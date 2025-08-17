@@ -1712,7 +1712,7 @@ def main():
 
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
-        mw = new_window(open_user_file=args.infile)
+        mw = new_window(open_user_file=args.infile.name)
     else:
         new_window()
 
