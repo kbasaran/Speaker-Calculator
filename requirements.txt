@@ -8,3 +8,4 @@ acoustics >= 0.2.6
 scipy
 soundfile
 sounddevice
+cx_Freeze==8.3.*
