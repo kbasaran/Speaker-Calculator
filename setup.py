@@ -10,8 +10,8 @@ from pathlib import Path
 files_to_include = [
     (str(Path("./LICENSE")), str(Path("./LICENSE"))),
     (str(Path("./README.md")), str(Path("./README.md"))),
-    (app_definitions["icon_path"], app_definitions["icon_path"]),
-    *[(str(file.relative_to(Path.cwd())),) * 2 for file in Path.cwd().rglob("data/*")],
+    (str(Path(app_definitions["icon_path"])), str(Path(app_definitions["icon_path"]))),
+    *[(str(file.relative_to(Path(__file__).parent)),) * 2 for file in Path(__file__).parent.joinpath("data").rglob("*")],
     ]
 
 print("Warning.. Adding following additional files to package:")
@@ -21,14 +21,17 @@ print()
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
-    "packages": ["numpy"],
+    # "packages": ["numpy"],
     "include_files": files_to_include,
     "silent_level": 1,
 }
 
 bdist_msi_options = {
-    # "initial_target_dir": "[ProgramFiles64Folder]" + app_definitions['version'],  # didn't work
-    # https://cx-freeze.readthedocs.io/en/7.0.0/bdist_msi.html
+    "extensions": [{"extension": "sscf",
+                    "verb": "load",
+                    "argument": '"%1"',
+                    "executable": "main.exe",
+                    }]
     }
 
 # base="Win32GUI" should be used only for Windows GUI app

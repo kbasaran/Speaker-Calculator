@@ -30,7 +30,7 @@ from PySide6 import QtGui as qtg
 from generictools import signal_tools
 from generictools.graphing_widget import MatplotlibWidget
 import generictools.personalized_widgets as pwi
-from version_convert import convert_v01_to_v02
+from version_convert import convert_any
 
 import logging
 from pathlib import Path, PurePosixPath
@@ -42,10 +42,10 @@ import pandas as pd
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.2.0",
+                   "version": "0.3.1",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
-                   "icon_path": str(Path("./images/logo2025.ico")),
+                   "icon_path": "images/logo2025.ico",  # relative posix path
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
                    "email": "kbasaran@gmail.com",
@@ -69,8 +69,8 @@ class Settings:
     RHO: float = 1.1839  # density of air at 25 degrees celcius
     Kair: float = 101325. * GAMMA
     c_air: float = (Kair / RHO)**0.5
-    vc_table_file = "./data/wire table.ods"  # posix path
-    startup_state_file = "./data/startup.scf"  # posix path
+    vc_table_file = "data/wire table.ods"  # relative posix path
+    startup_state_file = "data/startup.sscf"  # relative posix path
     f_min: int = 10
     f_max: int = 3000
     A_beep: float = 0.25
@@ -154,14 +154,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
     def dropEvent(self, event: qtg.QDropEvent):
         """ Handle file drop event and load file contents """
         urls = event.mimeData().urls()
+
         if urls:
             paths = [url.toLocalFile().removesuffix("/") for url in urls]
+
             if os.name == "nt":
                 paths = [path.removesuffix("/") for path in paths]
-            # file_path = Path(urls[0].toLocalFile())  # Get first file
-            # self.load_file(file_path)
-            # print(file_path)
-            self.signal_good_beep.emit()
+
             for path in paths:
                 logger.info(f"User dropped file '{path}' onto InputSectionTabWidget.")
                 self.signal_file_dropped.emit(path)
@@ -653,9 +652,9 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
 
 def show_file_paths(parent_window):
-    working_directory = Path.cwd()
-    coil_table_file = Path(PurePosixPath(settings.vc_table_file)).absolute()
-    startup_state_file = Path(PurePosixPath(settings.startup_state_file)).absolute()
+    working_directory = get_main_dir()
+    coil_table_file = get_main_dir().joinpath(settings.vc_table_file).absolute()
+    startup_state_file = get_main_dir().joinpath(settings.startup_state_file).absolute()
     
     result_text = (f"#### Installation folder<br></br>{working_directory}"
                    "<br></br>  \n"
@@ -703,7 +702,7 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(user_form_dict)
         elif open_user_file:
             self.load_state_from_file(open_user_file)
-        elif (default_startup_file := Path(PurePosixPath(settings.startup_state_file))).is_file():
+        elif (default_startup_file := get_main_dir().joinpath(settings.startup_state_file)).is_file():
             self.load_state_from_file(default_startup_file, update_last_used_folder=False)
         else:
             self._update_model_button_clicked()
@@ -903,13 +902,15 @@ class MainWindow(qtw.QMainWindow):
         global app_definitions
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
                                                           dir=settings.last_used_folder,
-                                                          filter='Speaker calculator files (*.scf)',
+                                                          filter='Speaker calculator files (*.sscf)',
                                                           )
 
         try:
             file_raw = path_unverified[0]
             if file_raw:
-                file = Path(file_raw + ".scf" if file_raw[-4:] != ".scf" else file_raw)
+                file = Path(file_raw)
+                if file.suffix != ".sscf":
+                    file = file.with_suffix(".sscf") 
                 # filter not working as expected, saves files without file extension scf
                 # therefore above logic
                 assert file.parent.exists()
@@ -940,7 +941,7 @@ class MainWindow(qtw.QMainWindow):
         if file_arg is None:
             path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
                                                               dir=settings.last_used_folder,
-                                                              filter='Speaker calculator files (*.scf *.sscf)',
+                                                              filter='Speaker calculator files (*.sscf)',
                                                               )
             
             file_raw = path_unverified[0]
@@ -960,19 +961,10 @@ class MainWindow(qtw.QMainWindow):
         if update_last_used_folder:
             settings.update("last_used_folder", str(file.parent))
 
-        # backwards compatibility with v0.1
-        suffix = file.suffixes[-1]
-        if suffix == ".sscf":
-            state = convert_v01_to_v02(file)
-            self.set_state(state)
+        # backwards compatibility with older file versions
+        state = convert_any(file)
         
-        elif suffix == ".scf":
-            with open(file, "rt") as f:
-                state = json.load(f)
-            self.set_state(state)
-        else:
-            raise ValueError(f"Invalid suffix '{suffix}'")
-        
+        self.set_state(state)
         # self.statusBar().showMessage(f"Opened file '{file.name}'", 5000)
 
     def set_state(self, state: dict):
@@ -1409,9 +1401,22 @@ class SettingsDialog(qtw.QDialog):
         self.accept()
 
 
+def get_main_dir():
+    
+    if getattr(sys, 'frozen', False):
+        # The application is frozen
+        return Path(sys.executable).parent
+        
+    else:
+        # The application is not frozen
+        return Path(__file__).parent
+
+
 def read_wire_table(wire_table_file: Path) -> pd.DataFrame:
+
     if not wire_table_file.exists():
-        raise FileNotFoundError(f"Wire table file not found: {Path}")
+        raise FileNotFoundError(f"Wire table file not found: {wire_table_file}")
+
     imported_wire_table = pd.read_excel(wire_table_file, "Sheet1", skiprows=range(2), index_col=0)
     coeff_for_SI = {
         "nominal_size": 1e-6,
@@ -1639,7 +1644,7 @@ def parse_args(app_definitions):
                                      epilog={app_definitions['website']},
                                      )
     parser.add_argument('infile', nargs='?', type=Path,
-                        help="Path to a '*.scf' file. This will open with preset values.")
+                        help="Path to a '*.sscf' file. This will open with preset values.")
     parser.add_argument('-d', '--loglevel', nargs="?",
                         choices=["debug", "info", "warning", "error", "critical"],
                         help="Set logging level for Python logging. Valid values are debug, info, warning, error and critical.")
@@ -1693,14 +1698,15 @@ def main():
     args = parse_args(app_definitions)
     logger = setup_logging(args=args)
     settings = Settings(app_definitions["app_name"])
-    wires = read_wire_table(Path(PurePosixPath(settings.vc_table_file)))
+    wires = read_wire_table(get_main_dir().joinpath(settings.vc_table_file))
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to do the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
-        app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
+        icon_path = str(get_main_dir().joinpath(app_definitions["icon_path"]))
+        app.setWindowIcon(qtg.QIcon(icon_path))
 
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerDeveloper(app, logger)
@@ -1721,7 +1727,7 @@ def main():
 
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
-        mw = new_window(open_user_file=args.infile.name)
+        mw = new_window(open_user_file=args.infile)
     else:
         new_window()
 

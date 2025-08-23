@@ -20,6 +20,7 @@ from pathlib import Path
 import pickle
 import pathlib
 import inspect
+import json
 
 # the v01 files have many custom classes pickled and to unpickle them is often not possible
 # in a system where API of these objects and the Python environment is of newer version and
@@ -46,7 +47,28 @@ class IgnoreErrorsUnpickler(pickle.Unpickler):
             # Return a dummy class to handle instantiation via NEWOBJ
             print(f"Warning: Ignoring object from {module}.{name} due to incompatibility.")
             return DummyObject
+        
+        
+def convert_any(file: Path) -> dict:
+    suffix = file.suffixes[-1]
+    
+    if suffix == ".scf":  # v0.2.0        
+        with open(file, "r") as f:
+            state = json.load(f)
+        
+    elif suffix == ".sscf":
+        try:                
+            with open(file, "r") as f:  # >v0.2.0
+                state = json.load(f)
 
+        except UnicodeDecodeError:  # <v0.2.0
+            state = convert_v01_to_v02(file)
+
+    else:
+        raise RuntimeError("Was not able to convert file.")
+    
+    return state
+            
 
 def convert_v01_to_v02(file: Path) -> dict:
 
@@ -159,7 +181,7 @@ def convert_v01_to_v02(file: Path) -> dict:
                     "dead_mass":                ("dead_mass",               lambda x: x),
                     "Sd":                       ("Sd",                      lambda x: x),
     
-                    "R_ext":                 (None,                      0.),
+                    "Rext":                 (None,                      0.),
                     "excitation_type":          ("excitation_unit",         translate_excitation_type),
                     "excitation_value":         ("excitation_value",        lambda x: x),
                     "Rnom":                     ("nominal_impedance",       lambda x: x),

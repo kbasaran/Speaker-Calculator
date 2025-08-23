@@ -9,8 +9,8 @@ continue manual
 
 
 # Bugs
-
-
+no errors when the load file has invalid parameters like R_serial (R_serial is no more in use)
+drag and drop makes double beep
 
 
 
@@ -18,6 +18,18 @@ continue manual
 when motor definition type changes to Bl and Mmx, paste values from model into the widgets
 
 add sine sweep time signal of displacements
+
+make sine sweep example:
+P = 48000
+Q = 44100
+
+offset = 2000
+instfreq = np.exp(np.linspace(np.log(offset+100), np.log(offset+23900), 96000))-offset
+deltaphase = 2*np.pi*instfreq/P
+cphase = np.cumsum(deltaphase)
+sig = np.sin(cphase)
+
+
 
 add:
 - Peak displacement at 1020Hz: 0.0143 mm
