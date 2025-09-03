@@ -618,10 +618,9 @@ class SpeakerSystem:
                 
                 ]
 
-        eqns = []
         for i, eqn in enumerate(eqns):
             eqns[i] = eqn.subs(p_housing, - (Kair / Vba * (Spr * xpr + Sd * x1)))
-            eqns[i] = eqn.subs(i_coil, (Vsource - Bl*(x1_t - x2_t)) / (Rext + Re))
+            eqns[i] = eqns[i].subs(i_coil, (Vsource - Bl*(x1_t - x2_t)) / (Rext + Re))
 
         # p_housing = - (Kair / Vba * (Spr * xpr + Sd * x1))
         # i_coil = (Vsource - Bl*(x1_t - x2_t)) / (Rext + Re)
