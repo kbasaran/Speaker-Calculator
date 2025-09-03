@@ -3,10 +3,6 @@
 add definition list for all the terms used into the electraoacoustics file.
 such as V_in, V_spk, R_sys, R_nom, etc.
 
-continue manual
-
-
-
 
 # Bugs
 no errors when the load file has invalid parameters like R_serial (R_serial is no more in use)
