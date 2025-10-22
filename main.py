@@ -1231,13 +1231,14 @@ class MainWindow(qtw.QMainWindow):
         else:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
 
-        if "curves" in locals():
-            for i, (name, y) in enumerate(curves.items()):
-                self.graph.add_line2d(i, name, (freqs, y))
-                curve = signal_tools.Curve((freqs, y))
-                curve.set_name_base(name)
-                self.graph.active_curves.append(curve)
-        
+        for i, (name, y) in enumerate(curves.items()):
+            self.graph.add_line2d(i, name, (freqs, y))
+            curve = signal_tools.Curve((freqs, y))
+            curve.set_name_base(name)
+            self.graph.active_curves.append(curve)
+
+        self.graph.update_figure()
+
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
