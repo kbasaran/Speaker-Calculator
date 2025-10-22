@@ -9,4 +9,4 @@ acoustics >= 0.2.6
 scipy == 1.*
 soundfile
 sounddevice == 0.5.*
-cx_Freeze == 8.3.0  # RecursionError bug in 8.4
+cx-freeze == 8.4.1
