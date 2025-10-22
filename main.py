@@ -1245,6 +1245,8 @@ class MainWindow(qtw.QMainWindow):
         self.results_textbox.setText(summary_all)
 
 
+
+
 class CurveExportMenu(qtw.QMenu):
     def __init__(self, curves, position, parent):
         super().__init__(parent=parent)
