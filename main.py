@@ -1231,7 +1231,7 @@ class MainWindow(qtw.QMainWindow):
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
 
         for i, (name, y) in enumerate(curves.items()):
-            self.graph.add_line2d(i, name, (freqs, y))
+            self.graph.add_line2d(i, name, (freqs, y), update_figure=False)
             curve = signal_tools.Curve((freqs, y))
             curve.set_name_base(name)
             # self.graph.active_curves.append(curve)  # not in use anymore. was used to save curves.
