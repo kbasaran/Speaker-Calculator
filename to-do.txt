@@ -6,8 +6,6 @@ such as V_in, V_spk, R_sys, R_nom, etc.
 
 # Bugs
 no errors when the load file has invalid parameters like R_serial (R_serial is no more in use)
-drag and drop makes double beep
-
 
 
 # Nice to have
@@ -25,6 +23,7 @@ deltaphase = 2*np.pi*instfreq/P
 cphase = np.cumsum(deltaphase)
 sig = np.sin(cphase)
 
+auto update when any value in user_form changes
 
 
 add:
