@@ -1113,7 +1113,7 @@ class MainWindow(qtw.QMainWindow):
     def update_graph(self, checked_id):
         self.graph.clear_graph()
         curves = dict()
-        self.graph.active_curves = list()
+        # self.graph.active_curves = list()  # obsoleted
 
         if not hasattr(self, "speaker_model_state"):
             self.signal_bad_beep.emit()
@@ -1234,7 +1234,7 @@ class MainWindow(qtw.QMainWindow):
             self.graph.add_line2d(i, name, (freqs, y))
             curve = signal_tools.Curve((freqs, y))
             curve.set_name_base(name)
-            self.graph.active_curves.append(curve)
+            # self.graph.active_curves.append(curve)  # not in use anymore. was used to save curves.
 
         self.graph.update_figure()
 
@@ -1243,8 +1243,6 @@ class MainWindow(qtw.QMainWindow):
         self.update_graph(checked_id)
         summary_all = self.speaker_model_state["system"].get_summary(settings, self.speaker_model_state["V_source"])
         self.results_textbox.setText(summary_all)
-
-
 
 
 class CurveExportMenu(qtw.QMenu):
