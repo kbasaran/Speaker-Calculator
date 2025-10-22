@@ -21,7 +21,7 @@ print()
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
-    "packages": ["numpy", "scipy"],  # RecursionError in cx_Freeze if these are not provided
+    "packages": ["numpy", "scipy", "matplotlib", "sympy", "pandas"],  # RecursionError in cx_Freeze if these are not provided
     "include_files": files_to_include,
     "silent_level": 1,
 }
