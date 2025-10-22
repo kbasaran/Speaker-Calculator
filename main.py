@@ -33,7 +33,7 @@ import generictools.personalized_widgets as pwi
 from version_convert import convert_any
 
 import logging
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import matplotlib as mpl
 import numpy as np
 from functools import partial
@@ -75,7 +75,6 @@ class Settings:
     f_max: int = 3000
     A_beep: float = 0.25
     last_used_folder: str = str(Path.home())
-    # max_legend_size: int = 10
     matplotlib_style: str = "ggplot"
     graph_grids: str = "Major and minor"
     calc_ppo: int = 48 * 8
