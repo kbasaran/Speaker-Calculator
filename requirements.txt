@@ -3,7 +3,7 @@ odfpy
 pandas == 2.3.*
 numpy == 2.3.*
 sympy
-pyperclip == 1.10.*
+pyperclip == 1.11.*
 matplotlib == 3.10.*
 acoustics >= 0.2.6
 scipy == 1.*
