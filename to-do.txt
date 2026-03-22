@@ -1,16 +1,15 @@
-# Important features
-
-add definition list for all the terms used into the electraoacoustics file.
-such as V_in, V_spk, R_sys, R_nom, etc.
-
-
 # Bugs
 no errors when the load file has invalid parameters like R_serial (R_serial is no more in use)
-drag and drop makes double beep
+export seems broken
+
+# Important features to add
 
 
 
 # Nice to have
+add definition list for all the terms used into the electraoacoustics file.
+such as V_in, V_spk, R_sys, R_nom, etc.
+
 when motor definition type changes to Bl and Mmx, paste values from model into the widgets
 
 add sine sweep time signal of displacements
@@ -25,6 +24,7 @@ deltaphase = 2*np.pi*instfreq/P
 cphase = np.cumsum(deltaphase)
 sig = np.sin(cphase)
 
+auto update when any value in user_form changes
 
 
 add:

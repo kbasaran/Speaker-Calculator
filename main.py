@@ -53,7 +53,7 @@ app_definitions = {"app_name": "Speaker Calculator",
                    }
 
 # uncomment for release candidate builds
-# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 
 @dataclass
@@ -1096,11 +1096,18 @@ class MainWindow(qtw.QMainWindow):
                                          "See log for more details.")
             self.graph.clear_graph()
             self.signal_bad_beep.emit()
-    
+
     def _export_curve_clicked(self):
         position = self.graph_pushbuttons.buttons()["export_curve_pushbutton"].mapToGlobal(qtc.QPoint(0,0))
-        CurveExportMenu(curves=self.graph.active_curves, position=position, parent=self)
-    
+        lines = self.graph.get_visible_lines_in_qlist_order()
+        curves = []
+        for line in lines:
+            xy = line.get_xydata()
+            curve = signal_tools.Curve(xy)
+            curve.set_name_base(line.get_label())
+            curves.append(curve)
+        CurveExportMenu(curves=curves, position=position, parent=self)
+
     def _export_model_clicked(self):
         if not hasattr(self, "speaker_model_state"):
             self.signal_bad_beep.emit()
@@ -1113,7 +1120,7 @@ class MainWindow(qtw.QMainWindow):
     def update_graph(self, checked_id):
         self.graph.clear_graph()
         curves = dict()
-        self.graph.active_curves = list()
+        # self.graph.active_curves = list()  # obsoleted
 
         if not hasattr(self, "speaker_model_state"):
             self.signal_bad_beep.emit()
@@ -1231,10 +1238,10 @@ class MainWindow(qtw.QMainWindow):
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
 
         for i, (name, y) in enumerate(curves.items()):
-            self.graph.add_line2d(i, name, (freqs, y))
+            self.graph.add_line2d(i, name, (freqs, y), update_figure=False)
             curve = signal_tools.Curve((freqs, y))
             curve.set_name_base(name)
-            self.graph.active_curves.append(curve)
+            # self.graph.active_curves.append(curve)  # not in use anymore. was used to save curves.
 
         self.graph.update_figure()
 
@@ -1244,19 +1251,16 @@ class MainWindow(qtw.QMainWindow):
         summary_all = self.speaker_model_state["system"].get_summary(settings, self.speaker_model_state["V_source"])
         self.results_textbox.setText(summary_all)
 
-
-
-
 class CurveExportMenu(qtw.QMenu):
     def __init__(self, curves, position, parent):
         super().__init__(parent=parent)
         for curve in curves:
-            self.addAction(curve.get_full_name(), partial(curve.export_to_clipboard,
-                                                          ppo=settings.export_ppo,
-                                                          must_include_freq=settings.interpolate_must_contain_hz,
-                                                          )
-                           )
+            self.addAction(curve.get_full_name(), partial(export_and_beep ,curve, self.parent().signal_good_beep, settings))
         self.popup(position)
+
+def export_and_beep(curve, good_beeper, settings):
+    curve.export_to_clipboard(ppo = settings.export_ppo, must_include_freq = settings.interpolate_must_contain_hz)
+    good_beeper.emit()
 
 class SettingsDialog(qtw.QDialog):
     global settings
