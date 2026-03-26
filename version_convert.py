@@ -30,25 +30,30 @@ import json
 # Define a dummy class to replace incompatible objects
 class DummyObject:
     def __init__(self, *args, **kwargs):
-        pass  # Do nothing, just a placeholder
+        pass
+
+    def __setstate__(self, state):
+        pass
 
 
 class IgnoreErrorsUnpickler(pickle.Unpickler):
     def find_class(self, module, name):
         try:
             found_class = super().find_class(module, name)
-            
-            # Ignore paths - they caused problems
+
+            # Ignore pathlib.Path subclasses
             if inspect.isclass(found_class) and issubclass(found_class, pathlib.Path):
                 raise NotImplementedError
-            else:
-                return found_class
+
+            return found_class
+
         except (AttributeError, ModuleNotFoundError, NotImplementedError):
-            # Return a dummy class to handle instantiation via NEWOBJ
-            print(f"Warning: Ignoring object from {module}.{name} due to incompatibility.")
+            print(
+                f"Warning: Ignoring object from {module}.{name} due to incompatibility."
+            )
             return DummyObject
-        
-        
+
+
 def convert_any(file: Path) -> dict:
     suffix = file.suffixes[-1]
     
