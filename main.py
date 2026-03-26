@@ -196,7 +196,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("dead_mass", "Moving mass excluding the coil windings and the air load on the diaphragm."
                                                    "\n'Dead mass = Mmd - coil winding mass'"
-                                                   "\nUnit is millimeter.",
+                                                   "\nUnit is gram.",
                                       decimals=3,
                                       coeff_for_SI=1e-3,
                                       ),
