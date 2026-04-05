@@ -39,6 +39,7 @@ import numpy as np
 from functools import partial
 import electroacoustical as ac
 import utils.file_io as fio
+from utils.helpers import find_feasible_coils
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
@@ -1039,7 +1040,7 @@ class MainWindow(qtw.QMainWindow):
         message_box.exec()
     
     def update_coil_choices_button_clicked(self):
-        name_to_motor = find_feasible_coils(self.get_state(), wires)
+        name_to_motor = find_feasible_coils(self.get_state(), wires, settings, logger)
         update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"], self.input_form, name_to_motor)
         if self.input_form.interactable_widgets["coil_options"].currentData():
             self.signal_good_beep.emit()
@@ -1051,7 +1052,7 @@ class MainWindow(qtw.QMainWindow):
         if self.input_form.interactable_widgets["motor_spec_type"].currentData() == "define_coil":
             update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"],
                                          self.input_form,
-                                         find_feasible_coils(self.get_state(), wires),
+                                         find_feasible_coils(self.get_state(), wires, settings, logger),
                                          )
             if not self.input_form.interactable_widgets["coil_options"].currentData():
                 self.signal_bad_beep.emit()
@@ -1418,61 +1419,6 @@ def get_main_dir():
         return Path(__file__).parent
 
 
-def find_feasible_coils(vals, wires):
-    """Scan best matching speaker coil options."""
-    try:  # try to read the N_layer_options string
-        layer_options = [int(str) for str in vals["N_layer_options"].replace(" ", "").split(",")]
-        if not layer_options:
-            raise ValueError("At least one option needs to be provided for number of winding layers.")
-    except Exception:
-        raise ValueError("Invalid input in number of layer options")
-
-    # Make a dataframe to store viable winding options
-    # table_columns = ["name", "wire", "N_layers", "Bl", "Re", "Lm", "Qts", "carrier_OD",
-    #                  "h_winding", "N_windings", "total_wire_length", "coil_w_max", "coil_mass", "coil"]
-    # coil_options_table = pd.DataFrame(columns=table_columns, indexcol="name")
-    speaker_options = []
-
-    for N_layers in layer_options:
-        for wire_name, wire in wires.items():
-            try:
-                coil = ac.wind_coil(wire,
-                                    N_layers,
-                                    vals["w_stacking_coef"],
-                                    vals["former_ID"] + 2 * vals["t_former"],  # carrier_OD
-                                    vals["h_winding_target"],
-                                    vals["reduce_per_layer"],
-                                    )
-            except ValueError as e:
-                logger.debug(f"Could not wind coil for {wire_name}: {e}")
-                continue
-
-            if vals["target_Re"] / 1.15 < coil.Re < vals["target_Re"] * 1.2:
-                motor = ac.Motor(coil,
-                                 vals["B_average"],
-                                 h_top_plate=vals["h_top_plate"],
-                                 t_former=vals["t_former"],
-                                 airgap_clearance_inner=vals["airgap_clearance_inner"],
-                                 airgap_clearance_outer=vals["airgap_clearance_outer"],
-                                 h_former_under_coil=vals["h_former_under_coil"],
-                                 )
-                speaker = ac.SpeakerDriver(vals["fs"],
-                                           vals["Sd"],
-                                           vals["Qms"],
-                                           motor=motor,
-                                           dead_mass=vals["dead_mass"],
-                                           Rlw=vals["Rlw"],
-                                           )
-                speaker_options.append(speaker)
-
-    # Sort the viable coil options
-    speaker_options.sort(key=lambda x: x.Lm(settings), reverse=True)
-    name_to_motor = dict()
-    for speaker in speaker_options:
-        name = speaker.motor.coil.name + f" -> Re={speaker.Re:.2f}, Lm={speaker.Lm(settings):.2f}, Qts={speaker.Qts:.2f}"
-        name_to_motor[name] = speaker.motor
-    
-    return name_to_motor  # keys: friendly name values: motor object as a dictionary. contains coil and wire in it.
 
 
 def update_coil_options_combobox(combo_box: qtw.QComboBox, input_form_tabbed: InputSectionTabWidget, name_to_motor: dict):
