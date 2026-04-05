@@ -23,47 +23,15 @@ import sympy.physics.mechanics as mech
 from sympy.solvers import solve
 from scipy import signal
 from sympy.abc import t
-
-def calculate_air_mass(Sd: float) -> float:
-    """
-    Air mass on diaphragm; the difference between Mms and Mmd.
-    m² in, kg out.
-    """
-    return 1.13*(Sd)**(3/2)
-
-
-def calculate_Lm(Bl, Re, Mms, Sd, RHO=1.1839, c_air=(101325 * 1.401 / 1.1839)**0.5):
-    "Calculate Lm@Re, 1W, 1m."
-    if Sd == 0:
-        return -np.inf
-    elif Sd < 0:
-        raise RuntimeError("Surface area cannot have a negative value: " + Sd)
-
-    w_ref = 10**-12
-    I_1W_per_m2 = RHO * Bl**2 * Sd**2 / c_air / Re / Mms**2 / 2 / np.pi
-    P_over_I_half_space = 1/2/np.pi  # m²
-    return 10 * np.log10(I_1W_per_m2 * P_over_I_half_space / w_ref)
+from core.calculations import (
+    calculate_air_mass,
+    calculate_lm,
+    calculate_coil_to_bottom_plate_clearance,
+    calculate_spl,
+    calculate_voltage
+)
 
 
-def calculate_coil_to_bottom_plate_clearance(Xpeak):
-    """
-    Proposed clearance for given Xpeak value.
-
-    All values in basic SI units.
-    """
-    proposed_clearance = 1e-3 + (Xpeak - 3e-3) / 5
-    return Xpeak + proposed_clearance
-
-
-def calculate_SPL(settings: object, xty: tuple, Sd: float):
-    # SPL calculation with simplified radiation impedance * acceleration
-    # xty: RMS velocity of the disc along its axis, per frequency
-    a = np.sqrt(Sd/np.pi)  # piston radius
-    freqs = np.array(xty[0]).flatten()
-    p0 = 0.5 * 1j * freqs*2*np.pi * settings.RHO * a**2 * np.array(xty[1]).flatten()
-    pref = 2e-5
-    SPL = 20*np.log10(np.abs(p0)/pref)
-    return freqs, SPL
 
 
 @dtc.dataclass
@@ -204,31 +172,6 @@ def wind_coil(wire: Wire,
     return Coil(carrier_OD, wire, N_windings, w_stacking_coef)
 
 
-def calculate_voltage(excitation_value, excitation_type, Re=None, Rnom=None):
-    "Simplify electrical input definition to a voltage value."
-    match excitation_type:
-
-        case "Wn":
-            if not Rnom:
-                raise ValueError("Need to provide nominal impedance to calculate Wn")
-            else:
-                input_voltage = (excitation_value * Rnom) ** 0.5
-
-        case "W":
-            if not Re:
-                raise ValueError("Need to provide Re to calculate W")
-            else:
-                input_voltage = (excitation_value * Re) ** 0.5
-
-        case "V":
-            input_voltage = excitation_value
-
-        case _:
-            input_voltage = float("nan")
-            raise ValueError("excitation type must be one of (V, W, Wn)")
-
-    return input_voltage
-
 
 @dtc.dataclass
 class Motor:
@@ -354,7 +297,7 @@ class SpeakerDriver:
         self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
         
     def Lm(self, settings):
-        return calculate_Lm(self.Bl, self.Re, self.Mms, self.Sd, settings.RHO, settings.c_air)  # sensitivity per W@Re
+        return calculate_lm(self.Bl, self.Re, self.Mms, self.Sd, settings.RHO, settings.c_air)  # sensitivity per W@Re
     
     def Vas(self, settings):
         return settings.Kair / self.Kms * self.Sd**2

@@ -230,7 +230,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("excitation_value", "The value for input excitation.\nUnit is as chosen above.",
                                       ),
-                     description="Excitation value",
+                     description="Value",
                      )
 
         form.add_row(pwi.FloatSpinBox("Rnom", "Nominal impedance of the system. This is necessary to calculate the voltage applied to the system"
@@ -1065,8 +1065,8 @@ class MainWindow(qtw.QMainWindow):
             speaker_system = build_or_update_SpeakerSystem(vals, speaker_driver, spk_sys)
             V_source = ac.calculate_voltage(vals["excitation_value"],
                                             vals["excitation_type"]["current_data"],
-                                            Re=speaker_driver.Re,
-                                            Rnom=vals["Rnom"],
+                                            re=speaker_driver.Re,
+                                            rnom=vals["Rnom"],
                                             )
 
             self.speaker_model_state = {"vals": vals,
@@ -1151,12 +1151,12 @@ class MainWindow(qtw.QMainWindow):
                 w = 2 * np.pi * freqs
                 Xpeak_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
 
-                _, SPL = ac.calculate_SPL(settings,
+                _, SPL = ac.calculate_spl(settings.RHO,
                                           (freqs, velocs["Diaphragm, RMS"]),
                                           spk_sys.speaker.Sd,
                                           )
 
-                _, SPL_Xpeak_limited = ac.calculate_SPL(settings,
+                _, SPL_Xpeak_limited = ac.calculate_spl(settings.RHO,
                                                        (freqs, Xpeak_limited_velocities),
                                                        spk_sys.speaker.Sd,
                                                        )
