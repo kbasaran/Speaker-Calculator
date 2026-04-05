@@ -17,6 +17,7 @@ __email__ = "kbasaran@gmail.com"
 # License along with Speaker Calculator. If not, see <https://www.gnu.org/licenses/>
 
 import dataclasses as dtc
+from config.physics import Air
 import numpy as np
 import sympy as smp
 import sympy.physics.mechanics as mech
@@ -34,13 +35,6 @@ from core.calculations import (
 
 
 
-@dtc.dataclass
-class Settings:
-    RHO: float = 1.1839  # density of air at 25 degrees Celsius
-    P0: int = 101325  # atmospheric pressure
-    GAMMA: float = 1.401  # adiabatic index of air
-    Kair: float = P0 * GAMMA
-    c_air: float = (Kair / RHO)**0.5
 
 
 @dtc.dataclass
@@ -276,17 +270,17 @@ class SpeakerDriver:
         zeta_speaker = 1 / 2 / self.Qts
         self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
         
-    def Lm(self, settings):
-        return calculate_lm(self.Bl, self.Re, self.Mms, self.Sd, settings.RHO, settings.c_air)  # sensitivity per W@Re
+    def Lm(self, air):
+        return calculate_lm(self.Bl, self.Re, self.Mms, self.Sd, air.RHO, air.c_air)  # sensitivity per W@Re
     
-    def Vas(self, settings):
-        return settings.Kair / self.Kms * self.Sd**2
+    def Vas(self, air):
+        return air.Kair / self.Kms * self.Sd**2
 
-    def get_summary(self, settings, V_spk:float=0) -> str:
+    def get_summary(self, air, V_spk:float=0) -> str:
         "Summary in markup language."
         summary = ("## Speaker unit"
                    "<br></br>"
-                   f"L<sub>m</sub> : {self.Lm(settings):.2f} dBSPL        "
+                   f"L<sub>m</sub> : {self.Lm(air):.2f} dBSPL        "
                    f"R<sub>e</sub> : {self.Re:.2f} ohm"
                    "<br></br>"
                    f"Bl : {self.Bl:.4g} Tm        "
@@ -295,7 +289,7 @@ class SpeakerDriver:
                    f"Q<sub>es</sub> : {self.Qes:.3g}        "
                    f"Q<sub>ts</sub> : {self.Qts:.3g}"
                    "<br></br>"
-                   f"V<sub>as</sub> : {self.Vas(settings) * 1e3:.4g} l"
+                   f"V<sub>as</sub> : {self.Vas(air) * 1e3:.4g} l"
                    
                    "<br/>  \n"
                    f"#### Mass and suspension"
@@ -343,15 +337,15 @@ class Enclosure:
     def Vba(self):  # effective acoustical volume
         return self.Vb
 
-    def K(self, settings, Sd):
-        return Sd**2 * settings.Kair / self.Vba()
+    def K(self, air, Sd):
+        return Sd**2 * air.Kair / self.Vba()
 
-    def R(self, settings, Sd, Mms, Kms):
+    def R(self, air, Sd, Mms, Kms):
         """
         Damping at fb due to air absorption in box. Calculated from Qa.
         """
         # return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
-        return ((Kms + self.K(settings, Sd)) * Mms)**0.5 / self.Qa
+        return ((Kms + self.K(air, Sd)) * Mms)**0.5 / self.Qa
 
     # def Vba(self):  # acoustical volume higher than actual due to internal damping
     #     # below formula is shown in GUI tooltip. Update tooltip if modifiying.
@@ -399,19 +393,19 @@ class PassiveRadiator:
     def f_free(self):
         return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
 
-    def f_housed(self, settings, Vba):
-        return 1 / 2 / np.pi * ((self.k + self.k_box(settings, Vba)) / self.m_s())**0.5
+    def f_housed(self, air, Vba):
+        return 1 / 2 / np.pi * ((self.k + self.k_box(air, Vba)) / self.m_s())**0.5
 
-    def k_box(self, settings, Vba):
+    def k_box(self, air, Vba):
         "Stiffness from air in enclosure."
-        return self.Spr**2 * settings.Kair / Vba
+        return self.Spr**2 * air.Kair / Vba
 
-    def R(self, settings, Vba):
+    def R(self, air, Vba):
         """
         Damping at fp due to port losses in case of vented box, or due to
         mechanical losses in case of passive raditor. Calculated from Qp.
         """
-        return ((self.k_box(settings, Vba) + self.k) * self.m_s())**0.5 / self.Qp
+        return ((self.k_box(air, Vba) + self.k) * self.m_s())**0.5 / self.Qp
 
 
 def make_state_matrix_A(state_vars, state_diffs, sols):
@@ -471,11 +465,11 @@ class SpeakerSystem:
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
     dir_pr: int = 1
-    settings: dtc.InitVar[Settings] = Settings()
+    air: dtc.InitVar[Air] = Air()
 
-    def __post_init__(self, settings):
+    def __post_init__(self, air):
         self._build_symbolic_ss_model()
-        self.update_values(settings)
+        self.update_values(air)
 
     def _build_symbolic_ss_model(self):
         # Static symbols
@@ -577,7 +571,7 @@ class SpeakerSystem:
                              "state_vars": state_vars,
                             }
 
-    def _get_parameter_names_to_values(self, settings) -> dict:
+    def _get_parameter_names_to_values(self, air) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
         "key: symbol variable name, val: value"
 
@@ -602,13 +596,13 @@ class SpeakerSystem:
 
             "Vba": 0 if self.enclosure is None else self.enclosure.Vba(),  # in fact Vba is infinite when no enclosure. but infinite is not allowed.
             "Rbox": 0 if self.enclosure is None else self.enclosure.R(
-                settings,
+                air,
                 self.speaker.Sd,
                 self.speaker.Mms,
                 self.speaker.Kms,
                 ),
 
-            "Kair": 0 if self.enclosure is None else settings.Kair,  # 0 is trickery a bit, to disable the housing formulas.
+            "Kair": 0 if self.enclosure is None else air.Kair,  # 0 is trickery a bit, to disable the housing formulas.
 
             "Rext": self.Rext,
 
@@ -616,12 +610,12 @@ class SpeakerSystem:
 
         return parameter_names_to_values
 
-    def get_symbols_to_values(self, settings):
+    def get_symbols_to_values(self, air):
         # Dictionary with sympy symbols as keys and values as values
-        parameter_names_to_values = self._get_parameter_names_to_values(settings)
+        parameter_names_to_values = self._get_parameter_names_to_values(air)
         return {symbol: parameter_names_to_values[name] for name, symbol in self.symbols.items()}
 
-    def update_values(self, settings, **kwargs):
+    def update_values(self, air, **kwargs):
         # ---- set the attributes of self with values in kwargs
         dataclass_field_names = [dataclass_field.name for dataclass_field in dtc.fields(self)]
         for key, val in kwargs.items():
@@ -634,18 +628,18 @@ class SpeakerSystem:
         self.R_sys = self.speaker.Re + self.Rext
 
         # ---- Substitute values into system matrix and input matrix
-        symbols_to_values = self.get_symbols_to_values(settings)
+        symbols_to_values = self.get_symbols_to_values(air)
         A = np.array(self._symbolic_ss["A"].subs(symbols_to_values)).astype(float)
         B = np.array(self._symbolic_ss["B"].subs(symbols_to_values)).astype(float)
 
         # ---- Updates in relation to enclosure
         if isinstance(self.enclosure, Enclosure):
             zeta_boxed_speaker = (
-                self.enclosure.R(settings, self.speaker.Sd, self.speaker.Mms, self.speaker.Mms)
+                self.enclosure.R(air, self.speaker.Sd, self.speaker.Mms, self.speaker.Mms)
                                   + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
-            / 2 / ((self.speaker.Kms+self.enclosure.K(settings, self.speaker.Sd)) * self.speaker.Mms)**0.5
+                                 / 2 / ((self.speaker.Kms + self.enclosure.K(air, self.speaker.Sd)) * self.speaker.Mms) ** 0.5
 
-            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms+self.enclosure.K(settings, self.speaker.Sd)) / self.speaker.Mms)**0.5
+            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms + self.enclosure.K(air, self.speaker.Sd)) / self.speaker.Mms) ** 0.5
 
             fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
             if np.iscomplex(fb_damped):  # means overdamped
@@ -712,10 +706,10 @@ class SpeakerSystem:
                                                                 self._symbolic_ss["D"],
                                                                 )
 
-    def get_summary(self, settings, V_source:float=0) -> str:
+    def get_summary(self, air, V_source:float=0) -> str:
         "Summary in markup language."
         V_spk = V_source / self.R_sys * self.speaker.Re
-        summary = self.speaker.get_summary(settings, V_spk)
+        summary = self.speaker.get_summary(air, V_spk)
 
         summary += ("\n----\n"
                     "#### System"
@@ -730,10 +724,10 @@ class SpeakerSystem:
                 "<br></br>"
                 f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
                 "<br></br>"
-                f"K<sub>enc,s</sub>: {self.enclosure.K(settings, self.speaker.Sd)/1000:.4g} N/mm"
+                f"K<sub>enc,s</sub>: {self.enclosure.K(air, self.speaker.Sd)/1000:.4g} N/mm"
                 )
             if isinstance(self.passive_radiator, PassiveRadiator):
-                summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(settings, self.passive_radiator.Spr):.4g} N/mm"
+                summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(air, self.passive_radiator.Spr):.4g} N/mm"
                 
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
@@ -883,7 +877,7 @@ class SpeakerSystem:
 
 
 def tests():
-    settings = Settings()
+    air = Air()
 
     def generate_freq_list(freq_start, freq_end, ppo):
         """
@@ -909,7 +903,7 @@ def tests():
                               passive_radiator=None,
                               )
 
-    my_system.update_values(settings,
+    my_system.update_values(air,
                             speaker=my_speaker,
                             Rext=1,
                             enclosure = enclosure,
@@ -917,7 +911,7 @@ def tests():
                             # passive_radiator = pr,
                             )
     
-    my_system.update_values(settings,
+    my_system.update_values(air,
                             speaker=my_speaker,
                             Rext=1,
                             enclosure = None,
@@ -926,7 +920,7 @@ def tests():
                             )
 
     
-    my_system.update_values(settings,
+    my_system.update_values(air,
                             speaker=my_speaker,
                             Rext=1,
                             enclosure = None,
@@ -934,7 +928,7 @@ def tests():
                             # passive_radiator = pr,
                             )
     
-    my_system.update_values(settings,
+    my_system.update_values(air,
                             speaker=my_speaker,
                             Rext=1,
                             enclosure = None,
@@ -942,7 +936,7 @@ def tests():
                             passive_radiator = None,
                             )
         
-    my_system.update_values(settings,
+    my_system.update_values(air,
                             speaker=my_speaker,
                             Rext=0,
                             enclosure = enclosure,
@@ -965,9 +959,14 @@ def tests():
     for i, (key, model) in enumerate(my_system.ss_models.items()):
         _, _, yout = signal.lsim(model, U=u, T=t)
         youts[key] = yout[:, i]
-    
-    print("relative disps: min, max")
-    print(min(youts['x1(t)'] - youts['x2(t)']), max(youts['x1(t)'] - youts['x2(t)']))
+
+    relative_disp = youts['x1(t)'] - youts['x2(t)']
+    if not (min(relative_disp), max(relative_disp) == -0.00024944613211834703, 0.0002494474248713049):
+        print("relative displacements NOT PASS test")
+    else:
+        print("relative displacements PASS")
+    print("relative disp min, max:")
+    print(min(relative_disp), max(relative_disp))
     plt.plot(t, youts['x1(t)'])
     plt.plot(t, youts['x2(t)'])
     plt.plot(t, youts['x1(t)'] - youts['x2(t)'])
