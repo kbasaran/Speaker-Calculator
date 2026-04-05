@@ -39,7 +39,7 @@ import numpy as np
 from functools import partial
 import electroacoustical as ac
 import utils.file_io as fio
-from utils.helpers import find_feasible_coils
+from core.coil_winding import find_feasible_coils
 import pyperclip
 
 app_definitions = {"app_name": "Speaker Calculator",
