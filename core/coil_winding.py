@@ -37,7 +37,7 @@ def wind_coil(wire: 'ac.Wire',
 
 def find_feasible_coils(vals: Dict[str, Any],
                          wires: Dict[str, 'ac.Wire'],
-                         settings: 'ac.Settings',
+                         settings: 'ac.Air',
                          logger: Optional[logging.Logger] = None
                          ) -> Dict[str, 'ac.Motor']:
     """
@@ -45,7 +45,7 @@ def find_feasible_coils(vals: Dict[str, Any],
 
     :param vals: Dictionary of input values (target Re, dimensions, etc.).
     :param wires: Dictionary of available wire objects.
-    :param settings: Settings object for environmental constants.
+    :param settings: Air object for environmental constants.
     :param logger: Logger object for debugging (optional).
     :return: Dictionary mapping friendly names to Motor objects.
     :raises ValueError: If number of layer options is invalid or empty.
