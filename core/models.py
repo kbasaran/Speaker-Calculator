@@ -255,11 +255,11 @@ class PassiveRadiator:
 
     def k_box(self, Vba):
         "Stiffness from air in enclosure."
-        return self.Spr**2 * air.Kair / Vba
+        return self.S**2 * air.Kair / Vba
 
     def R(self, Vba):
         """
         Damping at fp due to port losses in case of vented box, or due to
-        mechanical losses in case of passive raditor. Calculated from Qp.
+        mechanical losses in case of passive radiator. Calculated from Qp.
         """
-        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.Qp
+        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.Q
