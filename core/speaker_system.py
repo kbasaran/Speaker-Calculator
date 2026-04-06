@@ -164,8 +164,8 @@ class SpeakerSystem:
 
             "Mpr": np.inf if self.passive_radiator is None else self.passive_radiator.m_s(),  # with air coupled
             "Kpr": 0 if self.passive_radiator is None else self.passive_radiator.k,
-            "Rpr": 0 if self.passive_radiator is None else self.passive_radiator.c,
-            "Spr": 0 if self.passive_radiator is None else self.passive_radiator.Spr,
+            "Rpr": 0 if self.passive_radiator is None else self.passive_radiator.R(self.enclosure.Vba()),
+            "Spr": 0 if self.passive_radiator is None else self.passive_radiator.S,
             "dir_pr": self.dir_pr,
 
             "Kair": 0 if self.enclosure is None else air.Kair,  # 0 is trickery a bit, to disable the housing formulas.
