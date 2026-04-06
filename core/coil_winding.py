@@ -100,11 +100,11 @@ def find_feasible_coils(vals: Dict[str, Any],
                 speaker_options.append(speaker)
 
     # Sort the viable coil options by Lm (Efficiency/Motor strength)
-    speaker_options.sort(key=lambda x: x.Lm(settings), reverse=True)
+    speaker_options.sort(key=lambda x: x.Lm(), reverse=True)
 
     name_to_motor = {}
     for speaker in speaker_options:
-        lm = speaker.Lm(settings)
+        lm = speaker.Lm()
         name = f"{speaker.motor.coil.name} -> Re={speaker.Re:.2f}, Lm={lm:.2f}, Qts={speaker.Qts:.2f}"
         name_to_motor[name] = speaker.motor
 

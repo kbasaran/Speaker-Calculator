@@ -31,7 +31,7 @@ from core.calculations import (
     calculate_spl,
     calculate_voltage
 )
-
+from config.physics import air
 
 
 
@@ -226,7 +226,6 @@ class SpeakerDriver:
     Xpeak: float = None
 
     def __post_init__(self):
-
         # verification when speaker is specified without a motor object
         if self.motor is None and self.Rlw != 0:
             raise RuntimeError("Do not define leadwire resistance Rlw when Re is already defined.")
@@ -270,17 +269,17 @@ class SpeakerDriver:
         zeta_speaker = 1 / 2 / self.Qts
         self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
         
-    def Lm(self, air):
-        return calculate_lm(self.Bl, self.Re, self.Mms, self.Sd, air.RHO, air.c_air)  # sensitivity per W@Re
+    def Lm(self):
+        return calculate_lm(self.Bl, self.Re, self.Mms, self.Sd)  # sensitivity per W@Re
     
-    def Vas(self, air):
+    def Vas(self):
         return air.Kair / self.Kms * self.Sd**2
 
-    def get_summary(self, air, V_spk:float=0) -> str:
+    def get_summary(self, V_spk: float = 0) -> str:
         "Summary in markup language."
         summary = ("## Speaker unit"
                    "<br></br>"
-                   f"L<sub>m</sub> : {self.Lm(air):.2f} dBSPL        "
+                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL        "
                    f"R<sub>e</sub> : {self.Re:.2f} ohm"
                    "<br></br>"
                    f"Bl : {self.Bl:.4g} Tm        "
@@ -289,7 +288,7 @@ class SpeakerDriver:
                    f"Q<sub>es</sub> : {self.Qes:.3g}        "
                    f"Q<sub>ts</sub> : {self.Qts:.3g}"
                    "<br></br>"
-                   f"V<sub>as</sub> : {self.Vas(air) * 1e3:.4g} l"
+                   f"V<sub>as</sub> : {self.Vas() * 1e3:.4g} l"
                    
                    "<br/>  \n"
                    f"#### Mass and suspension"
@@ -337,13 +336,13 @@ class Enclosure:
     def Vba(self):  # effective acoustical volume
         return self.Vb
 
-    def K(self, air, Sd):
+    def K(self, Sd):
         if self.Vb == 0:
             return 0
         else:
             return Sd**2 * air.Kair / self.Vba()
 
-    def R(self, air, Sd, Mms, Kms):
+    def R(self, Sd, Mms, Kms):
         """
         Damping at fb due to air absorption in box. Calculated from Qa.
         """
@@ -351,7 +350,7 @@ class Enclosure:
         if self.Vb == 0:
             return 0
         else:
-            return ((Kms + self.K(air, Sd)) * Mms)**0.5 / self.Qa
+            return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
 
     # def Vba(self):  # acoustical volume higher than actual due to internal damping
     #     # below formula is shown in GUI tooltip. Update tooltip if modifiying.
@@ -399,19 +398,19 @@ class PassiveRadiator:
     def f_free(self):
         return 1 / 2 / np.pi * (self.k / self.m_s())**0.5
 
-    def f_housed(self, air, Vba):
-        return 1 / 2 / np.pi * ((self.k + self.k_box(air, Vba)) / self.m_s())**0.5
+    def f_housed(self, Vba):
+        return 1 / 2 / np.pi * ((self.k + self.k_box(Vba)) / self.m_s())**0.5
 
-    def k_box(self, air, Vba):
+    def k_box(self, Vba):
         "Stiffness from air in enclosure."
         return self.Spr**2 * air.Kair / Vba
 
-    def R(self, air, Vba):
+    def R(self, Vba):
         """
         Damping at fp due to port losses in case of vented box, or due to
         mechanical losses in case of passive raditor. Calculated from Qp.
         """
-        return ((self.k_box(air, Vba) + self.k) * self.m_s())**0.5 / self.Qp
+        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.Qp
 
 
 def make_state_matrix_A(state_vars, state_diffs, sols):
@@ -471,9 +470,8 @@ class SpeakerSystem:
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
     dir_pr: int = 1
-    air: dtc.InitVar[Air] = Air()
 
-    def __post_init__(self, air):
+    def __post_init__(self):
         self._build_symbolic_ss_model()
         self.update_values()
 
@@ -600,13 +598,10 @@ class SpeakerSystem:
             "Spr": 0 if self.passive_radiator is None else self.passive_radiator.Spr,
             "dir_pr": self.dir_pr,
 
+            "Kair": 0 if self.enclosure is None else air.Kair,  # 0 is trickery a bit, to disable the housing formulas.
             "Vba": 0 if self.enclosure is None else self.enclosure.Vba(),  # in fact Vba is infinite when no enclosure. but infinite is not allowed.
-            "Rbox": 0 if self.enclosure is None else self.enclosure.R(
-                self.air,
-                self.speaker.Sd,
-                self.speaker.Mms,
-                self.speaker.Kms,
-                ),
+            "Rbox": 0 if self.enclosure is None else self.enclosure.R(self.speaker.Sd, self.speaker.Mms,
+                                                                      self.speaker.Kms),
 
             "Rext": self.Rext,
 
@@ -638,10 +633,10 @@ class SpeakerSystem:
 
         # ---- Updates in relation to enclosure
         if isinstance(self.enclosure, Enclosure):
-            self.Kair = self.air.Kair
+            # self.Kair = air.Kair
             zeta_boxed_speaker = (
-                self.enclosure.R(self.air, self.speaker.Sd, self.speaker.Mms, self.speaker.Mms)
-                                  + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
+                                         self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms)
+                                         + self.speaker.Rms + self.speaker.Bl ** 2 / self.speaker.Re) \
                                  / 2 / ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) * self.speaker.Mms) ** 0.5
 
             fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) / self.speaker.Mms) ** 0.5
@@ -654,7 +649,7 @@ class SpeakerSystem:
             self.Qtc = np.inf if zeta_boxed_speaker == 0 else 1 / 2 / zeta_boxed_speaker
 
         else:
-            self.Kair = 0  # trickery to remove air pressure when no enclosure
+            # self.Kair = 0  # trickery to remove air pressure when no enclosure
             self.fb = np.nan
             self.Qtc = np.nan
 
@@ -712,10 +707,10 @@ class SpeakerSystem:
                                                                 self._symbolic_ss["D"],
                                                                 )
 
-    def get_summary(self, air, V_source:float=0) -> str:
+    def get_summary(self, V_source: float = 0) -> str:
         "Summary in markup language."
         V_spk = V_source / self.R_sys * self.speaker.Re
-        summary = self.speaker.get_summary(air, V_spk)
+        summary = self.speaker.get_summary(V_spk)
 
         summary += ("\n----\n"
                     "#### System"
@@ -730,7 +725,7 @@ class SpeakerSystem:
                 "<br></br>"
                 f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
                 "<br></br>"
-                f"K<sub>enc,s</sub>: {self.enclosure.K(air, self.speaker.Sd)/1000:.4g} N/mm"
+                f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
                 )
             if isinstance(self.passive_radiator, PassiveRadiator):
                 summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(air, self.passive_radiator.Spr):.4g} N/mm"
@@ -883,8 +878,6 @@ class SpeakerSystem:
 
 
 def tests():
-    air = Air()
-
     def generate_freq_list(freq_start, freq_end, ppo):
         """
         Create a numpy array for frequencies to use in calculation.
@@ -909,46 +902,15 @@ def tests():
                               passive_radiator=None,
                               )
 
-    my_system.update_values(air,
-                            speaker=my_speaker,
-                            Rext=1,
-                            enclosure = enclosure,
-                            parent_body = None,
-                            # passive_radiator = pr,
-                            )
-    
-    my_system.update_values(air,
-                            speaker=my_speaker,
-                            Rext=1,
-                            enclosure = None,
-                            parent_body = parent_body,
-                            # passive_radiator = pr,
-                            )
+    my_system.update_values(speaker=my_speaker, Rext=1, enclosure=enclosure, parent_body=None)
 
-    
-    my_system.update_values(air,
-                            speaker=my_speaker,
-                            Rext=1,
-                            enclosure = None,
-                            parent_body = None,
-                            # passive_radiator = pr,
-                            )
-    
-    my_system.update_values(air,
-                            speaker=my_speaker,
-                            Rext=1,
-                            enclosure = None,
-                            parent_body = parent_body,
-                            passive_radiator = None,
-                            )
-        
-    my_system.update_values(air,
-                            speaker=my_speaker,
-                            Rext=0,
-                            enclosure = enclosure,
-                            parent_body = None,
-                            passive_radiator = None,
-                            )
+    my_system.update_values(speaker=my_speaker, Rext=1, enclosure=None, parent_body=parent_body)
+
+    my_system.update_values(speaker=my_speaker, Rext=1, enclosure=None, parent_body=None)
+
+    my_system.update_values(speaker=my_speaker, Rext=1, enclosure=None, parent_body=parent_body, passive_radiator=None)
+
+    my_system.update_values(speaker=my_speaker, Rext=0, enclosure=enclosure, parent_body=None, passive_radiator=None)
 
     # do test model for unibox - Qa / Ql
     # enclosure = Enclosure(0.05, 9999)

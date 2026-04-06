@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Tuple, Any
-
+from config.physics import air
 
 def calculate_air_mass(sd: float) -> float:
     """
@@ -15,7 +15,7 @@ def calculate_air_mass(sd: float) -> float:
     return 1.13 * (sd) ** (3 / 2)
 
 
-def calculate_lm(bl: float, re: float, mms: float, sd: float, rho: float = 1.1839, c_air: float = (101325 * 1.401 / 1.1839)**0.5) -> float:
+def calculate_lm(bl: float, re: float, mms: float, sd: float) -> float:
     """
     Calculate Lm@Re, 1W, 1m (Efficiency/Motor strength).
 
@@ -23,8 +23,6 @@ def calculate_lm(bl: float, re: float, mms: float, sd: float, rho: float = 1.183
     :param re: Voice coil DC resistance in Ohms.
     :param mms: Total moving mass in kg.
     :param sd: Diaphragm effective surface area in m².
-    :param rho: Air density in kg/m³. Default is 1.1839.
-    :param c_air: Speed of sound in m/s. Default is 346.13 (approx at 25°C).
     :return: Sensitivity in dB.
     """
     if sd == 0:
@@ -33,7 +31,7 @@ def calculate_lm(bl: float, re: float, mms: float, sd: float, rho: float = 1.183
         raise ValueError(f"Surface area cannot be negative: {sd}")
 
     w_ref = 10 ** -12
-    i_1w_per_m2 = rho * bl ** 2 * sd ** 2 / c_air / re / mms ** 2 / 2 / np.pi
+    i_1w_per_m2 = air.RHO * bl ** 2 * sd ** 2 / air.c_air / re / mms ** 2 / 2 / np.pi
     p_over_i_half_space = 1 / (2 * np.pi)  # m²
     return 10 * np.log10(i_1w_per_m2 * p_over_i_half_space / w_ref)
 
@@ -51,11 +49,10 @@ def calculate_coil_to_bottom_plate_clearance(x_peak: float) -> float:
     return x_peak + proposed_clearance
 
 
-def calculate_spl(rho: float, xty: Tuple[Any, Any], sd: float) -> Tuple[np.ndarray, np.ndarray]:
+def calculate_spl(xty: Tuple[Any, Any], sd: float) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculate SPL using simplified radiation impedance * acceleration.
 
-    :param rho: Air density in kg/m³.
     :param xty: Tuple containing (frequencies, RMS velocities).
     :param sd: Diaphragm effective surface area in m².
     :return: Tuple of (frequencies, SPL values in dB).
@@ -63,7 +60,7 @@ def calculate_spl(rho: float, xty: Tuple[Any, Any], sd: float) -> Tuple[np.ndarr
     a = np.sqrt(sd / np.pi)  # piston radius
     freqs = np.array(xty[0]).flatten()
     # p0: acoustic pressure
-    p0 = 0.5 * 1j * freqs * 2 * np.pi * rho * a ** 2 * np.array(xty[1]).flatten()
+    p0 = 0.5 * 1j * freqs * 2 * np.pi * air.RHO * a ** 2 * np.array(xty[1]).flatten()
     pref = 2e-5
     spl = 20 * np.log10(np.abs(p0) / pref)
     return freqs, spl
