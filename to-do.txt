@@ -1,7 +1,7 @@
 # Bugs
 no errors when the load file has invalid parameters like R_serial (R_serial is no more in use)
 export seems broken
-
+remove get_main_dir and use app_settings to provide such information.
 # Important features to add
 
 
