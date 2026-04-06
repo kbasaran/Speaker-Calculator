@@ -65,11 +65,6 @@ class Settings:
     author: str = app_definitions["author"]
     author_short: str = app_definitions["author_short"]
     version: str = app_definitions["version"]
-    GAMMA: float = 1.401  # adiabatic index of air
-    P0: int = 101325  # atmospheric pressure
-    RHO: float = 1.1839  # density of air at 25 degrees celcius
-    Kair: float = 101325. * GAMMA
-    c_air: float = (Kair / RHO)**0.5
     vc_table_file = "data/wire table.ods"  # relative posix path
     startup_state_file = "data/startup.sscf"  # relative posix path
     f_min: int = 10
@@ -1151,15 +1146,9 @@ class MainWindow(qtw.QMainWindow):
                 w = 2 * np.pi * freqs
                 Xpeak_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
 
-                _, SPL = ac.calculate_spl(settings.RHO,
-                                          (freqs, velocs["Diaphragm, RMS"]),
-                                          spk_sys.speaker.Sd,
-                                          )
+                _, SPL = ac.calculate_spl((freqs, velocs["Diaphragm, RMS"]), spk_sys.speaker.Sd)
 
-                _, SPL_Xpeak_limited = ac.calculate_spl(settings.RHO,
-                                                       (freqs, Xpeak_limited_velocities),
-                                                       spk_sys.speaker.Sd,
-                                                       )
+                _, SPL_Xpeak_limited = ac.calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
     
                 curves.update({"SPL piston mode, Xpeak limited": SPL_Xpeak_limited,
                                "SPL piston mode": SPL,
@@ -1249,7 +1238,7 @@ class MainWindow(qtw.QMainWindow):
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
-        summary_all = self.speaker_model_state["system"].get_summary(settings, self.speaker_model_state["V_source"])
+        summary_all = self.speaker_model_state["system"].get_summary(self.speaker_model_state["V_source"])
         self.results_textbox.setText(summary_all)
 
 class CurveExportMenu(qtw.QMenu):

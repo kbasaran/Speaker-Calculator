@@ -9,3 +9,5 @@ class Air:
     GAMMA: float = 1.401  # adiabatic index of air
     Kair: float = P0 * GAMMA
     c_air: float = (Kair / RHO)**0.5
+
+air = Air()
