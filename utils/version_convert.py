@@ -268,5 +268,5 @@ def batch_convert_v01_files(folder_path):
 if __name__ == "__main__":
     # state = convert_v01_to_v02(Path.cwd().joinpath("default.sscf"))
     states = batch_convert_v01_files(pathlib.Path(
-        "./private/SSC files"
+        "../private/SSC files"
         ))
