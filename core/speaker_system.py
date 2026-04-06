@@ -317,10 +317,6 @@ class SpeakerSystem:
 
         return summary
 
-    def power_at_Re(self, Vspeaker):
-        # Calculation of power at Re for given voltage at the speaker terminals
-        return Vspeaker**2 / self.Re
-    
     def get_displacements(self, V_source, freqs: np.ndarray) -> dict:
         # Voltage argument given in RMS
         # outputs in m
