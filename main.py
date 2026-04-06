@@ -1060,9 +1060,9 @@ class MainWindow(qtw.QMainWindow):
         
         try:
             vals = self.get_state()
-            speaker_driver = construct_SpeakerDriver(air, vals)
+            speaker_driver = construct_SpeakerDriver(vals)
             spk_sys = self.speaker_model_state["system"] if hasattr(self, "speaker_model_state") else None
-            speaker_system = build_or_update_SpeakerSystem(air, vals, speaker_driver, spk_sys)
+            speaker_system = build_or_update_SpeakerSystem(vals, speaker_driver, spk_sys)
             V_source = ac.calculate_voltage(vals["excitation_value"],
                                             vals["excitation_type"]["current_data"],
                                             re=speaker_driver.Re,
@@ -1450,7 +1450,7 @@ def update_coil_options_combobox(combo_box: qtw.QComboBox, input_form_tabbed: In
         combo_box.showPopup()
 
 
-def construct_SpeakerDriver(air, vals) -> ac.SpeakerSystem:
+def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
     "Create the loudspeaker model based on the values provided in the widget."
     global wires, logger
     motor_spec_type = vals["motor_spec_type"]["current_data"]
@@ -1512,7 +1512,7 @@ def construct_SpeakerDriver(air, vals) -> ac.SpeakerSystem:
     return speaker_driver
 
 
-def build_or_update_SpeakerSystem(air, vals,
+def build_or_update_SpeakerSystem(vals,
                                   speaker: ac.SpeakerDriver,
                                   spk_sys: (None, ac.SpeakerSystem) = None,
                                   ) -> ac.SpeakerSystem:    
@@ -1537,21 +1537,18 @@ def build_or_update_SpeakerSystem(air, vals,
         passive_radiator = None
         
     if spk_sys is None:
-        return ac.SpeakerSystem(air,
-                                speaker=speaker,
+        return ac.SpeakerSystem(speaker=speaker,
                                 Rext=vals["Rext"],
                                 enclosure=enclosure,
                                 parent_body=parent_body,
                                 passive_radiator=passive_radiator,
                                 )
     else:
-        spk_sys.update_values(air,
-                              speaker=speaker,
+        spk_sys.update_values(speaker=speaker,
                               Rext=vals["Rext"],
                               enclosure=enclosure,
                               parent_body=parent_body,
                               passive_radiator=passive_radiator,
-                              settings=settings,
                               )
 
     return spk_sys
