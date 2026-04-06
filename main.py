@@ -522,7 +522,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         return form
 
-    def _make_form_for_enclosure_tab(form):
+    def _make_form_for_enclosure_tab(self):
         form = pwi.UserForm()
 
         # ---- Enclosure type
@@ -595,7 +595,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         return form
 
-    def _make_form_for_system_tab(form):
+    def _make_form_for_system_tab(self):
         form = pwi.UserForm()
 
         # ---- System type
@@ -838,7 +838,7 @@ class MainWindow(qtw.QMainWindow):
         sunken_line_layout = qtw.QHBoxLayout(sunken_line)
         sunken_line.setFrameShape(qtw.QFrame.VLine)
         sunken_line.setFrameShadow(qtw.QFrame.Sunken)
-        sunken_line_layout.setContentsMargins(text_width * 2 / 3, text_height * 2, text_width * 2 / 3, text_height)
+        sunken_line_layout.setContentsMargins(*[int(val) for val in (text_width * 2 / 3, text_height * 2, text_width * 2 / 3, text_height)])
         mw_center_layout.addWidget(sunken_line)
         
         # ---- Make center with results
@@ -1032,8 +1032,8 @@ class MainWindow(qtw.QMainWindow):
         text_box.exec()
 
     def _not_implemented_popup(self):
-        message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
-                                      "Feature not Implemented",
+        message_box = qtw.QMessageBox(icon=qtw.QMessageBox.Information,
+                                      text="Feature not Implemented",
                                       )
         message_box.setStandardButtons(qtw.QMessageBox.Ok)
         message_box.exec()
@@ -1443,7 +1443,7 @@ def update_coil_options_combobox(combo_box: qtw.QComboBox, input_form_tabbed: In
         combo_box.showPopup()
 
 
-def construct_SpeakerDriver(vals) -> SpeakerSystem:
+def construct_SpeakerDriver(vals) -> SpeakerDriver:
     "Create the loudspeaker model based on the values provided in the widget."
     global wires, logger
     motor_spec_type = vals["motor_spec_type"]["current_data"]
@@ -1507,7 +1507,7 @@ def construct_SpeakerDriver(vals) -> SpeakerSystem:
 
 def build_or_update_SpeakerSystem(vals,
                                   speaker: SpeakerDriver,
-                                  spk_sys: (None, SpeakerSystem) = None,
+                                  spk_sys: None | SpeakerSystem = None,
                                   ) -> SpeakerSystem:
     if vals["enclosure_type"] == 1:
         enclosure = Enclosure(vals["Vb"],
@@ -1523,7 +1523,7 @@ def build_or_update_SpeakerSystem(vals,
                                     )
     else:
         parent_body = None
-        
+
     if False:  # passive radiator not implemented yet
         pass
     else:
@@ -1559,7 +1559,7 @@ def parse_args(app_definitions):
 
     parser = argparse.ArgumentParser(prog="python main.py",
                                      description=description,
-                                     epilog={app_definitions['website']},
+                                     epilog=app_definitions['website'],
                                      )
     parser.add_argument('infile', nargs='?', type=Path,
                         help="Path to a '*.sscf' file. This will open with preset values.")
@@ -1580,7 +1580,7 @@ def create_sound_engine(app):
     # app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.quit)  # for clean exit
     
-    sound_engine_thread.start(qtc.QThread.HighPriority)
+    sound_engine_thread.start(priority=qtc.QThread.HighPriority)
 
     return sound_engine, sound_engine_thread
 
