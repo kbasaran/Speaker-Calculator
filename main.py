@@ -30,7 +30,7 @@ from PySide6 import QtGui as qtg
 from generictools import signal_tools
 from generictools.graphing_widget import MatplotlibWidget
 import generictools.personalized_widgets as pwi
-from version_convert import convert_any
+from utils.version_convert import convert_any
 
 import logging
 from pathlib import Path
