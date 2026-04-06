@@ -9,4 +9,4 @@ acoustics >= 0.2.6
 scipy == 1.15.*  # for pyacoustics 2.0 compatibility
 soundfile
 sounddevice == 0.5.*
-cx-freeze == 8.4.1  # bug with some kind of "too deep search" error on later versions
+cx-freeze == 8.6.*
