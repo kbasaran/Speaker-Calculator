@@ -38,7 +38,7 @@ import matplotlib as mpl
 import numpy as np
 from functools import partial
 from core.calculations import calculate_voltage, calculate_spl
-from core.models import Wire, Coil, Motor, Enclosure, ParentBody
+from core.components import Wire, Coil, Motor, Enclosure, ParentBody
 from core.speaker_system import SpeakerSystem
 from core.speaker_driver import SpeakerDriver
 

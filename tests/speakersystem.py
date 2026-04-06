@@ -19,7 +19,7 @@ __email__ = "kbasaran@gmail.com"
 import numpy as np
 from scipy import signal
 
-from core.models import Enclosure, ParentBody
+from core.components import Enclosure, ParentBody
 from core.speaker_system import SpeakerSystem
 from core.speaker_driver import SpeakerDriver
 

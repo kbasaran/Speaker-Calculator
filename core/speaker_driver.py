@@ -21,7 +21,7 @@ import dataclasses as dtc
 import numpy as np
 from config.physics import air
 from core.calculations import calculate_air_mass, calculate_lm, calculate_coil_to_bottom_plate_clearance
-from core.models import Motor
+from core.components import Motor
 
 
 @dtc.dataclass
