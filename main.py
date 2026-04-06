@@ -21,7 +21,7 @@ import sys
 import json
 import time
 import dataclasses
-from dataclasses import dataclass, fields, asdict
+from dataclasses import dataclass, fields
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
@@ -113,9 +113,6 @@ class Settings:
                 field.name,
                 self.settings_sys.value(field.name, field.default, type=type(field.default)),
             )
-
-    def __repr__(self):
-        return str(self.asdict())
 
 
 class InputSectionTabWidget(qtw.QTabWidget):
