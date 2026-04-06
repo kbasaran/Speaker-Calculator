@@ -34,12 +34,9 @@ bdist_msi_options = {
                     }]
     }
 
-# base="Win32GUI" should be used only for Windows GUI app
-base = "Win32GUI" if sys.platform == "win32" else None
-
 executables=[Executable("main.py",
                         copyright=app_definitions["copyright"],
-                        base=base,
+                        base="gui",
                         shortcut_name=app_definitions["app_name"] + " v" + app_definitions["version"],
                         shortcut_dir="DesktopFolder",
                         icon=app_definitions["icon_path"],
