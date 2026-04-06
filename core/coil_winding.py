@@ -20,7 +20,7 @@ import logging
 from typing import Dict, Any, Optional
 
 import core.speaker_driver
-from .models import Wire, Coil, Motor
+from .components import Wire, Coil, Motor
 
 def wind_coil(wire: Wire,
               n_layers: int,

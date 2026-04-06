@@ -27,7 +27,7 @@ from sympy.physics import mechanics as mech
 
 from config.physics import air
 from core.calculations import make_state_matrix_A, make_state_matrix_B
-from core.models import Enclosure, ParentBody, PassiveRadiator
+from core.components import Enclosure, ParentBody, PassiveRadiator
 from core.speaker_driver import SpeakerDriver
 
 

@@ -17,7 +17,7 @@ __email__ = "kbasaran@gmail.com"
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from pathlib import Path
-from core.models import Wire
+from core.components import Wire
 import pandas as pd
 
 
