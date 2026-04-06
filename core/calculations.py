@@ -1,5 +1,8 @@
 import numpy as np
 from typing import Tuple, Any
+
+import sympy as smp
+
 from config.physics import air
 
 def calculate_air_mass(sd: float) -> float:
@@ -95,3 +98,51 @@ def calculate_voltage(excitation_value: float, excitation_type: str, re: float =
             raise ValueError(f"excitation type must be one of (V, W, Wn), but got: {excitation_type}")
 
     return float(input_voltage)
+
+
+def make_state_matrix_B(state_vars, state_diffs, input_vars, sols):
+    # Input matrix
+
+    matrix = []
+    for state_diff in state_diffs:
+        # Each row corresponds to the differential of a state variable
+        # as listed in state_diffs
+        # e.g. x1_t, x1_tt, x2_t, x2_tt
+
+        # # find coefficients of each state variable
+        if state_diff not in sols.keys():
+            coeffs = np.zeros(len(input_vars))
+        else:
+            coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+
+        # # find coefficients of each state variable
+        # if state_diff in sols.keys():
+        #     coeffs = [sols[state_diff].coeff(input_var) for input_var in input_vars]
+        # else:
+        #     coeffs = np.zeros(len(input_vars))
+
+        matrix.append(coeffs)
+
+    return smp.Matrix(matrix)
+
+
+def make_state_matrix_A(state_vars, state_diffs, sols):
+    # State matrix
+
+    matrix = []
+    for state_diff in state_diffs:
+        # Each row corresponds to the differential of a state variable
+        # as listed in state_diffs
+        # e.g. x1_t, x1_tt, x2_t, x2_tt
+
+        # find coefficients of each state variable
+        if state_diff in state_vars:
+            coeffs = [int(state_vars[i] == state_diff) for i in range(len(state_vars))]
+        elif state_diff in sols.keys():
+            coeffs = [sols[state_diff].coeff(state_var) for state_var in state_vars]
+        else:
+            coeffs = np.zeros(len(state_vars))
+
+        matrix.append(coeffs)
+
+    return smp.Matrix(matrix)

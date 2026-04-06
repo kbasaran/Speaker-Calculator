@@ -1,6 +1,7 @@
 from pathlib import Path
-import electroacoustical as ac
+from core.models import Wire
 import pandas as pd
+
 
 
 def read_wire_table(wire_table_file: Path) -> pd.DataFrame:
@@ -23,6 +24,6 @@ def read_wire_table(wire_table_file: Path) -> pd.DataFrame:
 
     wires_as_dict = dict()
     for wire_name, columns_data_as_series in imported_wire_table.iterrows():
-        wires_as_dict[wire_name] = ac.Wire(name=wire_name, **columns_data_as_series.to_dict())
+        wires_as_dict[wire_name] = Wire(name=wire_name, **columns_data_as_series.to_dict())
 
     return wires_as_dict

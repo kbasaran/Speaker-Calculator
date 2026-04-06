@@ -1,14 +1,15 @@
 import logging
 from typing import Dict, Any, Optional
+from .models import Wire, Coil, Motor
 import electroacoustical as ac
 
-def wind_coil(wire: 'ac.Wire',
+def wind_coil(wire: Wire,
               n_layers: int,
               w_stacking_coef: float,
               carrier_od: float,
               h_winding_target: float,
               reduce_per_layer: float,
-              ) -> 'ac.Coil':
+              ) -> Coil:
     """
     Create a coil object based on the given winding parameters.
 
@@ -32,23 +33,18 @@ def wind_coil(wire: 'ac.Wire',
     if any([n_winding < 1 for n_winding in n_windings]):
         raise ValueError("Some layers were impossible to wind with the given parameters.")
 
-    return ac.Coil(carrier_od, wire, n_windings, w_stacking_coef)
+    return Coil(carrier_od, wire, n_windings, w_stacking_coef)
 
 
-def find_feasible_coils(vals: Dict[str, Any],
-                         wires: Dict[str, 'ac.Wire'],
-                         settings: 'ac.Air',
-                         logger: Optional[logging.Logger] = None
-                         ) -> Dict[str, 'ac.Motor']:
+def find_feasible_coils(vals: Dict[str, Any], wires: Dict[str, Wire], logger: Optional[logging.Logger] = None) -> Dict[str, Motor]:
     """
     Scan for the best matching speaker coil options based on input parameters.
 
     :param vals: Dictionary of input values (target Re, dimensions, etc.).
     :param wires: Dictionary of available wire objects.
-    :param settings: Air object for environmental constants.
     :param logger: Logger object for debugging (optional).
     :return: Dictionary mapping friendly names to Motor objects.
-    :raises ValueError: If number of layer options is invalid or empty.
+    :raises ValueError: If the number of layer options is invalid or empty.
     """
     if logger is None:
         logger = logging.getLogger(__name__)
@@ -80,7 +76,7 @@ def find_feasible_coils(vals: Dict[str, Any],
 
             # Check if Re is within +/- 15-20% of target
             if vals["target_Re"] / 1.15 < coil.Re < vals["target_Re"] * 1.2:
-                motor = ac.Motor(
+                motor = Motor(
                     coil=coil,
                     Bavg=vals["B_average"],
                     h_top_plate=vals["h_top_plate"],
