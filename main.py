@@ -37,7 +37,10 @@ from pathlib import Path
 import matplotlib as mpl
 import numpy as np
 from functools import partial
-import electroacoustical as ac
+from core.calculations import calculate_voltage, calculate_spl
+from core.models import Wire, Coil, Motor, Enclosure, ParentBody
+from electroacoustical import SpeakerSystem, SpeakerDriver
+
 import utils.file_io as fio
 from core.coil_winding import find_feasible_coils
 import pyperclip
@@ -1035,7 +1038,7 @@ class MainWindow(qtw.QMainWindow):
         message_box.exec()
     
     def update_coil_choices_button_clicked(self):
-        name_to_motor = find_feasible_coils(self.get_state(), wires, settings, logger)
+        name_to_motor = find_feasible_coils(self.get_state(), wires, logger)
         update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"], self.input_form, name_to_motor)
         if self.input_form.interactable_widgets["coil_options"].currentData():
             self.signal_good_beep.emit()
@@ -1047,7 +1050,7 @@ class MainWindow(qtw.QMainWindow):
         if self.input_form.interactable_widgets["motor_spec_type"].currentData() == "define_coil":
             update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"],
                                          self.input_form,
-                                         find_feasible_coils(self.get_state(), wires, settings, logger),
+                                         find_feasible_coils(self.get_state(), wires, logger),
                                          )
             if not self.input_form.interactable_widgets["coil_options"].currentData():
                 self.signal_bad_beep.emit()
@@ -1058,7 +1061,7 @@ class MainWindow(qtw.QMainWindow):
             speaker_driver = construct_SpeakerDriver(vals)
             spk_sys = self.speaker_model_state["system"] if hasattr(self, "speaker_model_state") else None
             speaker_system = build_or_update_SpeakerSystem(vals, speaker_driver, spk_sys)
-            V_source = ac.calculate_voltage(vals["excitation_value"],
+            V_source = calculate_voltage(vals["excitation_value"],
                                             vals["excitation_type"]["current_data"],
                                             re=speaker_driver.Re,
                                             rnom=vals["Rnom"],
@@ -1146,9 +1149,9 @@ class MainWindow(qtw.QMainWindow):
                 w = 2 * np.pi * freqs
                 Xpeak_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
 
-                _, SPL = ac.calculate_spl((freqs, velocs["Diaphragm, RMS"]), spk_sys.speaker.Sd)
+                _, SPL = calculate_spl((freqs, velocs["Diaphragm, RMS"]), spk_sys.speaker.Sd)
 
-                _, SPL_Xpeak_limited = ac.calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
+                _, SPL_Xpeak_limited = calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
     
                 curves.update({"SPL piston mode, Xpeak limited": SPL_Xpeak_limited,
                                "SPL piston mode": SPL,
@@ -1439,7 +1442,7 @@ def update_coil_options_combobox(combo_box: qtw.QComboBox, input_form_tabbed: In
         combo_box.showPopup()
 
 
-def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
+def construct_SpeakerDriver(vals) -> SpeakerSystem:
     "Create the loudspeaker model based on the values provided in the widget."
     global wires, logger
     motor_spec_type = vals["motor_spec_type"]["current_data"]
@@ -1449,19 +1452,19 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
             motor_as_dict = vals["coil_options"]["current_data"]
             logging.debug(f"Motor object will be built from dict: {motor_as_dict}")
             wire_as_dict = motor_as_dict["coil"]["wire"]
-            wire = ac.Wire(**wire_as_dict)
+            wire = Wire(**wire_as_dict)
 
             coil_as_dict = motor_as_dict["coil"]
             coil_as_dict["wire"] = wire
-            coil = ac.Coil(**coil_as_dict)
+            coil = Coil(**coil_as_dict)
 
             motor_as_dict["coil"] = coil
-            motor = ac.Motor(**motor_as_dict)
+            motor = Motor(**motor_as_dict)
 
         except (TypeError, AttributeError) as e:  # doesn't have motor attribute or is None
             print(e)
             raise RuntimeError("Invalid motor object in coil options combobox")
-        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+        speaker_driver = SpeakerDriver(fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
 
@@ -1473,7 +1476,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           )
         
     elif motor_spec_type == "define_Bl_Re_Mmd":
-        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+        speaker_driver = SpeakerDriver(fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
 
@@ -1485,7 +1488,7 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
                                           )
         
     elif motor_spec_type == "define_Bl_Re_Mms":
-        speaker_driver = ac.SpeakerDriver(fs=vals["fs"],
+        speaker_driver = SpeakerDriver(fs=vals["fs"],
                                           Sd=vals["Sd"],
                                           Qms=vals["Qms"],
 
@@ -1502,18 +1505,18 @@ def construct_SpeakerDriver(vals) -> ac.SpeakerSystem:
 
 
 def build_or_update_SpeakerSystem(vals,
-                                  speaker: ac.SpeakerDriver,
-                                  spk_sys: (None, ac.SpeakerSystem) = None,
-                                  ) -> ac.SpeakerSystem:    
+                                  speaker: SpeakerDriver,
+                                  spk_sys: (None, SpeakerSystem) = None,
+                                  ) -> SpeakerSystem:
     if vals["enclosure_type"] == 1:
-        enclosure = ac.Enclosure(vals["Vb"],
+        enclosure = Enclosure(vals["Vb"],
                                  vals["Qa"],
                                  )
     else:
         enclosure = None
         
     if vals["parent_body"] == 1:
-        parent_body = ac.ParentBody(vals["mpb"],
+        parent_body = ParentBody(vals["mpb"],
                                     vals["kpb"],
                                     vals["rpb"],
                                     )
@@ -1526,7 +1529,7 @@ def build_or_update_SpeakerSystem(vals,
         passive_radiator = None
         
     if spk_sys is None:
-        return ac.SpeakerSystem(speaker=speaker,
+        return SpeakerSystem(speaker=speaker,
                                 Rext=vals["Rext"],
                                 enclosure=enclosure,
                                 parent_body=parent_body,
