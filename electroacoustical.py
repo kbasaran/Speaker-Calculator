@@ -338,14 +338,20 @@ class Enclosure:
         return self.Vb
 
     def K(self, air, Sd):
-        return Sd**2 * air.Kair / self.Vba()
+        if self.Vb == 0:
+            return 0
+        else:
+            return Sd**2 * air.Kair / self.Vba()
 
     def R(self, air, Sd, Mms, Kms):
         """
         Damping at fb due to air absorption in box. Calculated from Qa.
         """
         # return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
-        return ((Kms + self.K(air, Sd)) * Mms)**0.5 / self.Qa
+        if self.Vb == 0:
+            return 0
+        else:
+            return ((Kms + self.K(air, Sd)) * Mms)**0.5 / self.Qa
 
     # def Vba(self):  # acoustical volume higher than actual due to internal damping
     #     # below formula is shown in GUI tooltip. Update tooltip if modifiying.
@@ -459,7 +465,7 @@ def make_state_matrix_B(state_vars, state_diffs, input_vars, sols):
 @dtc.dataclass
 class SpeakerSystem:
     speaker: SpeakerDriver
-    Rext: float = 0   # series electrical resistance from voltage geenrator to the speaker terminals.
+    Rext: float = 0   # series electrical resistance from voltage generator to the speaker terminals.
                     # may be at the source amplifier or in the cables going to speaker terminals
     enclosure: None | Enclosure = None
     parent_body: None | ParentBody = None
@@ -469,7 +475,7 @@ class SpeakerSystem:
 
     def __post_init__(self, air):
         self._build_symbolic_ss_model()
-        self.update_values(air)
+        self.update_values()
 
     def _build_symbolic_ss_model(self):
         # Static symbols
@@ -571,7 +577,7 @@ class SpeakerSystem:
                              "state_vars": state_vars,
                             }
 
-    def _get_parameter_names_to_values(self, air) -> dict:
+    def _get_parameter_names_to_values(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
         "key: symbol variable name, val: value"
 
@@ -596,13 +602,11 @@ class SpeakerSystem:
 
             "Vba": 0 if self.enclosure is None else self.enclosure.Vba(),  # in fact Vba is infinite when no enclosure. but infinite is not allowed.
             "Rbox": 0 if self.enclosure is None else self.enclosure.R(
-                air,
+                self.air,
                 self.speaker.Sd,
                 self.speaker.Mms,
                 self.speaker.Kms,
                 ),
-
-            "Kair": 0 if self.enclosure is None else air.Kair,  # 0 is trickery a bit, to disable the housing formulas.
 
             "Rext": self.Rext,
 
@@ -610,12 +614,12 @@ class SpeakerSystem:
 
         return parameter_names_to_values
 
-    def get_symbols_to_values(self, air):
+    def get_symbols_to_values(self):
         # Dictionary with sympy symbols as keys and values as values
-        parameter_names_to_values = self._get_parameter_names_to_values(air)
+        parameter_names_to_values = self._get_parameter_names_to_values()
         return {symbol: parameter_names_to_values[name] for name, symbol in self.symbols.items()}
 
-    def update_values(self, air, **kwargs):
+    def update_values(self, **kwargs):
         # ---- set the attributes of self with values in kwargs
         dataclass_field_names = [dataclass_field.name for dataclass_field in dtc.fields(self)]
         for key, val in kwargs.items():
@@ -628,18 +632,19 @@ class SpeakerSystem:
         self.R_sys = self.speaker.Re + self.Rext
 
         # ---- Substitute values into system matrix and input matrix
-        symbols_to_values = self.get_symbols_to_values(air)
+        symbols_to_values = self.get_symbols_to_values()
         A = np.array(self._symbolic_ss["A"].subs(symbols_to_values)).astype(float)
         B = np.array(self._symbolic_ss["B"].subs(symbols_to_values)).astype(float)
 
         # ---- Updates in relation to enclosure
         if isinstance(self.enclosure, Enclosure):
+            self.Kair = self.air.Kair
             zeta_boxed_speaker = (
-                self.enclosure.R(air, self.speaker.Sd, self.speaker.Mms, self.speaker.Mms)
+                self.enclosure.R(self.air, self.speaker.Sd, self.speaker.Mms, self.speaker.Mms)
                                   + self.speaker.Rms + self.speaker.Bl**2 / self.speaker.Re) \
-                                 / 2 / ((self.speaker.Kms + self.enclosure.K(air, self.speaker.Sd)) * self.speaker.Mms) ** 0.5
+                                 / 2 / ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) * self.speaker.Mms) ** 0.5
 
-            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms + self.enclosure.K(air, self.speaker.Sd)) / self.speaker.Mms) ** 0.5
+            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) / self.speaker.Mms) ** 0.5
 
             fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
             if np.iscomplex(fb_damped):  # means overdamped
@@ -649,6 +654,7 @@ class SpeakerSystem:
             self.Qtc = np.inf if zeta_boxed_speaker == 0 else 1 / 2 / zeta_boxed_speaker
 
         else:
+            self.Kair = 0  # trickery to remove air pressure when no enclosure
             self.fb = np.nan
             self.Qtc = np.nan
 
