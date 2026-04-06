@@ -2,7 +2,8 @@ import numpy as np
 from scipy import signal
 
 from core.models import Enclosure, ParentBody
-from electroacoustical import SpeakerDriver, SpeakerSystem
+from core.speaker_system import SpeakerSystem
+from core.speaker_driver import SpeakerDriver
 
 
 def test():

@@ -39,7 +39,8 @@ import numpy as np
 from functools import partial
 from core.calculations import calculate_voltage, calculate_spl
 from core.models import Wire, Coil, Motor, Enclosure, ParentBody
-from electroacoustical import SpeakerSystem, SpeakerDriver
+from core.speaker_system import SpeakerSystem
+from core.speaker_driver import SpeakerDriver
 
 import utils.file_io as fio
 from core.coil_winding import find_feasible_coils

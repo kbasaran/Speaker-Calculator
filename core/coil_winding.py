@@ -1,5 +1,7 @@
 import logging
 from typing import Dict, Any, Optional
+
+import core.speaker_driver
 from .models import Wire, Coil, Motor
 import electroacoustical as ac
 
@@ -85,7 +87,7 @@ def find_feasible_coils(vals: Dict[str, Any], wires: Dict[str, Wire], logger: Op
                     airgap_clearance_outer=vals["airgap_clearance_outer"],
                     h_former_under_coil=vals["h_former_under_coil"],
                 )
-                speaker = ac.SpeakerDriver(
+                speaker = core.speaker_driver.SpeakerDriver(
                     fs=vals["fs"],
                     Sd=vals["Sd"],
                     Qms=vals["Qms"],
