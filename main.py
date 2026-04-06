@@ -1052,48 +1052,29 @@ class MainWindow(qtw.QMainWindow):
                                          find_feasible_coils(self.get_state(), wires, logger),
                                          )
             if not self.input_form.interactable_widgets["coil_options"].currentData():
+                self.results_textbox.setText("\n\n### No coil found.\n Please check your input form.")
                 self.signal_bad_beep.emit()
                 return
 
-        try:
-            vals = self.get_state()
-            speaker_driver = construct_SpeakerDriver(vals)
-            spk_sys = self.speaker_model_state["system"] if hasattr(self, "speaker_model_state") else None
-            speaker_system = build_or_update_SpeakerSystem(vals, speaker_driver, spk_sys)
-            V_source = calculate_voltage(vals["excitation_value"],
-                                            vals["excitation_type"]["current_data"],
-                                            re=speaker_driver.Re,
-                                            rnom=vals["Rnom"],
-                                            )
+        vals = self.get_state()
+        speaker_driver = construct_SpeakerDriver(vals)
+        spk_sys = self.speaker_model_state["system"] if hasattr(self, "speaker_model_state") else None
+        speaker_system = build_or_update_SpeakerSystem(vals, speaker_driver, spk_sys)
+        V_source = calculate_voltage(vals["excitation_value"],
+                                        vals["excitation_type"]["current_data"],
+                                        re=speaker_driver.Re,
+                                        rnom=vals["Rnom"],
+                                        )
 
-            self.speaker_model_state = {"vals": vals,
-                                        "driver": speaker_driver,
-                                        "system": speaker_system,
-                                        "V_source": V_source,
-                                        }
+        self.speaker_model_state = {"vals": vals,
+                                    "driver": speaker_driver,
+                                    "system": speaker_system,
+                                    "V_source": V_source,
+                                    }
 
-            self.update_all_results()
-            self.signal_good_beep.emit()
+        self.update_all_results()
+        self.signal_good_beep.emit()
 
-        except RuntimeError as e:
-            logger.debug(e)
-            self.results_textbox.setText("Speaker model build failed."
-                                         "<br></br>"
-                                         "Check your file if you loaded a file"
-                                         "<br></br>"
-                                         "Check parameters if you updated the model."
-                                         "<br></br>"
-                                         "See log for more details.")
-            self.graph.clear_graph()
-            self.signal_bad_beep.emit()
-
-        except KeyError as e:
-            logger.debug(e)
-            self.results_textbox.setText("Update failed."
-                                         "<br></br>"
-                                         "See log for more details.")
-            self.graph.clear_graph()
-            self.signal_bad_beep.emit()
 
     def _export_curve_clicked(self):
         position = self.graph_pushbuttons.buttons()["export_curve_pushbutton"].mapToGlobal(qtc.QPoint(0,0))
