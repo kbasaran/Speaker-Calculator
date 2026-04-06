@@ -21,7 +21,7 @@ import sys
 import json
 import time
 import dataclasses
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, asdict
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
@@ -82,26 +82,25 @@ class Settings:
     interpolate_must_contain_hz: int = 1000
 
     def __post_init__(self):
-        settings_storage_title = (self.app_name
-                                  + " v"
-                                  + (".".join(self.version.split(".")[:2])
-                                     if "." in self.version
-                                     else "???"
-                                     )
-                                  )
-        self.settings_sys = qtc.QSettings(self.author_short, settings_storage_title)
-        logger.debug(f"Settings will be stored in '{self.author_short}', '{settings_storage_title}'")
-        self.read_all_from_system()
+        storage_title = (
+                self.app_name
+                + " v"
+                + (".".join(self.version.split(".")[:2]) if "." in self.version else "???")
+        )
+        self.settings_sys = qtc.QSettings(self.author_short, storage_title)
+        logger.debug(f"Settings will be stored in '{self.author_short}', '{storage_title}'")
         self._field_types = {field.name: field.type for field in fields(self)}
-        
+        self.read_all_from_system()
+
     def update(self, attr_name, new_val):
-        # Update a given setting
-        # Check type of new_val first
         expected_type = self._field_types[attr_name]
         if type(new_val) != expected_type:
-            raise TypeError(f"Incorrect data type received for setting '{attr_name}'. Expected type: {expected_type}. Received type/value: {type(new_val)}/{new_val}.")
+            raise TypeError(
+                f"Incorrect data type received for setting '{attr_name}'. "
+                f"Expected type: {expected_type}. Received type/value: {type(new_val)}/{new_val}."
+            )
         setattr(self, attr_name, new_val)
-        self.settings_sys.setValue(attr_name, getattr(self, attr_name))
+        self.settings_sys.setValue(attr_name, new_val)
 
     def write_all_to_system(self):
         for field in fields(self):
@@ -109,60 +108,59 @@ class Settings:
 
     def read_all_from_system(self):
         for field in fields(self):
-            setattr(self, field.name, self.settings_sys.value(
-                field.name, field.default, type=type(field.default)))
-
-    def as_dict(self):  # better use asdict method from dataclasses instead of this
-        # return the settings as a dict
-        settings = {}
-        for field in fields(self):
-            settings[field.name] = getattr(self, field.name)
-        return settings
+            setattr(
+                self,
+                field.name,
+                self.settings_sys.value(field.name, field.default, type=type(field.default)),
+            )
 
     def __repr__(self):
-        return str(self.as_dict())
+        return str(self.asdict())
 
 
 class InputSectionTabWidget(qtw.QTabWidget):
-    # additional signals that this widget can publish
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
     signal_file_dropped = qtc.Signal(str)
 
+    TAB_NAMES = ("General", "Motor", "Enclosure", "System")
+
     def __init__(self):
         super().__init__()
-        forms = {}
-        forms["General"] = self._make_form_for_general_tab()
-        forms["Motor"] = self._make_form_for_motor_tab()
-        forms["Enclosure"] = self._make_form_for_enclosure_tab()
-        forms["System"] = self._make_form_for_system_tab()
-
         self.interactable_widgets = {}
-        for name, form in forms.items():
-            self.addTab(form, name)
-            self.interactable_widgets = {**self.interactable_widgets, **form.interactable_widgets}
-        
-        # Enable drag and drop
+        self._add_form_tabs()
         self.setAcceptDrops(True)
 
+    def _add_form_tabs(self):
+        forms = (
+            self._make_form_for_general_tab(),
+            self._make_form_for_motor_tab(),
+            self._make_form_for_enclosure_tab(),
+            self._make_form_for_system_tab(),
+        )
+        for tab_name, form in zip(self.TAB_NAMES, forms, strict=True):
+            self.addTab(form, tab_name)
+            self.interactable_widgets.update(form.interactable_widgets)
+
     def dragEnterEvent(self, event: qtg.QDragEnterEvent):
-        """ Accept file drag event if it contains URLs (files) """
+        """Accept file drag event if it contains URLs (files)."""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event: qtg.QDropEvent):
-        """ Handle file drop event and load file contents """
-        urls = event.mimeData().urls()
+        """Handle file drop event and load file contents."""
+        mime_data = event.mimeData()
+        urls = mime_data.urls()
+        if not urls:
+            return
 
-        if urls:
-            paths = [url.toLocalFile().removesuffix("/") for url in urls]
+        paths = [url.toLocalFile().removesuffix("/") for url in urls]
+        if os.name == "nt":
+            paths = [path.removesuffix("/") for path in paths]
 
-            if os.name == "nt":
-                paths = [path.removesuffix("/") for path in paths]
-
-            for path in paths:
-                logger.info(f"User dropped file '{path}' onto InputSectionTabWidget.")
-                self.signal_file_dropped.emit(path)
+        for path in paths:
+            logger.info(f"User dropped file '{path}' onto InputSectionTabWidget.")
+            self.signal_file_dropped.emit(path)
 
     def _make_form_for_general_tab(self):
         form = pwi.UserForm()
@@ -248,7 +246,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       ),
                      description="External resistance",
                      )
-        
+
         # ---- Form logic
         def adjust_form_for_excitation_type(chosen_index):
             is_Wn = \
@@ -258,7 +256,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.interactable_widgets["excitation_type"].currentIndexChanged.connect(adjust_form_for_excitation_type)
         # adjustment at start
         adjust_form_for_excitation_type(form.interactable_widgets["excitation_type"].currentIndex())
-        
+
         return form
 
     def _make_form_for_motor_tab(self):
@@ -496,7 +494,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       ),
                      description="Former bottom ext.",
                      )
-        
+
         # spacer = qtw.QSpacerItem(0, 0, qtw.QSizePolicy.Minimum, qtw.QSizePolicy.MinimumExpanding)
         # form.add_row(spacer)
 
@@ -537,10 +535,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                                          },
                                                         vertical=False,
                                                         )
-        
+
         enclosue_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         form.add_row(enclosue_type_choice_buttons)
-        
+
         # Disable PR vented options for now
         form.interactable_widgets["enclosure_type"].buttons()[2].setEnabled(False)
         form.interactable_widgets["enclosure_type"].buttons()[3].setEnabled(False)
@@ -549,7 +547,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.SunkenLine())
 
         form.add_row(pwi.Title("Closed box specifications"))
-        
+
         form.add_row(pwi.FloatSpinBox("Vb",
                                       "Internal volume filled by air."
                                       "\nFor vented calculations, the air in the vent is included in this value."
@@ -576,13 +574,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
         #                               ),
         #              description="Q<sub>l</sub> - leakage losses",
         #              )
-        
+
         # ---- Passive radiator
         form.add_row(pwi.SunkenLine())
 
         form.add_row(pwi.Title("Passive radiator / Vented"))
         form.add_row(qtw.QLabel("Not implemented yet."))
-        
+
 
         # ---- Form logic
         def adjust_form_for_enclosure_type(toggled_id, checked):
@@ -636,7 +634,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       ),
                      description="Damping coefficient",
                      )
-        
+
         # ---- Form logic
         def adjust_form_for_system_type(toggled_id, checked):
             form.interactable_widgets["kpb"].setEnabled(toggled_id == 1 and checked is True)
@@ -654,21 +652,21 @@ def show_file_paths(parent_window):
     working_directory = get_main_dir()
     coil_table_file = get_main_dir().joinpath(settings.vc_table_file).absolute()
     startup_state_file = get_main_dir().joinpath(settings.startup_state_file).absolute()
-    
+
     result_text = (f"#### Installation folder<br></br>{working_directory}"
                    "<br></br>  \n"
                    f"#### Coil wire definitions file<br></br>{coil_table_file}"
                    "<br></br>  \n"
                    f"#### Start-up state file<br></br>{startup_state_file}"
                    )
-    
+
     popup = pwi.ResultTextBox("File paths",
                               result_text,
                               monospace=False,
                               parent=parent_window,
                               markdown=True,
                               )
-    
+
     popup.exec()
 
 
@@ -696,7 +694,7 @@ class MainWindow(qtw.QMainWindow):
         self._connect_widgets()
         # self.setStatusBar(qtw.QStatusBar())
         # self.statusBar().showMessage("Starting new window..", 2000)
-        
+
         if user_form_dict:
             self.set_state(user_form_dict)
         elif open_user_file:
@@ -716,7 +714,7 @@ class MainWindow(qtw.QMainWindow):
 
         edit_menu = menu_bar.addMenu("Edit")
         settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
-        
+
         help_menu = menu_bar.addMenu("Help")
         paths_action = help_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
         about_action = help_menu.addAction("About", self.open_about_menu)
@@ -729,13 +727,13 @@ class MainWindow(qtw.QMainWindow):
         # connect its signals
         self.input_form.signal_good_beep.connect(self.signal_good_beep)
         self.input_form.signal_bad_beep.connect(self.signal_bad_beep)
-        
+
         self.update_button = pwi.PushButton(
             "update_results",
             "Update results",
             "Update the underlying model and recalculate. Click this each time you modify the user form.",
             )
-        
+
         self.title_textbox = qtw.QLineEdit()
         self.notes_textbox = qtw.QPlainTextEdit()
         self.title_textbox.setClearButtonEnabled(True)
@@ -755,7 +753,7 @@ class MainWindow(qtw.QMainWindow):
         # Graph
         self.graph = MatplotlibWidget(settings, layout_engine="tight")
         self.graph_data_choice = pwi.ChoiceButtonGroup("graph_data_choice",
-                                                       
+
                                                        {0: "SPL",
                                                         1: "Impedance",
                                                         2: "Displacements (rel.)",
@@ -799,10 +797,10 @@ class MainWindow(qtw.QMainWindow):
         # ---- Make left hand side
         lh_boxlayout = qtw.QVBoxLayout()
         mw_center_layout.addLayout(lh_boxlayout)
-        
+
         text_height = qtg.QFontMetrics(self.notes_textbox.font()).capHeight()
         text_width = qtg.QFontMetrics(self.notes_textbox.font()).averageCharWidth()
-        
+
 
         lh_boxlayout.addWidget(self.input_form)
         self.input_form.setSizePolicy(
@@ -823,7 +821,7 @@ class MainWindow(qtw.QMainWindow):
         lh_boxlayout.addWidget(self.title_textbox)  # why is a line appearing under this box?
         self.title_textbox.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)  # height is still not fixed somehow. why?
-        
+
         notes_label = qtw.QLabel("<b>Notes</b>")
         notes_label.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Fixed)
@@ -840,7 +838,7 @@ class MainWindow(qtw.QMainWindow):
         sunken_line.setFrameShadow(qtw.QFrame.Sunken)
         sunken_line_layout.setContentsMargins(*[int(val) for val in (text_width * 2 / 3, text_height * 2, text_width * 2 / 3, text_height)])
         mw_center_layout.addWidget(sunken_line)
-        
+
         # ---- Make center with results
         results_textbox_layout = qtw.QVBoxLayout()
         # results_textbox_layout.addSpacing(text_height * 1)
@@ -866,7 +864,7 @@ class MainWindow(qtw.QMainWindow):
         rh_layout.addWidget(self.graph_pushbuttons)
 
         self.graph.setSizePolicy(
-            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)  
+            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Expanding)
 
     def _connect_widgets(self):
         self.input_form.interactable_widgets["update_coil_choices"]\
@@ -877,11 +875,11 @@ class MainWindow(qtw.QMainWindow):
             button.pressed.connect(lambda arg1=button_id: self.update_graph(arg1))
         self.graph_pushbuttons.buttons()["export_curve_pushbutton"].clicked.connect(self._export_curve_clicked)
         self.graph_pushbuttons.buttons()["export_json_pushbutton"].clicked.connect(self._export_model_clicked)
-        
+
         # disable the relative plots
         self.input_form.interactable_widgets["parent_body"].buttons()[1].toggled.connect(
             self.graph_data_choice.buttons()[2].setEnabled)
-        
+
         # Drag and drop functionality
         self.input_form.signal_file_dropped.connect(self.load_state_from_file)
 
@@ -891,7 +889,7 @@ class MainWindow(qtw.QMainWindow):
         tab_widgets = [self.input_form.widget(i) for i in range(self.input_form.count())]
         for input_form_widget in tab_widgets:
             state = {**state, **input_form_widget.get_form_values()}
-        
+
         state["user_notes"] = self.notes_textbox.toPlainText()
         state["user_title"] = self.title_textbox.text()
 
@@ -909,7 +907,7 @@ class MainWindow(qtw.QMainWindow):
             if file_raw:
                 file = Path(file_raw)
                 if file.suffix != ".sscf":
-                    file = file.with_suffix(".sscf") 
+                    file = file.with_suffix(".sscf")
                 # filter not working as expected, saves files without file extension scf
                 # therefore above logic
                 assert file.parent.exists()
@@ -918,7 +916,7 @@ class MainWindow(qtw.QMainWindow):
         except:
             # Path object could not be created
             raise NotADirectoryError(file_raw)
-        
+
         # if you reached here, file is ready as Path object
 
         settings.update("last_used_folder", str(file.parent))
@@ -942,7 +940,7 @@ class MainWindow(qtw.QMainWindow):
                                                               dir=settings.last_used_folder,
                                                               filter='Speaker calculator files (*.sscf)',
                                                               )
-            
+
             file_raw = path_unverified[0]
             if file_raw:
                 file_arg = Path(file_raw)
@@ -962,7 +960,7 @@ class MainWindow(qtw.QMainWindow):
 
         # backwards compatibility with older file versions
         state = convert_any(file)
-        
+
         self.set_state(state)
         # self.statusBar().showMessage(f"Opened file '{file.name}'", 5000)
 
@@ -1037,17 +1035,17 @@ class MainWindow(qtw.QMainWindow):
                                       )
         message_box.setStandardButtons(qtw.QMessageBox.Ok)
         message_box.exec()
-    
+
     def update_coil_choices_button_clicked(self):
         name_to_motor = find_feasible_coils(self.get_state(), wires, logger)
         update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"], self.input_form, name_to_motor)
         if self.input_form.interactable_widgets["coil_options"].currentData():
             self.signal_good_beep.emit()
-        
+
 
     def _update_model_button_clicked(self):
         self.results_textbox.clear()
-        
+
         if self.input_form.interactable_widgets["motor_spec_type"].currentData() == "define_coil":
             update_coil_options_combobox(self.input_form.interactable_widgets["coil_options"],
                                          self.input_form,
@@ -1056,7 +1054,7 @@ class MainWindow(qtw.QMainWindow):
             if not self.input_form.interactable_widgets["coil_options"].currentData():
                 self.signal_bad_beep.emit()
                 return
-        
+
         try:
             vals = self.get_state()
             speaker_driver = construct_SpeakerDriver(vals)
@@ -1073,7 +1071,7 @@ class MainWindow(qtw.QMainWindow):
                                         "system": speaker_system,
                                         "V_source": V_source,
                                         }
-            
+
             self.update_all_results()
             self.signal_good_beep.emit()
 
@@ -1134,13 +1132,13 @@ class MainWindow(qtw.QMainWindow):
         W_spk = V_spk**2 / spk_sys.speaker.Re
 
         if checked_id == 0:
-            
+
             if spk_sys.speaker.Sd == 0:  # shaker or other with no diaphragm
                 accs = spk_sys.get_accelerations(V_source, freqs)
-              
+
                 curves.update({key.replace("Diaphragm", "Moving mass"): 20*np.log10(np.abs(acc)/1e-6) \
                                for key, acc in accs.items() if "relative" not in key})
-                
+
                 self.graph.set_y_limits_policy("SPL")
                 self.graph.set_title(f"Acceleration, {V_source:.4g}V {W_spk:.3g}Watt@Re")
                 self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$m/s²")
@@ -1153,7 +1151,7 @@ class MainWindow(qtw.QMainWindow):
                 _, SPL = calculate_spl((freqs, velocs["Diaphragm, RMS"]), spk_sys.speaker.Sd)
 
                 _, SPL_Xpeak_limited = calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
-    
+
                 curves.update({"SPL piston mode, Xpeak limited": SPL_Xpeak_limited,
                                "SPL piston mode": SPL,
                                })
@@ -1174,7 +1172,7 @@ class MainWindow(qtw.QMainWindow):
 
         elif checked_id == 2:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "relative" in key: 
+                if "relative" in key:
                     curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
@@ -1187,7 +1185,7 @@ class MainWindow(qtw.QMainWindow):
 
         elif checked_id == 3:
             for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "relative" not in key: 
+                if "relative" not in key:
                     curves[key] = np.abs(val) * 1e3
 
             self.graph.set_y_limits_policy(None)
@@ -1207,7 +1205,7 @@ class MainWindow(qtw.QMainWindow):
                 title = f"Forces\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
             self.graph.set_title(title)
             self.graph.ax.set_ylabel("N")
-            
+
         elif checked_id == 5:
             curves.update({key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()})
             self.graph.set_y_limits_policy(None)
@@ -1300,7 +1298,7 @@ class SettingsDialog(qtw.QDialog):
                                            ),
                           "Beep amplitude",
                           )
-        
+
         user_form.add_row(pwi.SunkenLine())
 
         user_form.add_row(pwi.IntSpinBox("export_ppo",
@@ -1309,8 +1307,8 @@ class SettingsDialog(qtw.QDialog):
                                          ),
                           "Export curve resolution (ppo)",
                           )
-        
-        
+
+
         user_form.add_row(pwi.IntSpinBox("interpolate_must_contain_hz",
                                          "Frequency that will always be a point within interpolated frequency array."
                                          "\nDefault value: 1000",
@@ -1337,8 +1335,8 @@ class SettingsDialog(qtw.QDialog):
             else:
                 values_from_settings[key] = getattr(settings, key)
         user_form.update_form_values(values_from_settings)
-        
-        
+
+
         # for widget_name, widget in user_form.interactable_widgets.items():
         #     saved_setting = getattr(settings, widget_name)
         #     if isinstance(widget, qtw.QCheckBox):
@@ -1381,7 +1379,7 @@ class SettingsDialog(qtw.QDialog):
 
             if returned == qtw.QMessageBox.Cancel:
                 return
-        
+
         for widget_name, value in vals.items():
             if isinstance(value, dict) and "current_text" in value.keys():  # if a qcombobox
                 settings.update(widget_name, value["current_text"])
@@ -1402,11 +1400,11 @@ class SettingsDialog(qtw.QDialog):
 
 
 def get_main_dir():
-    
+
     if getattr(sys, 'frozen', False):
         # The application is frozen
         return Path(sys.executable).parent
-        
+
     else:
         # The application is not frozen
         return Path(__file__).parent
@@ -1422,7 +1420,7 @@ def update_coil_options_combobox(combo_box: qtw.QComboBox, input_form_tabbed: In
             )
     except (KeyError, AttributeError, TypeError):
         last_selected = (None, None)
-        
+
     combo_box.clear()
 
     index_to_select = -1
@@ -1432,9 +1430,9 @@ def update_coil_options_combobox(combo_box: qtw.QComboBox, input_form_tabbed: In
         combo_box.addItem(name, dataclasses.asdict(motor))
         if motor.coil.get_wire_name_and_layers() == last_selected:
             index_to_select = i
-    
+
     combo_box.setCurrentIndex(index_to_select)
-    
+
     # if nothing to add to combobox
     if combo_box.count() == 0:
         combo_box.addItem("--no solution found--")
@@ -1475,7 +1473,7 @@ def construct_SpeakerDriver(vals) -> SpeakerDriver:
                                           Rlw=vals["Rlw"],
                                           Xpeak=vals["Xpeak"],
                                           )
-        
+
     elif motor_spec_type == "define_Bl_Re_Mmd":
         speaker_driver = SpeakerDriver(fs=vals["fs"],
                                           Sd=vals["Sd"],
@@ -1487,7 +1485,7 @@ def construct_SpeakerDriver(vals) -> SpeakerDriver:
 
                                           Xpeak=vals["Xpeak"],
                                           )
-        
+
     elif motor_spec_type == "define_Bl_Re_Mms":
         speaker_driver = SpeakerDriver(fs=vals["fs"],
                                           Sd=vals["Sd"],
@@ -1501,7 +1499,7 @@ def construct_SpeakerDriver(vals) -> SpeakerDriver:
                                           )
     else:
         raise ValueError(f"Motor specification type is invalid: {vals['motor_spec_type']}")
-    
+
     return speaker_driver
 
 
@@ -1515,7 +1513,7 @@ def build_or_update_SpeakerSystem(vals,
                                  )
     else:
         enclosure = None
-        
+
     if vals["parent_body"] == 1:
         parent_body = ParentBody(vals["mpb"],
                                     vals["kpb"],
@@ -1528,7 +1526,7 @@ def build_or_update_SpeakerSystem(vals,
         pass
     else:
         passive_radiator = None
-        
+
     if spk_sys is None:
         return SpeakerSystem(speaker=speaker,
                                 Rext=vals["Rext"],
@@ -1575,11 +1573,11 @@ def create_sound_engine(app):
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
-    
+
     # Connections
     # app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.quit)  # for clean exit
-    
+
     sound_engine_thread.start(priority=qtc.QThread.HighPriority)
 
     return sound_engine, sound_engine_thread
@@ -1590,7 +1588,7 @@ def setup_logging(level: str="warning", args=None):
         log_level = getattr(logging, args.loglevel.upper())
     else:
         log_level = level.upper()
-        
+
     log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
 
     file_handler = logging.FileHandler(filename=log_filename)
@@ -1606,7 +1604,7 @@ def setup_logging(level: str="warning", args=None):
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
     logger.info(f"{time.strftime('%c')} - Started logging with log level {log_level}.")
-    
+
     return logger
 
 
