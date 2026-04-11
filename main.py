@@ -21,12 +21,12 @@ import sys
 import json
 import time
 import dataclasses
-from dataclasses import dataclass, fields
 
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
+from config.app_config import APP_DEFINITIONS, Settings
 from generictools import signal_tools
 from generictools.graphing_widget import MatplotlibWidget
 import generictools.personalized_widgets as pwi
@@ -674,13 +674,13 @@ class MainWindow(qtw.QMainWindow):
     signal_new_window = qtc.Signal(dict)  # new_window with kwargs as widget values
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
-    signal_user_settings_changed = qtc.Signal()  # settings from  menu bar changed, such as graph type
+    signal_user_settings_changed = qtc.Signal()  # settings from menu bar changed, such as graph type
 
     def __init__(self, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
         self.setWindowTitle(" - ".join(
-            (app_definitions["app_name"],
-             app_definitions["version"])
+            (APP_DEFINITIONS["app_name"],
+             APP_DEFINITIONS["version"])
             ))
         self.signal_bad_beep.connect(sound_engine.bad_beep)
         self.signal_good_beep.connect(sound_engine.good_beep)
@@ -893,7 +893,7 @@ class MainWindow(qtw.QMainWindow):
         return state
 
     def save_state_to_file(self, state=None):
-        global app_definitions
+        global APP_DEFINITIONS
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
                                                           dir=settings.last_used_folder,
                                                           filter='Speaker calculator files (*.sscf)',
@@ -920,7 +920,8 @@ class MainWindow(qtw.QMainWindow):
 
         if state is None:
             state = self.get_state()
-        state["application_data"] = app_definitions
+
+        state["application_data"] = APP_DEFINITIONS
 
         json_string = json.dumps(state, indent=4)
         with open(file, "wt") as f:
@@ -999,11 +1000,11 @@ class MainWindow(qtw.QMainWindow):
     def open_about_menu(self):
         result_text = "\n".join([
             "Speaker Calculator - Loudspeaker design and calculations tool",
-            f"Version: {app_definitions['version']}",
+            f"Version: {APP_DEFINITIONS['version']}",
             "",
-            f"{app_definitions['copyright']}",
-            f"{app_definitions['website']}",
-            f"{app_definitions['email']}",
+            f"{APP_DEFINITIONS['copyright']}",
+            f"{APP_DEFINITIONS['website']}",
+            f"{APP_DEFINITIONS['email']}",
             "",
             "This program is free software: you can redistribute it and/or modify",
             "it under the terms of the GNU General Public License as published by",
@@ -1523,11 +1524,11 @@ def build_or_update_SpeakerSystem(vals,
     return spk_sys
 
 
-def parse_args(app_definitions):
+def parse_args(APP_DEFINITIONS):
     import argparse
 
     description = (
-        f"{app_definitions['app_name']} - {app_definitions['copyright']}"
+        f"{APP_DEFINITIONS['app_name']} - {APP_DEFINITIONS['copyright']}"
         "\nThis program comes with ABSOLUTELY NO WARRANTY"
         "\nThis is free software, and you are welcome to redistribute it"
         "\nunder certain conditions. See LICENSE file for more details."
@@ -1535,7 +1536,7 @@ def parse_args(app_definitions):
 
     parser = argparse.ArgumentParser(prog="python main.py",
                                      description=description,
-                                     epilog=app_definitions['website'],
+                                     epilog=APP_DEFINITIONS['website'],
                                      )
     parser.add_argument('infile', nargs='?', type=Path,
                         help="Path to a '*.sscf' file. This will open with preset values.")
@@ -1567,7 +1568,7 @@ def setup_logging(level: str="warning", args=None):
     else:
         log_level = level.upper()
 
-    log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
+    log_filename = Path.home().joinpath(f".{APP_DEFINITIONS['app_name'].lower()}.log")
 
     file_handler = logging.FileHandler(filename=log_filename)
     stdout_handler = logging.StreamHandler(stream=sys.stdout)
@@ -1589,9 +1590,9 @@ def setup_logging(level: str="warning", args=None):
 def main():
     global settings, app_definition, logger, create_sound_engine, wires
 
-    args = parse_args(app_definitions)
+    args = parse_args(APP_DEFINITIONS)
     logger = setup_logging(args=args)
-    settings = Settings(app_definitions["app_name"])
+    settings = Settings(APP_DEFINITIONS["app_name"])
     wires = fio.read_wire_table(get_main_dir().joinpath(settings.vc_table_file))
 
     # ---- Start QApplication
@@ -1599,7 +1600,7 @@ def main():
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to do the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
-        icon_path = str(get_main_dir().joinpath(app_definitions["icon_path"]))
+        icon_path = str(get_main_dir().joinpath(APP_DEFINITIONS["icon_path"]))
         app.setWindowIcon(qtg.QIcon(icon_path))
 
     # ---- Catch exceptions and handle with pop-up widget
