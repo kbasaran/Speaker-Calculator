@@ -75,6 +75,7 @@ APP_DEFINITIONS = {"app_name": "Speaker Calculator",
 
 class SettingsManager(qtc.QObject):
     _instance = None
+    _initialized = False
     settings_changed = qtc.Signal()
 
     # Define your defaults here
@@ -95,18 +96,26 @@ class SettingsManager(qtc.QObject):
     "export_ppo": 48,
     "interpolate_must_contain_hz": 1000,
 }
-
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance.q_settings = qtc.QSettings(APP_DEFINITIONS["author_short"], cls._instance.get_storage_title())
         return cls._instance
+
+    def __init__(self):
+        if self.__class__._initialized:
+            return
+        super().__init__()
+        self.q_settings = qtc.QSettings(
+            APP_DEFINITIONS["author_short"],
+            self.get_storage_title()
+        )
+        self.__class__._initialized = True
 
     def get_storage_title(self):
         return (
-                self.get_value("app_name")
+                APP_DEFINITIONS["app_name"]
                 + " v"
-                + (".".join(self.get_value("version").split(".")[:2]) if "." in self.get_value("version") else "???")
+                + (".".join(APP_DEFINITIONS["version"].split(".")[:2]) if "." in APP_DEFINITIONS["version"] else "???")
         )
 
     def get_value(self, key: str):

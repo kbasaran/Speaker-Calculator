@@ -1238,7 +1238,7 @@ class SettingsDialog(qtw.QDialog):
 
         # ---- read values from settings
         # read values from settings
-        values_from_settings = app_settings.get_values()
+        values_from_settings = app_settings.get_all_as_dict()
         user_form.update_form_values(values_from_settings)
 
         # Connections
@@ -1480,11 +1480,10 @@ def setup_logging(level: str="warning", args=None):
 
 
 def main():
-    global logger, create_sound_engine, wires
+    global logger, create_sound_engine, wires, app_settings
 
     args = parse_args(APP_DEFINITIONS)
     logger = setup_logging(args=args)
-    wires = fio.read_wire_table(get_main_dir().joinpath(app_settings.get_value("vc_table_file")))
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
@@ -1495,6 +1494,7 @@ def main():
         app.setWindowIcon(qtg.QIcon(icon_path))
 
     app_settings = singleton_settings()
+    wires = fio.read_wire_table(get_main_dir().joinpath(app_settings.get_value("vc_table_file")))
 
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerDeveloper(app, logger)
