@@ -26,7 +26,6 @@ from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
-from config.app_config import APP_DEFINITIONS, Settings
 from generictools import signal_tools
 from generictools.graphing_widget import MatplotlibWidget
 import generictools.personalized_widgets as pwi
@@ -46,74 +45,7 @@ import utils.file_io as fio
 from core.coil_winding import find_feasible_coils
 import pyperclip
 
-app_definitions = {"app_name": "Speaker Calculator",
-                   "version": "0.3.4",
-                   "description": "Loudspeaker design and calculations",
-                   "copyright": "Copyright (C) 2026 Kerem Basaran",
-                   "icon_path": "images/logo2025.ico",  # relative posix path
-                   "author": "Kerem Basaran",
-                   "author_short": "kbasaran",
-                   "email": "kbasaran@gmail.com",
-                   "website": "https://github.com/kbasaran",
-                   }
-
-# uncomment for release candidate builds
-# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
-
-
-@dataclass
-class Settings:
-    """Settings will be stored in SI units"""
-    global logger
-    app_name: str = app_definitions["app_name"]
-    author: str = app_definitions["author"]
-    author_short: str = app_definitions["author_short"]
-    version: str = app_definitions["version"]
-    vc_table_file = "data/wire table.ods"  # relative posix path
-    startup_state_file = "data/startup.sscf"  # relative posix path
-    f_min: int = 10
-    f_max: int = 3000
-    A_beep: float = 0.25
-    last_used_folder: str = str(Path.home())
-    matplotlib_style: str = "ggplot"
-    graph_grids: str = "Major and minor"
-    calc_ppo: int = 48 * 8
-    export_ppo: int = 48
-    interpolate_must_contain_hz: int = 1000
-
-    def __post_init__(self):
-        storage_title = (
-                self.app_name
-                + " v"
-                + (".".join(self.version.split(".")[:2]) if "." in self.version else "???")
-        )
-        self.settings_sys = qtc.QSettings(self.author_short, storage_title)
-        logger.debug(f"Settings will be stored in '{self.author_short}', '{storage_title}'")
-        self._field_types = {field.name: field.type for field in fields(self)}
-        self.read_all_from_system()
-
-    def update(self, attr_name, new_val):
-        expected_type = self._field_types[attr_name]
-        if type(new_val) != expected_type:
-            raise TypeError(
-                f"Incorrect data type received for setting '{attr_name}'. "
-                f"Expected type: {expected_type}. Received type/value: {type(new_val)}/{new_val}."
-            )
-        setattr(self, attr_name, new_val)
-        self.settings_sys.setValue(attr_name, new_val)
-
-    def write_all_to_system(self):
-        for field in fields(self):
-            self.settings_sys.setValue(field.name, getattr(self, field.name))
-
-    def read_all_from_system(self):
-        for field in fields(self):
-            setattr(
-                self,
-                field.name,
-                self.settings_sys.value(field.name, field.default, type=type(field.default)),
-            )
-
+from config.app_config import APP_DEFINITIONS, singleton_settings
 
 class InputSectionTabWidget(qtw.QTabWidget):
     signal_good_beep = qtc.Signal()
@@ -647,8 +579,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
 def show_file_paths(parent_window):
     working_directory = get_main_dir()
-    coil_table_file = get_main_dir().joinpath(settings.vc_table_file).absolute()
-    startup_state_file = get_main_dir().joinpath(settings.startup_state_file).absolute()
+    coil_table_file = get_main_dir().joinpath(app_settings.get_value("vc_table_file")).absolute()
+    startup_state_file = get_main_dir().joinpath(app_settings.get_value("startup_state_file")).absolute()
 
     result_text = (f"#### Installation folder<br></br>{working_directory}"
                    "<br></br>  \n"
@@ -668,13 +600,12 @@ def show_file_paths(parent_window):
 
 
 class MainWindow(qtw.QMainWindow):
-    global settings
     # these are signals that this object emits.
     # they will be triggered by the functions and the widgets in this object.
     signal_new_window = qtc.Signal(dict)  # new_window with kwargs as widget values
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
-    signal_user_settings_changed = qtc.Signal()  # settings from menu bar changed, such as graph type
+    # signal_user_settings_changed = qtc.Signal()  # settings from menu bar changed, such as graph type
 
     def __init__(self, sound_engine, user_form_dict=None, open_user_file=None):
         super().__init__()
@@ -696,7 +627,7 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(user_form_dict)
         elif open_user_file:
             self.load_state_from_file(open_user_file)
-        elif (default_startup_file := get_main_dir().joinpath(settings.startup_state_file)).is_file():
+        elif (default_startup_file := get_main_dir().joinpath(app_settings.get_value("startup_state_file"))).is_file():
             self.load_state_from_file(default_startup_file, update_last_used_folder=False)
         else:
             self._update_model_button_clicked()
@@ -710,7 +641,7 @@ class MainWindow(qtw.QMainWindow):
         save_action = file_menu.addAction("Save state..", self.save_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
-        settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
+        settings_action = edit_menu.addAction("Settings..", lambda: SettingsDialog())
 
         help_menu = menu_bar.addMenu("Help")
         paths_action = help_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
@@ -748,7 +679,7 @@ class MainWindow(qtw.QMainWindow):
         rh_widget = qtw.QWidget()
 
         # Graph
-        self.graph = MatplotlibWidget(settings, layout_engine="tight")
+        self.graph = MatplotlibWidget(layout_engine="tight")
         self.graph_data_choice = pwi.ChoiceButtonGroup("graph_data_choice",
 
                                                        {0: "SPL",
@@ -880,6 +811,9 @@ class MainWindow(qtw.QMainWindow):
         # Drag and drop functionality
         self.input_form.signal_file_dropped.connect(self.load_state_from_file)
 
+        # settings connection
+        app_settings.settings_changed.connect(self._settings_were_updated)
+
     def get_state(self):
         logger.debug("Get states initiated.")
         state = {}
@@ -895,7 +829,7 @@ class MainWindow(qtw.QMainWindow):
     def save_state_to_file(self, state=None):
         global APP_DEFINITIONS
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
-                                                          dir=settings.last_used_folder,
+                                                          dir=app_settings.get_value("last_used_folder"),
                                                           filter='Speaker calculator files (*.sscf)',
                                                           )
 
@@ -916,7 +850,7 @@ class MainWindow(qtw.QMainWindow):
 
         # if you reached here, file is ready as Path object
 
-        settings.update("last_used_folder", str(file.parent))
+        app_settings.set_value("last_used_folder", str(file.parent))
 
         if state is None:
             state = self.get_state()
@@ -935,7 +869,7 @@ class MainWindow(qtw.QMainWindow):
         # raise a file selection menu
         if file_arg is None:
             path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
-                                                              dir=settings.last_used_folder,
+                                                              dir=app_settings.get_value("last_used_folder"),
                                                               filter='Speaker calculator files (*.sscf)',
                                                               )
 
@@ -954,7 +888,7 @@ class MainWindow(qtw.QMainWindow):
 
         logger.info(f"Loading file '{file.name}'")
         if update_last_used_folder:
-            settings.update("last_used_folder", str(file.parent))
+            app_settings.set_value("last_used_folder", str(file.parent))
 
         # backwards compatibility with older file versions
         state = convert_any(file)
@@ -982,18 +916,17 @@ class MainWindow(qtw.QMainWindow):
         self.signal_new_window.emit(
             {"user_form_dict": self.get_state()})
 
-    def open_settings_dialog(self):
-        settings_dialog = SettingsDialog(parent=self)
-        settings_dialog.signal_settings_changed.connect(
-            self._settings_dialog_return)
+    # def open_settings_dialog(self):
+    #     settings_dialog = SettingsDialog(parent=self)
+    #     settings_dialog.signal_settings_changed.connect(
+    #         self._settings_dialog_return)
+    #
+    #     return_value = settings_dialog.exec()
+    #     # What does it return normally?
+    #     if return_value:
+    #         pass
 
-        return_value = settings_dialog.exec()
-        # What does it return normally?
-        if return_value:
-            pass
-
-    def _settings_dialog_return(self):
-        self.signal_user_settings_changed.emit()
+    def _settings_were_updated(self):
         self.graph.update_figure(recalculate_limits=False)
         self.signal_good_beep.emit()
 
@@ -1105,7 +1038,7 @@ class MainWindow(qtw.QMainWindow):
         else:
             spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
 
-        freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, settings.calc_ppo)
+        freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, app_settings.get_value("calc_ppo"))
         W_sys = V_source**2 / spk_sys.R_sys
         V_spk = V_source / spk_sys.R_sys * spk_sys.speaker.Re
         W_spk = V_spk**2 / spk_sys.speaker.Re
@@ -1226,16 +1159,14 @@ class CurveExportMenu(qtw.QMenu):
     def __init__(self, curves, position, parent):
         super().__init__(parent=parent)
         for curve in curves:
-            self.addAction(curve.get_full_name(), partial(export_and_beep ,curve, self.parent().signal_good_beep, settings))
+            self.addAction(curve.get_full_name(), partial(export_and_beep ,curve, self.parent().signal_good_beep))
         self.popup(position)
 
-def export_and_beep(curve, good_beeper, settings):
-    curve.export_to_clipboard(ppo = settings.export_ppo, must_include_freq = settings.interpolate_must_contain_hz)
+def export_and_beep(curve, good_beeper):
+    curve.export_to_clipboard(ppo = app_settings.get_value("export_ppo"), must_include_freq = app_settings.get_value("interpolate_must_contain_hz"))
     good_beeper.emit()
 
 class SettingsDialog(qtw.QDialog):
-    global settings
-    signal_settings_changed = qtc.Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -1282,7 +1213,7 @@ class SettingsDialog(qtw.QDialog):
 
         user_form.add_row(pwi.IntSpinBox("export_ppo",
                                          "Resolution of the exported curve in points per octave",
-                                         min_max=(1, settings.calc_ppo),
+                                         min_max=(1, app_settings.get_value("calc_ppo")),
                                          ),
                           "Export curve resolution (ppo)",
                           )
@@ -1307,37 +1238,8 @@ class SettingsDialog(qtw.QDialog):
 
         # ---- read values from settings
         # read values from settings
-        values_from_settings = {}
-        for key, widget in user_form.interactable_widgets.items():
-            if isinstance(widget, qtw.QComboBox):
-                values_from_settings[key] = {"current_text": getattr(settings, key)}
-            else:
-                values_from_settings[key] = getattr(settings, key)
+        values_from_settings = app_settings.get_values()
         user_form.update_form_values(values_from_settings)
-
-
-        # for widget_name, widget in user_form.interactable_widgets.items():
-        #     saved_setting = getattr(settings, widget_name)
-        #     if isinstance(widget, qtw.QCheckBox):
-        #         widget.setChecked(saved_setting)
-
-        #     elif widget_name == "matplotlib_style":
-        #         try:
-        #             index_from_settings = mpl_styles.index(saved_setting)
-        #         except IndexError:
-        #             index_from_settings = 0
-        #         widget.setCurrentIndex(index_from_settings)
-
-        #     elif widget_name == "graph_grids":
-        #         try:
-        #             index_from_settings = [widget.itemData(i) for i in range(
-        #                 widget.count())].index(settings.graph_grids)
-        #         except IndexError:
-        #             index_from_settings = 0
-        #         widget.setCurrentIndex(index_from_settings)
-
-        #     else:
-        #         widget.setValue(saved_setting)
 
         # Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
@@ -1347,7 +1249,7 @@ class SettingsDialog(qtw.QDialog):
 
     def _save_and_close(self, user_form):
         vals = user_form.get_form_values()
-        if vals["matplotlib_style"]["current_text"] != settings.matplotlib_style:
+        if vals["matplotlib_style"]["current_text"] != app_settings.get_value("matplotlib_style"):
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
                                           "Application needs to be restarted to be able to use the new Matplotlib style.",
@@ -1361,20 +1263,11 @@ class SettingsDialog(qtw.QDialog):
 
         for widget_name, value in vals.items():
             if isinstance(value, dict) and "current_text" in value.keys():  # if a qcombobox
-                settings.update(widget_name, value["current_text"])
+                app_settings.set_value(widget_name, value["current_text"], signal=False)
             else:
-                settings.update(widget_name, value)
+                app_settings.set_value(widget_name, value, signal=False)
 
-        # for widget_name, widget in interactable_widgets.items():
-        #     if isinstance(widget, qtw.QCheckBox):
-        #         settings.update(widget_name, widget.isChecked())
-        #     elif widget_name == "matplotlib_style":
-        #         settings.update(widget_name, widget.currentData())
-        #     elif widget_name == "graph_grids":
-        #         settings.update(widget_name, widget.currentData())
-        #     else:
-        #         settings.update(widget_name, widget.value())
-        self.signal_settings_changed.emit()
+        app_settings.settings_changed.emit()
         self.accept()
 
 
@@ -1548,8 +1441,7 @@ def parse_args(APP_DEFINITIONS):
 
 
 def create_sound_engine(app):
-    global settings
-    sound_engine = pwi.SoundEngine(settings)
+    sound_engine = pwi.SoundEngine()
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
 
@@ -1588,12 +1480,11 @@ def setup_logging(level: str="warning", args=None):
 
 
 def main():
-    global settings, app_definition, logger, create_sound_engine, wires
+    global logger, create_sound_engine, wires
 
     args = parse_args(APP_DEFINITIONS)
     logger = setup_logging(args=args)
-    settings = Settings(APP_DEFINITIONS["app_name"])
-    wires = fio.read_wire_table(get_main_dir().joinpath(settings.vc_table_file))
+    wires = fio.read_wire_table(get_main_dir().joinpath(app_settings.get_value("vc_table_file")))
 
     # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
@@ -1602,6 +1493,8 @@ def main():
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
         icon_path = str(get_main_dir().joinpath(APP_DEFINITIONS["icon_path"]))
         app.setWindowIcon(qtg.QIcon(icon_path))
+
+    app_settings = singleton_settings()
 
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerDeveloper(app, logger)
