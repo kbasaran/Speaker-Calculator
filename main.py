@@ -641,7 +641,7 @@ class MainWindow(qtw.QMainWindow):
         save_action = file_menu.addAction("Save state..", self.save_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
-        settings_action = edit_menu.addAction("Settings..", lambda: SettingsDialog())
+        settings_action = edit_menu.addAction("Settings..", lambda: SettingsDialog().exec())
 
         help_menu = menu_bar.addMenu("Help")
         paths_action = help_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
@@ -1238,8 +1238,9 @@ class SettingsDialog(qtw.QDialog):
 
         # ---- read values from settings
         # read values from settings
-        values_from_settings = app_settings.get_all_as_dict()
-        user_form.update_form_values(values_from_settings)
+        all_app_settings = app_settings.get_all_as_dict()
+        app_settings_in_form = {key: all_app_settings[key] for key in user_form.interactable_widgets.keys()}
+        user_form.update_form_values(app_settings_in_form)
 
         # Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
