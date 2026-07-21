@@ -29,20 +29,10 @@ import logging
 from pathlib import Path
 
 import utils.file_io as fio
+from utils.paths import get_main_dir
 
 from config.app_config import APP_DEFINITIONS, singleton_settings
 from gui.dialogs import MainWindow
-
-
-def get_main_dir():
-
-    if getattr(sys, 'frozen', False):
-        # The application is frozen
-        return Path(sys.executable).parent
-
-    else:
-        # The application is not frozen
-        return Path(__file__).parent
 
 
 def parse_args(APP_DEFINITIONS):
@@ -120,8 +110,7 @@ def main():
         app.setWindowIcon(qtg.QIcon(icon_path))
 
     app_settings = singleton_settings()
-    main_dir = get_main_dir()
-    wires = fio.read_wire_table(main_dir.joinpath(app_settings.get_value("vc_table_file")))
+    wires = fio.read_wire_table(get_main_dir().joinpath(app_settings.get_value("vc_table_file")))
 
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerDeveloper(app, logger)
@@ -134,7 +123,7 @@ def main():
     windows = []  # if you don't store them they get garbage collected once new_window terminates
 
     def new_window(**kwargs):
-        mw = MainWindow(sound_engine, wires, main_dir, **kwargs)
+        mw = MainWindow(sound_engine, wires, **kwargs)
         windows.append(mw)  # needs to be addressed otherwise it gets deleted from memory.
         mw.signal_new_window.connect(lambda kwargs: new_window(**kwargs))
         mw.show()

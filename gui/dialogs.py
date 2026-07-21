@@ -22,6 +22,7 @@ from core.coil_winding import find_feasible_coils
 import pyperclip
 
 from config.app_config import APP_DEFINITIONS, singleton_settings
+from utils.paths import get_main_dir
 
 logger = logging.getLogger(__name__)
 app_settings = singleton_settings()
@@ -557,7 +558,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
         return form
 
 
-def show_file_paths(parent_window, main_dir):
+def show_file_paths(parent_window):
+    main_dir = get_main_dir()
     coil_table_file = main_dir.joinpath(app_settings.get_value("vc_table_file")).absolute()
     startup_state_file = main_dir.joinpath(app_settings.get_value("startup_state_file")).absolute()
 
@@ -586,10 +588,9 @@ class MainWindow(qtw.QMainWindow):
     signal_bad_beep = qtc.Signal()
     # signal_user_settings_changed = qtc.Signal()  # settings from menu bar changed, such as graph type
 
-    def __init__(self, sound_engine, wires, main_dir, user_form_dict=None, open_user_file=None):
+    def __init__(self, sound_engine, wires, user_form_dict=None, open_user_file=None):
         super().__init__()
         self.wires = wires
-        self.main_dir = main_dir
         self.setWindowTitle(" - ".join(
             (APP_DEFINITIONS["app_name"],
              APP_DEFINITIONS["version"])
@@ -608,7 +609,7 @@ class MainWindow(qtw.QMainWindow):
             self.set_state(user_form_dict)
         elif open_user_file:
             self.load_state_from_file(open_user_file)
-        elif (default_startup_file := self.main_dir.joinpath(app_settings.get_value("startup_state_file"))).is_file():
+        elif (default_startup_file := get_main_dir().joinpath(app_settings.get_value("startup_state_file"))).is_file():
             self.load_state_from_file(default_startup_file, update_last_used_folder=False)
         else:
             self._update_model_button_clicked()
@@ -625,7 +626,7 @@ class MainWindow(qtw.QMainWindow):
         settings_action = edit_menu.addAction("Settings..", lambda: SettingsDialog().exec())
 
         help_menu = menu_bar.addMenu("Help")
-        paths_action = help_menu.addAction("Show paths of assets..", lambda: show_file_paths(self, self.main_dir))
+        paths_action = help_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
         about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
