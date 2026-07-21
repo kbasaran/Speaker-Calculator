@@ -1,5 +1,6 @@
 from dataclasses import dataclass, fields
 from pathlib import Path
+import time
 import logging
 import json
 from PySide6 import QtCore as qtc
@@ -140,7 +141,7 @@ class SettingsManager(qtc.QObject):
         """
         Retrieve all settings as a dictionary.
         """
-        return {key: self.get_value(key) for key in self.q_settings.allKeys()}
+        return {key: self.get_value(key) for key in self.DEFAULTS.keys()}
 
     def set_all_from_dict(self, settings_dict: dict, signal=True):
         """
@@ -156,7 +157,12 @@ class SettingsManager(qtc.QObject):
         Store value as JSON string in QSettings.
         Emits setting_changed signal with key and value.
         """
-        json_string = json.dumps(value)
+        if isinstance(value, dict):
+            new_value = value["current_text"]  # handles data coming from comboboxes. stores main text only.
+        else:
+            new_value = value
+
+        json_string = json.dumps(new_value)
         self.q_settings.setValue(key, json_string)
         if signal:
             self.settings_changed.emit()
@@ -181,6 +187,11 @@ class SettingsManager(qtc.QObject):
     def get_all_defaults(self):
         """Return a copy of the defaults dictionary."""
         return self.DEFAULTS.copy()
+
+    def clear(self):
+        """Clear all settings and reload from DEFAULTS."""
+        self.q_settings.clear()
+        self.settings_changed.emit()
 
 
 # Global accessor

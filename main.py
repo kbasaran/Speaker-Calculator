@@ -32,7 +32,7 @@ import utils.file_io as fio
 from utils.paths import get_main_dir
 
 from config.app_config import APP_DEFINITIONS, singleton_settings
-from gui.dialogs import MainWindow
+from gui.main_window import MainWindow
 
 
 def parse_args(APP_DEFINITIONS):
