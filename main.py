@@ -113,7 +113,7 @@ def main():
     wires = fio.read_wire_table(get_main_dir().joinpath(app_settings.get_value("vc_table_file")))
 
     # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandlerDeveloper(app, logger)
+    error_handler = pwi.ErrorHandler(logger, developer=False)
     sys.excepthook = error_handler.excepthook
 
     # ---- Create sound engine
