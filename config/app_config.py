@@ -1,7 +1,7 @@
 import time
 import logging
 from pathlib import Path
-from generictools.app_config import SettingsManager
+from generictools.settings import SettingsManager
 
 APP_DEFINITIONS = {"app_name": "Speaker Calculator",
                    "version": "0.3.4",

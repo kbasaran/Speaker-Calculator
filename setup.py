@@ -3,7 +3,7 @@
 
 import sys
 from cx_Freeze import setup, Executable
-from config.sc_config import APP_DEFINITIONS
+from config.app_config import APP_DEFINITIONS
 from pathlib import Path
 # https://cx-freeze.readthedocs.io/en/stable/setup_script.html
 
