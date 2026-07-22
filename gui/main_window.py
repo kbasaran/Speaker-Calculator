@@ -333,7 +333,7 @@ class MainWindow(qtw.QMainWindow):
             # but only the ones that have items with matching names to form's items (names in form_object_names)
             form_object_names = [name for name in input_form_widget.get_form_values().keys()]
             relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
-            input_form_widget.update_form_values(relevant_states)
+            input_form_widget.update_complete_form(relevant_states)
 
         self.notes_textbox.setPlainText(state.get("user_notes", "Error: NA"))
         self.title_textbox.setText(state.get("user_title", "Error: NA"))
