@@ -18,7 +18,7 @@ from core.factories import construct_SpeakerDriver, build_or_update_SpeakerSyste
 from core.coil_winding import find_feasible_coils
 import pyperclip
 
-from config.app_config import APP_DEFINITIONS, singleton_settings
+from config.sc_config import APP_DEFINITIONS, singleton_settings
 from utils.paths import get_main_dir
 from gui.dialogs import (InputSectionTabWidget, SettingsDialog, CurveExportMenu,
                           show_file_paths, update_coil_options_combobox)
