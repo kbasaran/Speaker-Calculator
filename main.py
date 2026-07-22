@@ -31,7 +31,7 @@ from pathlib import Path
 import utils.file_io as fio
 from utils.paths import get_main_dir
 
-from config.sc_config import APP_DEFINITIONS, singleton_settings
+from config.app_config import APP_DEFINITIONS, singleton_settings
 from gui.main_window import MainWindow
 
 

@@ -12,7 +12,7 @@ import generictools.personalized_widgets as pwi
 
 import matplotlib as mpl
 
-from config.sc_config import APP_DEFINITIONS, singleton_settings
+from config.app_config import APP_DEFINITIONS, singleton_settings
 from utils.paths import get_main_dir
 
 logger = logging.getLogger(__name__)
