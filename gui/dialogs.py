@@ -655,7 +655,7 @@ class SettingsDialog(qtw.QDialog):
         # ---- read values from settings
         all_app_settings = app_settings.get_all_as_dict()
         app_settings_in_form = {key: all_app_settings[key] for key in user_form.interactable_widgets.keys()}
-        user_form.update_form_values(app_settings_in_form)
+        user_form.update_complete_form(app_settings_in_form)
 
         # Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
