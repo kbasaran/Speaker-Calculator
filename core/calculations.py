@@ -144,6 +144,22 @@ def make_state_matrix_B(state_vars, state_diffs, input_vars, sols):
     return smp.Matrix(matrix)
 
 
+def make_output_matrices(output_exprs, state_vars, input_vars):
+    # Output matrix (C) and feedforward matrix (D)
+
+    C, D = [], []
+    for output_expr in output_exprs:
+        # Each row corresponds to an output, as listed in output_exprs.
+        # An output has to be a linear combination of the state variables
+        # and the input variables, so that it can be expressed with
+        # constant coefficients.
+        expanded = smp.expand(output_expr)
+        C.append([expanded.coeff(state_var) for state_var in state_vars])
+        D.append([expanded.coeff(input_var) for input_var in input_vars])
+
+    return smp.Matrix(C), smp.Matrix(D)
+
+
 def make_state_matrix_A(state_vars, state_diffs, sols):
     # State matrix
 
