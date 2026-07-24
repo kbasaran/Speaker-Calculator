@@ -26,7 +26,7 @@ from sympy.abc import t
 from sympy.physics import mechanics as mech
 
 from config.physics import air
-from core.calculations import make_state_matrix_A, make_state_matrix_B
+from core.calculations import make_output_matrices, make_state_matrix_A, make_state_matrix_B
 from core.components import Enclosure, ParentBody, PassiveRadiator
 from core.speaker_driver import SpeakerDriver
 
@@ -109,22 +109,35 @@ class SpeakerSystem:
                 
                 ]
 
-        for i, eqn in enumerate(eqns):
-            eqns[i] = eqn.subs(p_housing, - (Kair / Vba * (Spr * xpr + Sd * x1)))
-            eqns[i] = eqns[i].subs(i_coil, (Vsource - Bl*(x1_t - x2_t)) / (Rext + Re))
+        # p_housing and i_coil are not state variables, because they are linearly dependent
+        # on the state variables. They are substituted into the equations of motion,
+        # and made available as outputs of the system through the C and D matrices.
+        dependent_vars = {
+            p_housing: - (Kair / Vba * (Spr * xpr + Sd * x1)),
+            i_coil: (Vsource - Bl * (x1_t - x2_t)) / (Rext + Re),
+            }
 
-        # p_housing = - (Kair / Vba * (Spr * xpr + Sd * x1))
-        # i_coil = (Vsource - Bl*(x1_t - x2_t)) / (Rext + Re)
-        # p and i are not added as state variables because they are linearly dependent on the other state variables
-        # they could be added as solutions by adding in C and D above formulas
+        eqns = [eqn.subs(dependent_vars) for eqn in eqns]
 
         state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
         input_vars = [Vsource]  # input variables
         state_diffs = [var.diff() for var in state_vars]  # state differentials
 
+        # output variables, as expressions of state variables and input variables
+        # key: name to access the ss model with, val: expression
+        output_exprs = {"x1": x1,
+                        "x1_t": x1_t,
+                        "x2": x2,
+                        "x2_t": x2_t,
+                        "xpr": xpr,
+                        "xpr_t": xpr_t,
+                        "p_housing": dependent_vars[p_housing],
+                        "i_coil": dependent_vars[i_coil],
+                        }
+
         # dictionary of all sympy symbols used in model
         self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
-        
+
         # solve for state differentials
         sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
         if len(sols) == 0:
@@ -133,16 +146,15 @@ class SpeakerSystem:
         # ---- SS model with symbols
         A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
         B_sym = make_state_matrix_B(state_vars, state_diffs, input_vars, sols)  # input matrix
-        C = dict()  # one per state variable -- scipy state space supports only a rank of 1 for output
-        for i, state_var in enumerate(state_vars):
-            C[state_var] = np.eye(len(state_vars))[i]
-        D = np.zeros(len(input_vars))  # no feedforward
+        # output matrix and feedforward matrix, one row per output
+        C_sym, D_sym = make_output_matrices(output_exprs.values(), state_vars, input_vars)
 
         self._symbolic_ss = {"A": A_sym,  # system matrix
                              "B": B_sym,  # input matrix
-                             "C": C,  # output matrices dictionary, one per state variable
-                             "D": D,  # feedforward
+                             "C": C_sym,  # output matrix
+                             "D": D_sym,  # feedforward matrix
                              "state_vars": state_vars,
+                             "output_names": list(output_exprs.keys()),
                             }
 
     def _get_parameter_names_to_values(self) -> dict:
@@ -196,10 +208,12 @@ class SpeakerSystem:
         # ---- Update scalars
         self.R_sys = self.speaker.Re + self.Rext
 
-        # ---- Substitute values into system matrix and input matrix
+        # ---- Substitute values into the model matrices
         symbols_to_values = self.get_symbols_to_values()
         A = np.array(self._symbolic_ss["A"].subs(symbols_to_values)).astype(float)
         B = np.array(self._symbolic_ss["B"].subs(symbols_to_values)).astype(float)
+        C = np.array(self._symbolic_ss["C"].subs(symbols_to_values)).astype(float)
+        D = np.array(self._symbolic_ss["D"].subs(symbols_to_values)).astype(float)
 
         # ---- Updates in relation to enclosure
         if isinstance(self.enclosure, Enclosure):
@@ -252,6 +266,7 @@ class SpeakerSystem:
             self.f2 = np.nan
             self.Q2 = np.nan
             # make system coefficients related to x2 and x2_t zero
+            # no need to touch C and D, since these states remain zero
             A[2:4, :] = 0
             A[:, 2:4] = 0
             B[2:4] = 0
@@ -260,19 +275,21 @@ class SpeakerSystem:
         # ---- Update passive radiator related attributes
         if not isinstance(self.passive_radiator, PassiveRadiator):
             # make system coefficients related to xpr and xpr_t zero
+            # no need to touch C and D, since these states remain zero
             A[4:6, :] = 0
             A[:, 4:6] = 0
             B[4:6] = 0
 
 
         # ---- Build ss models
+        # one model per output -- scipy state space supports only a rank of 1 for output
         self.ss_models = dict()
-        for state_var in self._symbolic_ss["state_vars"]:
-            self.ss_models[repr(state_var)] = signal.StateSpace(A,
-                                                                B,
-                                                                self._symbolic_ss["C"][state_var],
-                                                                self._symbolic_ss["D"],
-                                                                )
+        for i, output_name in enumerate(self._symbolic_ss["output_names"]):
+            self.ss_models[output_name] = signal.StateSpace(A,
+                                                            B,
+                                                            C[[i], :],
+                                                            D[[i], :],
+                                                            )
 
     def get_summary(self, V_source: float = 0) -> str:
         "Summary in markup language."
@@ -314,25 +331,30 @@ class SpeakerSystem:
 
         return summary
 
+    def _get_response(self, output_name: str, V_source, freqs: np.ndarray) -> np.ndarray:
+        # Frequency response of one output of the system to a given source voltage
+        # Voltage argument given in RMS, output in the unit of the output variable, RMS
+        w = 2 * np.pi * np.array(freqs)
+        return signal.freqresp(self.ss_models[output_name], w=w)[1] * V_source
+
     def get_displacements(self, V_source, freqs: np.ndarray) -> dict:
         # Voltage argument given in RMS
         # outputs in m
         disps = dict()
-        w = 2 * np.pi * np.array(freqs)
 
-        x1 = signal.freqresp(self.ss_models["x1(t)"], w=w)[1] * V_source
+        x1 = self._get_response("x1", V_source, freqs)
 
         disps["Diaphragm, peak"] = x1 * 2**0.5
         disps["Diaphragm, RMS"] = x1
 
         if self.parent_body is not None:  # in fact, better return these even when no parnt_body, and filter in plotting
-            x2 = signal.freqresp(self.ss_models["x2(t)"], w=w)[1] * V_source
+            x2 = self._get_response("x2", V_source, freqs)
             disps["Parent body, RMS"] = x2
             disps["Diaphragm, peak, relative to parent"] = (x1 - x2) * 2**0.5
             disps["Diaphragm, RMS, relative to parent"] = (x1 - x2)
 
         if self.passive_radiator is not None:  # remove later and return always
-            xpr = signal.freqresp(self.ss_models["x_pr(t)"], w=w)[1] * V_source
+            xpr = self._get_response("xpr", V_source, freqs)
             disps["PR/vent, RMS"] = xpr
             disps["PR/vent, peak"] = xpr * 2**0.5
             if self.parent_body is not None:
@@ -345,18 +367,17 @@ class SpeakerSystem:
         # Voltage argument given in RMS
         # outputs in m/s
         velocs = dict()
-        w = 2 * np.pi * np.array(freqs)
 
-        x1_t = signal.freqresp(self.ss_models["Derivative(x1(t), t)"], w=w)[1] * V_source
+        x1_t = self._get_response("x1_t", V_source, freqs)
         velocs["Diaphragm, RMS"] = x1_t
 
         if self.parent_body is not None:  # remove later and return always
-            x2_t = signal.freqresp(self.ss_models["Derivative(x2(t), t)"], w=w)[1] * V_source
+            x2_t = self._get_response("x2_t", V_source, freqs)
             velocs["Parent body, RMS"] = x2_t
             velocs["Diaphragm, RMS, relative to parent"] = x1_t - x2_t
 
         if self.passive_radiator is not None:  # remove later and return always
-            xpr_t = signal.freqresp(self.ss_models["Derivative(x_pr(t), t)"], w=w)[1] * V_source
+            xpr_t = self._get_response("xpr_t", V_source, freqs)
             velocs["PR/vent, RMS"] = xpr_t
             if self.parent_body is not None:
                 velocs["PR/vent, RMS, relative to parent"] = xpr_t - x2_t
@@ -371,43 +392,45 @@ class SpeakerSystem:
 
         return {key: arr.flatten() * 1j * w for key, arr in velocs.items()}
     
+    def get_currents(self, V_source, freqs: np.ndarray) -> dict:
+        # Voltage argument given in RMS
+        # outputs in A
+        return {"Coil, RMS": self._get_response("i_coil", V_source, freqs)}
+
+    def get_pressures(self, V_source, freqs: np.ndarray) -> dict:
+        # Voltage argument given in RMS
+        # outputs in Pa, relative to ambient pressure
+        pressures = dict()
+
+        if self.enclosure is not None:  # without a housing there is no pressure build-up
+            pressures["Housing, RMS"] = self._get_response("p_housing", V_source, freqs)
+
+        return pressures
+
     def get_Z(self, freqs):
         imps = dict()
-        velocs = self.get_velocities(1, freqs)
+        i_coil = self.get_currents(1, freqs)["Coil, RMS"]
 
-        # relative velocity of coil (x1) to magnetic field (parent body, x2)
-        if self.parent_body is None:
-            x1t_relative_x2t = velocs["Diaphragm, RMS"]
-        else:
-            x1t_relative_x2t = velocs["Diaphragm, RMS, relative to parent"]
-
-        imps["Impedance speaker"] = self.R_sys / (1 - self.speaker.Bl * x1t_relative_x2t) - self.Rext  # speaker only
+        imps["Impedance speaker"] = 1 / i_coil - self.Rext  # speaker only
         if self.Rext > 0:  # remove later and return always
             imps["Impedance incl. source, cables"] = imps["Impedance speaker"] + self.Rext
-    
+
         return imps
 
     def get_forces(self, V_source, freqs: np.ndarray) -> dict:
         # Voltage argument given in RMS
         # force coil means force generated by coil
         # force speaker means force generated by speaker (inertial forces)
-        forces = dict()
-        velocs = self.get_velocities(V_source, freqs)
         accs = self.get_accelerations(V_source, freqs)
+        i_coil = self.get_currents(V_source, freqs)["Coil, RMS"]
 
-        # relative velocity of coil (x1) to magnetic field (parent body, x2)
-        if self.parent_body is None:
-            x1t_relative_x2t = velocs["Diaphragm, RMS"]
-        else:
-            x1t_relative_x2t = velocs["Diaphragm, RMS, relative to parent"]
-
-        force_coil = np.abs(self.speaker.Bl * (V_source - self.speaker.Bl * x1t_relative_x2t) / self.R_sys)
+        force_coil = self.speaker.Bl * i_coil
         force_speaker = accs["Diaphragm, RMS"] * self.speaker.Mms  # inertial force
-        
-        forces = {}
-        forces["Lorentz force, RMS"] = force_coil
+
+        forces = dict()
+        forces["Lorentz force, RMS"] = np.abs(force_coil)
         forces["Force from speaker to parent body, RMS"] = force_speaker
-        
+
         if self.passive_radiator is None:
             force_pr = np.zeros(len(force_speaker))
         else:
