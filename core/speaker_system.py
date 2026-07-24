@@ -205,7 +205,7 @@ class SpeakerSystem:
         if isinstance(self.enclosure, Enclosure):
             # self.Kair = air.Kair
             zeta_boxed_speaker = (
-                                         self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Mms)
+                                         self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Kms)
                                          + self.speaker.Rms + self.speaker.Bl ** 2 / self.speaker.Re) \
                                  / 2 / ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) * self.speaker.Mms) ** 0.5
 
