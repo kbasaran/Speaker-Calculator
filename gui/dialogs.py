@@ -440,8 +440,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         enclosue_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         form.add_row(enclosue_type_choice_buttons)
 
-        # Disable PR vented options for now
-        form.interactable_widgets["enclosure_type"].buttons()[2].setEnabled(False)
+        # Vented option not implemented yet
         form.interactable_widgets["enclosure_type"].buttons()[3].setEnabled(False)
 
         # ---- Closed box specs
@@ -479,18 +478,65 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # ---- Passive radiator
         form.add_row(pwi.SunkenLine())
 
-        form.add_row(pwi.Title("Passive radiator / Vented"))
-        form.add_row(qtw.QLabel("Not implemented yet."))
+        form.add_row(pwi.Title("Passive radiator specifications"))
+
+        form.add_row(pwi.FloatSpinBox("h_pr",
+                                      "Ratio of the passive radiator's free-air resonance f<sub>p</sub> to the"
+                                      "\ndriver's sealed-box resonance f<sub>b</sub>."
+                                      "\nf<sub>p</sub> sets the notch in the system response."
+                                      "\nValues below 1 place the notch below the sealed-box resonance."
+                                      "\nUnitless quantity.",
+                                      decimals=3,
+                                      min_max=(0.1, None),
+                                      ),
+                     description="h - ratio (f<sub>p</sub> / f<sub>b</sub>)",
+                     )
+
+        form.add_row(pwi.FloatSpinBox("spring_damping_ratio_pr",
+                                      "Ratio of the passive radiator's mechanical damping R<sub>p</sub>"
+                                      "\nto its suspension stiffness K<sub>p</sub>."
+                                      "\nUnit is seconds.",
+                                      decimals=4,
+                                      ),
+                     description="Spring damping ratio (R<sub>p</sub> / K<sub>p</sub>)",
+                     )
+
+        form.add_row(pwi.FloatSpinBox("area_ratio_pr",
+                                      "Ratio of the passive radiator's surface area S<sub>p</sub>"
+                                      "\nto the driver's surface area S<sub>d</sub>."
+                                      "\nUnitless quantity.",
+                                      decimals=2,
+                                      min_max=(0.1, None),
+                                      ),
+                     description="Area ratio (S<sub>p</sub> / S<sub>d</sub>)",
+                     )
+
+        form.add_row(pwi.FloatSpinBox("Mmdp",
+                                      "Moving mass of the passive radiator, excluding the coupled air load."
+                                      "\nUnit is gram.",
+                                      decimals=2,
+                                      coeff_for_SI=1e-3,
+                                      ),
+                     description="M<sub>md,p</sub> - moving mass (excl. air)",
+                     )
 
 
         # ---- Form logic
-        def adjust_form_for_enclosure_type(toggled_id, checked):
-            form.interactable_widgets["Vb"].setEnabled(toggled_id == 1 and checked is True)
-            form.interactable_widgets["Qa"].setEnabled(toggled_id == 1 and checked is True)
+        pr_widget_keys = ("h_pr", "spring_damping_ratio_pr", "area_ratio_pr", "Mmdp")
+
+        def adjust_form_for_enclosure_type(*_):
+            enclosure_type = form.interactable_widgets["enclosure_type"].checkedId()
+            has_box = enclosure_type in (1, 2)  # closed box or passive radiator
+            has_pr = enclosure_type == 2
+
+            form.interactable_widgets["Vb"].setEnabled(has_box)
+            form.interactable_widgets["Qa"].setEnabled(has_box)
+            for key in pr_widget_keys:
+                form.interactable_widgets[key].setEnabled(has_pr)
 
         form.interactable_widgets["enclosure_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start
-        adjust_form_for_enclosure_type(0, True)
+        adjust_form_for_enclosure_type()
 
         return form
 
