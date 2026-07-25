@@ -252,7 +252,9 @@ class MainWindow(qtw.QMainWindow):
         if file is None:
             return  # nothing selected, so pick file is canceled
 
-        app_settings.set_value("last_used_folder", str(file.parent))
+        # bookkeeping only -- must not emit settings_changed (would beep and
+        # redraw the figure), otherwise saving beeps twice
+        app_settings.set_value("last_used_folder", str(file.parent), signal=False)
 
         if state is None:
             state = self.get_state()
@@ -276,7 +278,8 @@ class MainWindow(qtw.QMainWindow):
         # update the last used folder before converting, so it is remembered
         # even if the (older-format) file fails version conversion
         if update_last_used_folder:
-            app_settings.set_value("last_used_folder", str(file.parent))
+            # bookkeeping only -- don't emit settings_changed (see save_state_to_file)
+            app_settings.set_value("last_used_folder", str(file.parent), signal=False)
 
         state = session_io.read_state_file(file)
         self.set_state(state)
