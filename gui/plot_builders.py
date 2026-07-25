@@ -53,7 +53,7 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
 
         # Radiated SPL is proportional to volume velocity (Sd * velocity),
         # so calculate_spl is fed the volume velocity directly with sd=1.
-        U_driver = spk_sys.speaker.Sd * velocs["Diaphragm, RMS"]
+        U_driver = spk_sys.speaker.Sd * velocs["Diaphragm, RMS"]  # volume velocity
         _, SPL = calculate_spl((freqs, U_driver), 1.0)
 
         _, SPL_Xpeak_limited = calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
@@ -66,7 +66,7 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
         # Total radiated volume velocity sums the diaphragm and PR contributions,
         # signed by dir_pr (+1 same direction, -1 reverse, 0 orthogonal).
         if spk_sys.passive_radiator is not None:
-            U_total = U_driver + spk_sys.dir_pr * spk_sys.passive_radiator.S * velocs["PR/vent, RMS"]
+            U_total = U_driver + spk_sys.dir_pr * spk_sys.passive_radiator.S * velocs["PR/vent, RMS"]  # volume velocity
             _, SPL_incl_pr = calculate_spl((freqs, U_total), 1.0)
             curves.update({"SPL piston mode, incl. PR": SPL_incl_pr})
 
