@@ -273,10 +273,7 @@ class SpeakerSystem:
 
 
         # ---- Update passive radiator related attributes
-        if isinstance(self.passive_radiator, PassiveRadiator):
-            print("PR lumped calculations not ready yet")
-            # maybe disable showing Qtc when it is a PR
-        else:
+        if not isinstance(self.passive_radiator, PassiveRadiator):
             # make system coefficients related to xpr and xpr_t zero
             # no need to touch C and D, since these states remain zero
             A[4:6, :] = 0
@@ -315,7 +312,7 @@ class SpeakerSystem:
                 f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
                 )
             if isinstance(self.passive_radiator, PassiveRadiator):
-                summary += "      K<sub>enc,pr</sub>: {self.enclosure.K(air, self.passive_radiator.Spr):.4g} N/mm"
+                summary += f"      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.S) / 1000:.4g} N/mm"
                 
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
