@@ -13,7 +13,7 @@ import generictools.personalized_widgets as pwi
 from utils.version_convert import convert_any
 
 import numpy as np
-from core.calculations import calculate_voltage, calculate_spl
+from core.calculations import calculate_voltage
 from core.factories import construct_SpeakerDriver, build_or_update_SpeakerSystem
 from core.coil_winding import find_feasible_coils
 import pyperclip
@@ -22,6 +22,7 @@ from config.app_config import APP_DEFINITIONS, singleton_settings
 from utils.paths import get_main_dir
 from gui.dialogs import (InputSectionTabWidget, SettingsDialog, CurveExportMenu,
                           show_file_paths, update_coil_options_combobox)
+from gui.plot_builders import PLOT_BUILDERS
 
 logger = logging.getLogger(__name__)
 app_settings = singleton_settings()
@@ -457,134 +458,30 @@ class MainWindow(qtw.QMainWindow):
 
     def update_graph(self, checked_id):
         self.graph.clear_graph()
-        curves = dict()
-        # self.graph.active_curves = list()  # obsoleted
 
         if not hasattr(self, "speaker_model_state"):
             self.signal_bad_beep.emit()
             return
-        else:
-            spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
+
+        spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
 
         freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, app_settings.get_value("calc_ppo"))
-        W_sys = V_source**2 / spk_sys.R_sys
         V_spk = V_source / spk_sys.R_sys * spk_sys.speaker.Re
         W_spk = V_spk**2 / spk_sys.speaker.Re
 
-        if checked_id == 0:
-
-            if spk_sys.speaker.Sd == 0:  # shaker or other with no diaphragm
-                accs = spk_sys.get_accelerations(V_source, freqs)
-
-                curves.update({key.replace("Diaphragm", "Moving mass"): 20*np.log10(np.abs(acc)/1e-6) \
-                               for key, acc in accs.items() if "relative" not in key})
-
-                self.graph.set_y_limits_policy("SPL")
-                self.graph.set_title(f"Acceleration, {V_source:.4g}V {W_spk:.3g}Watt@Re")
-                self.graph.ax.set_ylabel(r"dB ref. $\mathregular{10^{-6}}$m/s²")
-
-            else:  # speaker
-                velocs = spk_sys.get_velocities(V_source, freqs)
-                w = 2 * np.pi * freqs
-                Xpeak_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
-
-                # Radiated SPL is proportional to volume velocity (Sd * velocity),
-                # so calculate_spl is fed the volume velocity directly with sd=1.
-                U_driver = spk_sys.speaker.Sd * velocs["Diaphragm, RMS"]
-                _, SPL = calculate_spl((freqs, U_driver), 1.0)
-
-                _, SPL_Xpeak_limited = calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
-
-                curves.update({"SPL piston mode, Xpeak limited": SPL_Xpeak_limited,
-                               "SPL piston mode": SPL,
-                               })
-
-                # Combined driver + passive radiator response (shows the PR notch).
-                # Total radiated volume velocity sums the diaphragm and PR contributions,
-                # signed by dir_pr (+1 same direction, -1 reverse, 0 orthogonal).
-                if spk_sys.passive_radiator is not None:
-                    U_total = U_driver + spk_sys.dir_pr * spk_sys.passive_radiator.S * velocs["PR/vent, RMS"]
-                    _, SPL_incl_pr = calculate_spl((freqs, U_total), 1.0)
-                    curves.update({"SPL piston mode, incl. PR": SPL_incl_pr})
-
-                self.graph.set_y_limits_policy("SPL")
-                if spk_sys.speaker.Re == spk_sys.R_sys:
-                    title = f"SPL@1m, Half-space\n{V_spk:.4g}V {W_spk:.3g}Watt@Re"
-                else:
-                    title = f"SPL@1m, Half-space\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V {W_spk:.3g}Watt@Re"
-                self.graph.set_title(title)
-                self.graph.ax.set_ylabel("dBSPL")
-
-        elif checked_id == 1:
-            curves.update({key: np.real(val) for key, val in spk_sys.get_Z(freqs).items()})
-            self.graph.set_y_limits_policy("impedance")
-            self.graph.set_title("Electrical impedance, real part - no inductance")
-            self.graph.ax.set_ylabel("ohm")
-
-        elif checked_id == 2:
-            for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "relative" in key:
-                    curves[key] = np.abs(val) * 1e3
-
-            self.graph.set_y_limits_policy(None)
-            if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Relative Displacements\n{V_spk:.4g}V"
-            else:
-                title = f"Relative Displacements\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
-            self.graph.set_title(title)
-            self.graph.ax.set_ylabel("mm")
-
-        elif checked_id == 3:
-            for key, val in spk_sys.get_displacements(V_source, freqs).items():
-                if "relative" not in key:
-                    curves[key] = np.abs(val) * 1e3
-
-            self.graph.set_y_limits_policy(None)
-            if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Displacements\n{V_spk:.4g}V"
-            else:
-                title = f"Displacements\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
-            self.graph.set_title(title)
-            self.graph.ax.set_ylabel("mm")
-
-        elif checked_id == 4:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()})
-            self.graph.set_y_limits_policy(None)
-            if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Forces\n{V_spk:.4g}V"
-            else:
-                title = f"Forces\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
-            self.graph.set_title(title)
-            self.graph.ax.set_ylabel("N")
-
-        elif checked_id == 5:
-            curves.update({key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()})
-            self.graph.set_y_limits_policy(None)
-            if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Velocities\n{V_spk:.4g}V"
-            else:
-                title = f"Velocities\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
-            self.graph.set_title(title)
-            self.graph.ax.set_ylabel("m/s")
-
-        elif checked_id == 6:
-            curves.update(spk_sys.get_phases(freqs).items())
-            self.graph.set_y_limits_policy("phase")
-            if spk_sys.speaker.Re == spk_sys.R_sys:
-                title = f"Phase for displacements\n{V_spk:.4g}V"
-            else:
-                title = f"Phase for displacements\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
-            self.graph.set_title(title)
-            self.graph.ax.set_ylabel("degrees")
-
-        else:
+        try:
+            builder = PLOT_BUILDERS[checked_id]
+        except KeyError:
             raise ValueError(f"Checked id not recognized: {type(checked_id), checked_id}")
 
-        for i, (name, y) in enumerate(curves.items()):
+        spec = builder(spk_sys, freqs, V_source, V_spk, W_spk)
+
+        self.graph.set_y_limits_policy(spec.ylimits_policy)
+        self.graph.set_title(spec.title)
+        self.graph.ax.set_ylabel(spec.ylabel)
+
+        for i, (name, y) in enumerate(spec.curves.items()):
             self.graph.add_line2d(i, name, (freqs, y), update_figure=False)
-            curve = signal_tools.Curve((freqs, y))
-            curve.set_name_base(name)
-            # self.graph.active_curves.append(curve)  # not in use anymore. was used to save curves.
 
         self.graph.update_figure()
 
