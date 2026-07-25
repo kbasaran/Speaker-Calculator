@@ -75,7 +75,7 @@ def calculate_spl(xty: Tuple[Any, Any], sd: float) -> Tuple[np.ndarray, np.ndarr
     Calculate SPL using simplified radiation impedance * acceleration.
 
     :param xty: Tuple containing (frequencies, RMS velocities).
-    :param sd: Diaphragm effective surface area in m².
+    :param sd: Diaphragm effective surface area in m². Use 1 if xty is volume velocity U.
     :return: Tuple of (frequencies, SPL values in dB).
     """
     a = np.sqrt(sd / np.pi)  # piston radius
