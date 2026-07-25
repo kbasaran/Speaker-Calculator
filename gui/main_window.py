@@ -10,7 +10,6 @@ from PySide6 import QtGui as qtg
 from generictools import signal_tools
 from generictools.graphing_widget import MatplotlibWidget
 import generictools.personalized_widgets as pwi
-from utils.version_convert import convert_any
 
 import numpy as np
 from core.calculations import calculate_voltage
@@ -18,11 +17,12 @@ from core.factories import construct_SpeakerDriver, build_or_update_SpeakerSyste
 from core.coil_winding import find_feasible_coils
 import pyperclip
 
-from config.app_config import APP_DEFINITIONS, singleton_settings
+from config.app_config import APP_DEFINITIONS, ABOUT_TEXT, singleton_settings
 from utils.paths import get_main_dir
 from gui.dialogs import (InputSectionTabWidget, SettingsDialog, CurveExportMenu,
                           show_file_paths, update_coil_options_combobox)
 from gui.plot_builders import PLOT_BUILDERS
+from gui import session_io
 
 logger = logging.getLogger(__name__)
 app_settings = singleton_settings()
@@ -245,100 +245,45 @@ class MainWindow(qtw.QMainWindow):
         app_settings.settings_changed.connect(self._settings_were_updated)
 
     def get_state(self):
-        logger.debug("Get states initiated.")
-        state = {}
-        tab_widgets = [self.input_form.widget(i) for i in range(self.input_form.count())]
-        for input_form_widget in tab_widgets:
-            state = {**state, **input_form_widget.get_form_values()}
-
-        state["user_notes"] = self.notes_textbox.toPlainText()
-        state["user_title"] = self.title_textbox.text()
-
-        return state
+        return session_io.collect_state(self.input_form, self.title_textbox, self.notes_textbox)
 
     def save_state_to_file(self, state=None):
-        path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save parameters to a file..',
-                                                          dir=app_settings.get_value("last_used_folder"),
-                                                          filter='Speaker calculator files (*.sscf)',
-                                                          )
-
-        try:
-            file_raw = path_unverified[0]
-            if file_raw:
-                file = Path(file_raw)
-                if file.suffix != ".sscf":
-                    file = file.with_suffix(".sscf")
-                # filter not working as expected, saves files without file extension scf
-                # therefore above logic
-                assert file.parent.exists()
-            else:
-                return  # empty file_raw. means nothing was selected, so pick file is canceled.
-        except:
-            # Path object could not be created
-            raise NotADirectoryError(file_raw)
-
-        # if you reached here, file is ready as Path object
+        file = session_io.prompt_save_path(self, app_settings.get_value("last_used_folder"))
+        if file is None:
+            return  # nothing selected, so pick file is canceled
 
         app_settings.set_value("last_used_folder", str(file.parent))
 
         if state is None:
             state = self.get_state()
 
-        state["application_data"] = APP_DEFINITIONS
-
-        json_string = json.dumps(state, indent=4)
-        with open(file, "wt") as f:
-            f.write(json_string)
-
+        session_io.write_state_file(file, state)
         self.signal_good_beep.emit()
 
     @qtc.Slot(str)
     def load_state_from_file(self, file_arg: (Path | str) = None, update_last_used_folder=True):
-        # no file is provided as argumnent
-        # raise a file selection menu
+        # no file provided as argument -> raise a file selection menu
         if file_arg is None:
-            path_unverified = qtw.QFileDialog.getOpenFileName(self, caption='Open parameters from a save file..',
-                                                              dir=app_settings.get_value("last_used_folder"),
-                                                              filter='Speaker calculator files (*.sscf)',
-                                                              )
-
-            file_raw = path_unverified[0]
-            if file_raw:
-                file_arg = Path(file_raw)
-            else:
+            file = session_io.prompt_load_path(self, app_settings.get_value("last_used_folder"))
+            if file is None:
                 return  # canceled file select
+        else:
+            file = Path(file_arg)
 
-        # file provided as argumnent
-        file = Path(file_arg)
         if not file.is_file():
             raise FileNotFoundError(file)
 
-        # file is ready as Path object at this point
-
-        logger.info(f"Loading file '{file.name}'")
+        # update the last used folder before converting, so it is remembered
+        # even if the (older-format) file fails version conversion
         if update_last_used_folder:
             app_settings.set_value("last_used_folder", str(file.parent))
 
-        # backwards compatibility with older file versions
-        state = convert_any(file)
-
+        state = session_io.read_state_file(file)
         self.set_state(state)
         # self.statusBar().showMessage(f"Opened file '{file.name}'", 5000)
 
     def set_state(self, state: dict):
-        logger.debug("Set states initiated.")
-        tab_widgets = [self.input_form.widget(i) for i in range(self.input_form.count())]
-        for input_form_widget in tab_widgets:
-            # for each form on its corresponding tab, make a "relevant states" dictionary
-            # this dictionary will not contain all the settings
-            # but only the ones that have items with matching names to form's items (names in form_object_names)
-            form_object_names = [name for name in input_form_widget.get_form_values().keys()]
-            relevant_states = {key: val for (key, val) in state.items() if key in form_object_names}
-            input_form_widget.update_complete_form(relevant_states)
-
-        self.notes_textbox.setPlainText(state.get("user_notes", "Error: NA"))
-        self.title_textbox.setText(state.get("user_title", "Error: NA"))
-
+        session_io.apply_state(self.input_form, self.title_textbox, self.notes_textbox, state)
         self._update_model_button_clicked()
 
     def duplicate_window(self):
@@ -360,33 +305,7 @@ class MainWindow(qtw.QMainWindow):
         self.signal_good_beep.emit()
 
     def open_about_menu(self):
-        result_text = "\n".join([
-            "Speaker Calculator - Loudspeaker design and calculations tool",
-            f"Version: {APP_DEFINITIONS['version']}",
-            "",
-            f"{APP_DEFINITIONS['copyright']}",
-            f"{APP_DEFINITIONS['website']}",
-            f"{APP_DEFINITIONS['email']}",
-            "",
-            "This program is free software: you can redistribute it and/or modify",
-            "it under the terms of the GNU General Public License as published by",
-            "the Free Software Foundation, either version 3 of the License, or",
-            "(at your option) any later version.",
-            "",
-            "This program is distributed in the hope that it will be useful,",
-            "but WITHOUT ANY WARRANTY; without even the implied warranty of",
-            "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
-            "GNU General Public License for more details.",
-            "",
-            "You should have received a copy of the GNU General Public License",
-            "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
-            "",
-            "This software uses Qt for Python under the GPLv3 license.",
-            "https://www.qt.io/",
-            "",
-            "See 'requirements.txt' for an extensive list of Python libraries used.",
-        ])
-        text_box = pwi.ResultTextBox("About", result_text, monospace=False)
+        text_box = pwi.ResultTextBox("About", ABOUT_TEXT, monospace=False)
         text_box.exec()
 
     def _not_implemented_popup(self):
