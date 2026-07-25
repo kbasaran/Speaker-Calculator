@@ -488,13 +488,24 @@ class MainWindow(qtw.QMainWindow):
                 w = 2 * np.pi * freqs
                 Xpeak_limited_velocities = spk_sys.speaker.Xpeak / 2**0.5 * (1j * w)
 
-                _, SPL = calculate_spl((freqs, velocs["Diaphragm, RMS"]), spk_sys.speaker.Sd)
+                # Radiated SPL is proportional to volume velocity (Sd * velocity),
+                # so calculate_spl is fed the volume velocity directly with sd=1.
+                U_driver = spk_sys.speaker.Sd * velocs["Diaphragm, RMS"]
+                _, SPL = calculate_spl((freqs, U_driver), 1.0)
 
                 _, SPL_Xpeak_limited = calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
 
                 curves.update({"SPL piston mode, Xpeak limited": SPL_Xpeak_limited,
                                "SPL piston mode": SPL,
                                })
+
+                # Combined driver + passive radiator response (shows the PR notch).
+                # Total radiated volume velocity sums the diaphragm and PR contributions,
+                # signed by dir_pr (+1 same direction, -1 reverse, 0 orthogonal).
+                if spk_sys.passive_radiator is not None:
+                    U_total = U_driver + spk_sys.dir_pr * spk_sys.passive_radiator.S * velocs["PR/vent, RMS"]
+                    _, SPL_incl_pr = calculate_spl((freqs, U_total), 1.0)
+                    curves.update({"SPL piston mode, incl. PR": SPL_incl_pr})
 
                 self.graph.set_y_limits_policy("SPL")
                 if spk_sys.speaker.Re == spk_sys.R_sys:
