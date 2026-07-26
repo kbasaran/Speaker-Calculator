@@ -468,12 +468,16 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Q<sub>a</sub> - internal absorption",
                      )
 
-        # form.add_row(pwi.FloatSpinBox("Ql", "Quality factor of the speaker resulting from leakage losses of the enclosure.",
-        #                               decimals=1,
-        #                               min_max=(0.1, None),
-        #                               ),
-        #              description="Q<sub>l</sub> - leakage losses",
-        #              )
+        form.add_row(pwi.FloatSpinBox("Ql",
+                                      "Quality factor of the speaker in enclosure resulting from leakage losses of the enclosure."
+                                      "\nCalculated at f<sub>b</sub>."
+                                      "\nSet a high value for a well-sealed box (no leakage)."
+                                      "\nUnitless quantity.",
+                                      decimals=1,
+                                      min_max=(0.1, None),
+                                      ),
+                     description="Q<sub>l</sub> - leakage losses",
+                     )
 
         # ---- Passive radiator
         form.add_row(pwi.SunkenLine())
@@ -531,6 +535,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
             form.interactable_widgets["Vb"].setEnabled(has_box)
             form.interactable_widgets["Qa"].setEnabled(has_box)
+            form.interactable_widgets["Ql"].setEnabled(has_box)
             for key in pr_widget_keys:
                 form.interactable_widgets[key].setEnabled(has_pr)
 

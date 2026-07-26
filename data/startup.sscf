@@ -225,6 +225,7 @@
     "enclosure_type": 1,
     "Vb": 0.002,
     "Qa": 100.0,
+    "Ql": 99999.9,
     "h_pr": 0.7,
     "spring_damping_ratio_pr": 0.005,
     "area_ratio_pr": 2.5,

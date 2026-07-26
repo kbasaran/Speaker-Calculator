@@ -70,13 +70,23 @@ class SpeakerSystem:
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
 
+        # Net volume velocity pushed into the box air, relative to the enclosure
+        # walls (which move with the parent body x2). The box absorption/leakage
+        # loss is an acoustic resistance Rbox [Pa.s/m^3] acting on this volume
+        # velocity, so the reaction force on each radiator scales with its own
+        # area (Sd, Spr) and the driver and PR are coupled through the shared
+        # lossy air. Rms and Rpr remain the elements' own mechanical losses.
+        U_box = Sd * (x1_t - x2_t) + Spr * (xpr_t - x2_t)
+
         # define state space system
-        eqns = [    
+        eqns = [
 
                 (
                  - Mms * x1_tt
-                 - (Rms + Rbox) * (x1_t - x2_t)
+                 - Rms * (x1_t - x2_t)
                  - Kms * (x1 - x2)
+
+                 - Rbox * Sd * U_box
 
                  + p_housing * Sd
                  + i_coil * Bl
@@ -86,13 +96,15 @@ class SpeakerSystem:
                  - Mpb * x2_tt
                  - Rpb * x2_t
                  - Kpb * x2
-                 
-                 + (Rms + Rbox) * (x1_t - x2_t)
+
+                 + Rms * (x1_t - x2_t)
                  + Kms * (x1 - x2)
 
-                 + (Rpr + Rbox) * (xpr_t - x2_t)
+                 + Rpr * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
-                 
+
+                 + Rbox * (Sd + Spr) * U_box
+
                  - p_housing * Sd
                  - p_housing * Spr
 
@@ -101,17 +113,22 @@ class SpeakerSystem:
 
                 (
                  - Mpr * xpr_tt
-                 - (Rpr + Rbox) * (xpr_t - x2_t)
+                 - Rpr * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
+
+                 - Rbox * Spr * U_box
 
                  + p_housing * Spr
                  ),
-                
+
                 ]
 
         # p_housing and i_coil are not state variables, because they are linearly dependent
         # on the state variables. They are substituted into the equations of motion,
         # and made available as outputs of the system through the C and D matrices.
+        # box pressure depends on the net volume displaced into the enclosure,
+        # measured relative to the cabinet walls (parent body x2) -- consistent
+        # with the box-loss term above. With no parent body x2 == 0.
         dependent_vars = {
             p_housing: - (Kair / Vba * (Spr * (xpr - x2) + Sd * (x1 - x2))),
             i_coil: (Vsource - Bl * (x1_t - x2_t)) / (Rext + Re),
@@ -218,8 +235,11 @@ class SpeakerSystem:
         # ---- Updates in relation to enclosure
         if isinstance(self.enclosure, Enclosure):
             # self.Kair = air.Kair
+            # box loss is stored as an acoustic resistance; refer it back to the
+            # driver's mechanical domain (x Sd**2) for the sealed-box damping ratio
+            Rbox_mech = self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Kms) * self.speaker.Sd ** 2
             zeta_boxed_speaker = (
-                                         self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Kms)
+                                         Rbox_mech
                                          + self.speaker.Rms + self.speaker.Bl ** 2 / self.speaker.Re) \
                                  / 2 / ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) * self.speaker.Mms) ** 0.5
 
