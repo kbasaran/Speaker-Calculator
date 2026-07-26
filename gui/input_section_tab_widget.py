@@ -61,7 +61,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.Title("General specifications"))
 
         form.add_row(pwi.FloatSpinBox("fs",
-                                      "Resonance frequency (undamped natural frequency) of the speaker in free-air condition."
+                                      "Free-air resonance of the driver: the undamped natural frequency"
+                                      "\nwhere moving mass and suspension stiffness cancel (f<sub>s</sub> = √(K<sub>ms</sub>/M<sub>ms</sub>)/2π)."
+                                      "\nNote this is not the damped natural (ringing) frequency, nor the"
+                                      "\nfrequency of the response peak; those sit lower and depend on damping."
                                       "\nUnit is Hertz.",
                                       decimals=1,
                                       min_max=(0.1, None),

@@ -251,9 +251,15 @@ class SpeakerSystem:
 
             fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) / self.speaker.Mms) ** 0.5
 
-            fb_damped = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
-            if np.iscomplex(fb_damped):  # means overdamped
-                fb_damped = np.nan
+            # Displacement *response-peak* frequency of the boxed driver (the "bump" on
+            # the excursion/SPL curve) -- NOT the damped natural (ringing) frequency.
+            # Displacement peaks at w0*sqrt(1 - 2*zeta**2), which exists only for
+            # zeta < 1/sqrt(2) (Qtc > 0.707); otherwise the response is maximally flat
+            # with no peak, so the value is nan. See SpeakerDriver.__post_init__ for the
+            # full undamped-natural vs damped-natural vs response-peak explanation.
+            fb_response_peak = fb_undamped * (1 - 2 * zeta_boxed_speaker**2)**0.5
+            if np.iscomplex(fb_response_peak):  # no response peak (Qtc <= 1/sqrt(2))
+                fb_response_peak = np.nan
 
             self.fb = fb_undamped
             self.Qtc = np.inf if zeta_boxed_speaker == 0 else 1 / 2 / zeta_boxed_speaker
@@ -281,9 +287,13 @@ class SpeakerSystem:
             # i.e. blocked speaker
             f2_undamped = 1 / 2 / np.pi * (self.parent_body.k / (self.speaker.Mms + self.parent_body.m))**0.5
 
-            f2_damped = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
-            if np.iscomplex(f2_damped):  # means overdamped
-                f2_damped = np.nan
+            # Displacement *response-peak* frequency of the parent body -- NOT the
+            # damped natural (ringing) frequency. Peaks at w0*sqrt(1 - 2*zeta**2), real
+            # only for zeta < 1/sqrt(2); nan otherwise. See SpeakerDriver.__post_init__
+            # for the full explanation.
+            f2_response_peak = f2_undamped * (1 - 2 * zeta2_free**2)**0.5
+            if np.iscomplex(f2_response_peak):  # no response peak (zeta >= 1/sqrt(2))
+                f2_response_peak = np.nan
 
             self.f2 = f2_undamped
             self.Q2 = q2_free
