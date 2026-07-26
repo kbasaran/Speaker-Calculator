@@ -239,9 +239,12 @@ class ParentBody:
     def f(self, coupled_masses=0):
         # undamped natural frequency a.k.a. resonance frequency
         f2_undamped = 1 / 2 / np.pi * (self.k / (self.m + coupled_masses))**0.5
-        # f2_damped = f2_undamped * (1 - 2 * self.zeta()**2)**0.5
-        # if np.iscomplex(f2_damped):
-        #     f2_damped = None
+        # For the *displacement response-peak* frequency (not the damped natural /
+        # ringing frequency) use w0*sqrt(1 - 2*zeta**2); see SpeakerDriver.__post_init__
+        # for the undamped-natural vs damped-natural vs response-peak distinction.
+        # f2_response_peak = f2_undamped * (1 - 2 * self.zeta()**2)**0.5
+        # if np.iscomplex(f2_response_peak):
+        #     f2_response_peak = None
         return f2_undamped
 
 

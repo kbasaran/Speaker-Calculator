@@ -85,7 +85,43 @@ class SpeakerDriver:
         self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Ces)
         self.Qes = (self.Mms * self.Kms)**0.5 / self.Ces
         zeta_speaker = 1 / 2 / self.Qts
-        self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
+        # ---- Free-air *response-peak* frequency -- NOT the damped natural frequency.
+        #
+        # A driven mass-spring-damper (the driver, the boxed driver, the parent body)
+        # has SEVERAL distinct characteristic frequencies that are easy to confuse.
+        # With w0 = sqrt(K/M) the undamped natural frequency and zeta the damping ratio:
+        #
+        #   1) Undamped natural frequency:  w0            (here self.fs)
+        #      The frequency where the mass reactance and the suspension stiffness
+        #      reactance exactly cancel.
+        #
+        #   2) Damped natural frequency:    w0*sqrt(1 - zeta**2)
+        #      The frequency of the FREE, decaying oscillation the cone rings at when
+        #      plucked and released -- a transient / pole property. It is the SAME for
+        #      displacement, velocity and acceleration, and exists for zeta < 1.
+        #
+        #   3) Response-peak frequency:     (steady-state, sinusoidally driven)
+        #      The frequency at which the DRIVEN amplitude is largest. This one depends
+        #      on WHICH quantity is observed, and so is generally different from (2):
+        #        - displacement peak:  w0*sqrt(1 - 2*zeta**2)   (BELOW w0)
+        #        - velocity peak:      w0                        (AT w0)
+        #        - acceleration peak:  w0/sqrt(1 - 2*zeta**2)   (ABOVE w0)
+        #      Why displacement peaks below w0: at w0 the mass and stiffness cancel, so
+        #      the force sees only the damper and VELOCITY is maximal there. Since
+        #      displacement = velocity / w, dividing by a smaller w just below w0 makes
+        #      the displacement larger -- pushing its peak below w0.
+        #
+        # (2) and (3) are answers to two different experiments -- "pluck it and hear it
+        # ring" vs "drive it and find the biggest steady response" -- so there is no
+        # reason for them to coincide. They all collapse onto w0 as zeta -> 0.
+        #
+        # The value below is the DISPLACEMENT response peak (the "bump" on the
+        # excursion/SPL curve). It is real only for zeta < 1/sqrt(2) (Qts > 0.707);
+        # for heavier damping the magnitude response is maximally flat with no peak, so
+        # the sqrt turns imaginary and the value is reported as nan.
+        self.fs_response_peak = self.fs * (1 - 2 * zeta_speaker**2)**0.5
+        if np.iscomplex(self.fs_response_peak):  # no response peak (Qts <= 1/sqrt(2))
+            self.fs_response_peak = np.nan
 
     def Lm(self):
         return calculate_lm(self.Bl, self.Re, self.Mms, self.Sd)  # sensitivity per W@Re
