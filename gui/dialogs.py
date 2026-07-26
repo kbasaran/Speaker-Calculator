@@ -59,6 +59,20 @@ class SettingsDialog(qtw.QDialog):
                           "Graph grid view",
                           )
 
+        user_form.add_row(pwi.IntSpinBox("f_min",
+                                           "Start frequency for graph and calculations. (Hz)",
+                                           min_max=(1, 10_000),
+                                           ),
+                          "Start frequency",
+                          )
+
+        user_form.add_row(pwi.IntSpinBox("f_max",
+                                           "End frequency for graph and calculations. (Hz)",
+                                           min_max=(10, 100_000),
+                                           ),
+                          "End frequency",
+                          )
+
         user_form.add_row(pwi.SunkenLine())
 
         user_form.add_row(pwi.FloatSpinBox("A_beep",
@@ -99,6 +113,28 @@ class SettingsDialog(qtw.QDialog):
         all_app_settings = app_settings.get_all_as_dict()
         app_settings_in_form = {key: all_app_settings[key] for key in user_form.interactable_widgets.keys()}
         user_form.update_complete_form(app_settings_in_form)
+
+        # ---- Keep at least one octave between f_min and f_max (dynamic link between
+        # the two spinboxes): f_max is never allowed below 2*f_min, and reciprocally
+        # f_min never above f_max/2. Each box constrains the other's bound, so an
+        # invalid range cannot be entered. Base bounds are captured first so the link
+        # never widens a box beyond its original min/max.
+        f_min_box = user_form.interactable_widgets["f_min"]
+        f_max_box = user_form.interactable_widgets["f_max"]
+        base_f_min_max = f_min_box.maximum()
+        base_f_max_min = f_max_box.minimum()
+
+        def link_f_max_floor(f_min_value):
+            f_max_box.setMinimum(max(base_f_max_min, f_min_value * 2))
+
+        def link_f_min_ceiling(f_max_value):
+            f_min_box.setMaximum(min(base_f_min_max, f_max_value // 2))
+
+        f_min_box.valueChanged.connect(link_f_max_floor)
+        f_max_box.valueChanged.connect(link_f_min_ceiling)
+        # apply once for the values just loaded from settings
+        link_f_max_floor(f_min_box.value())
+        link_f_min_ceiling(f_max_box.value())
 
         # Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
