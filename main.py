@@ -61,11 +61,12 @@ def parse_args(APP_DEFINITIONS):
 def create_sound_engine(app):
     sound_engine = pwi.SoundEngine()
     sound_engine_thread = qtc.QThread()
+    sound_engine_thread.setObjectName("sound_engine")  # so diagnostics name the thread
     sound_engine.moveToThread(sound_engine_thread)
 
     # Connections
     # app.aboutToQuit.connect(sound_engine.release_all)
-    app.aboutToQuit.connect(sound_engine_thread.quit)  # for clean exit
+    app.aboutToQuit.connect(sound_engine_thread.quit)  # for clean exit; wait() happens after app.exec()
 
     sound_engine_thread.start(priority=qtc.QThread.HighPriority)
 
@@ -137,6 +138,13 @@ def main():
 
     # construct_SpeakerSystem(windows[0])  # for testing
     app.exec()
+
+    # ---- Clean shutdown of the sound engine thread
+    # quit() only requests the event loop to stop; wait() blocks until the
+    # underlying thread has actually finished, so the QThread object is not
+    # destroyed while the thread is still running.
+    sound_engine_thread.quit()
+    sound_engine_thread.wait()
 
 
 if __name__ == "__main__":
