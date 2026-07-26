@@ -306,7 +306,14 @@ class MainWindow(qtw.QMainWindow):
     #         pass
 
     def _settings_were_updated(self):
-        self.graph.update_figure(recalculate_limits=False)
+        # A settings change may alter the frequency range/resolution (f_min, f_max,
+        # calc_ppo), so recompute the curves over the new range when a model exists.
+        # update_all_results -> update_graph -> update_figure(recalculate_limits=True)
+        # also refreshes the x-axis limits. Fall back to a light redraw otherwise.
+        if hasattr(self, "speaker_model_state"):
+            self.update_all_results()
+        else:
+            self.graph.update_figure(recalculate_limits=False)
         self.signal_good_beep.emit()
 
     def open_about_menu(self):
