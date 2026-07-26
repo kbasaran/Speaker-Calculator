@@ -33,7 +33,11 @@ def calculate_air_mass(sd: float) -> float:
     :param sd: Diaphragm effective surface area in m².
     :return: Air mass in kg.
     """
-    return 1.13 * (sd) ** (3 / 2)
+    # Low-frequency co-vibrating air mass on BOTH faces of a flat circular piston:
+    # 2 * (8/3) * rho * a**3 with radius a = sqrt(sd/pi), i.e.
+    # 2*(8/3)*rho/pi**1.5 * sd**1.5. Coefficient ~= 1.134 for air at 25 C (was
+    # hardcoded 1.13); derived from air.RHO so it tracks the configured air density.
+    return 2 * (8 / 3) * air.RHO / np.pi**1.5 * sd ** (3 / 2)
 
 
 def calculate_lm(bl: float, re: float, mms: float, sd: float) -> float:

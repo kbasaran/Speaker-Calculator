@@ -47,9 +47,9 @@ def construct_PassiveRadiator(vals,
     # R_p = spring_damping_ratio_pr * K_p, then invert
     # R(Vba) = sqrt((k_box_pr + k) * m_s) / Q  for the quality factor
     Rp = vals["spring_damping_ratio_pr"] * k
-    Q = ((k_box_pr + k) * m_s)**0.5 / Rp
+    Qp = ((k_box_pr + k) * m_s)**0.5 / Rp
 
-    return PassiveRadiator(m=m, k=k, Q=Q, S=S)
+    return PassiveRadiator(m=m, k=k, Qp=Qp, S=S)
 
 
 def construct_SpeakerDriver(vals) -> SpeakerDriver:
