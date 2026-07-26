@@ -113,7 +113,7 @@ class SpeakerSystem:
         # on the state variables. They are substituted into the equations of motion,
         # and made available as outputs of the system through the C and D matrices.
         dependent_vars = {
-            p_housing: - (Kair / Vba * (Spr * xpr + Sd * x1)),
+            p_housing: - (Kair / Vba * (Spr * (xpr - x2) + Sd * (x1 - x2))),
             i_coil: (Vsource - Bl * (x1_t - x2_t)) / (Rext + Re),
             }
 
