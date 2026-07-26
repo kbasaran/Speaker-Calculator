@@ -572,6 +572,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.FloatSpinBox("mpb",
                                       "Mass of the parent body."
                                       "\nUnit is gram.",
+                                      min_max=(0.1, 999999),
                                       coeff_for_SI=1e-3,
                                       ),
                      description="Mass",
