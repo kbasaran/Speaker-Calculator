@@ -81,9 +81,12 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
 
 
 def build_impedance(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
-    curves = {key: np.real(val) for key, val in spk_sys.get_Z(freqs).items()}
+    # Plot the impedance magnitude |Z| (what impedance analyzers measure and what
+    # sets the amplifier load I = V/|Z|), not the real part. No voice-coil
+    # inductance is modelled, so |Z| stays flat at high frequency.
+    curves = {key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()}
     return PlotSpec(curves,
-                    title="Electrical impedance, real part - no inductance",
+                    title="Electrical impedance magnitude |Z| - no inductance",
                     ylabel="ohm",
                     ylimits_policy="impedance",
                     )
