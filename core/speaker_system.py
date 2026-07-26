@@ -199,7 +199,7 @@ class SpeakerSystem:
 
             "Mpr": np.inf if self.passive_radiator is None else self.passive_radiator.m_s(),  # with air coupled
             "Kpr": 0 if self.passive_radiator is None else self.passive_radiator.k,
-            "Rpr": 0 if self.passive_radiator is None else self.passive_radiator.R(self.enclosure.Vba()),
+            "Rpr": 0 if self.passive_radiator is None else self.passive_radiator.R,
             "Spr": 0 if self.passive_radiator is None else self.passive_radiator.S,
             "dir_pr_vent": self.dir_pr_vent,
 

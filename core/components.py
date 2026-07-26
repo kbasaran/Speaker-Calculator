@@ -253,7 +253,7 @@ class PassiveRadiator:
     # All units are SI
     m: float  # moving mass without coupled air mass. a.k.a mmd_pr.
     k: float  # suspension stiffness. a.k.a kmpr.
-    Qp: float  # mechanical quality factor at the PR's housed resonance
+    R: float  # mechanical damping resistance [N.s/m]. a.k.a rmpr. Box-independent.
     S: float  # surface area
 
     def m_s(self):
@@ -270,9 +270,10 @@ class PassiveRadiator:
         "Stiffness from air in enclosure."
         return self.S**2 * air.Kair / Vba
 
-    def R(self, Vba):
+    def Qp(self, Vba):
         """
-        Damping at fp due to port losses in case of vented box, or due to
-        mechanical losses in case of passive radiator. Calculated from Qp.
+        Mechanical quality factor at the PR's housed resonance, derived from the
+        box-independent damping resistance R. (At fp the loss is port losses for a
+        vented box, or suspension losses for a passive radiator.)
         """
-        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.Qp
+        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.R
