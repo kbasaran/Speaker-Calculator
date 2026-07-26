@@ -52,7 +52,7 @@ DEFAULTS = {
     "vc_table_file": "data/wire table.ods",
     "startup_state_file": "data/startup.sscf",
     "f_min": 10,
-    "f_max": 3000,
+    "f_max": 1500,
     "A_beep": 0.25,
     "last_used_folder": str(Path.home()),
     "matplotlib_style": "ggplot",
