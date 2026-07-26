@@ -30,3 +30,11 @@ auto update when any value in user_form changes
 add:
 - Peak displacement at 1020Hz: 0.0143 mm
 - Peak displacement overall: 0.313 mm
+
+
+from Claude
+ Recommendations (naming, dead code, documented limits)
+
+  6. No voice-coil inductance Le anywhere — impedance has no HF rise and SPL ignores Le. Already acknowledged in the impedance title; flagging in case HF accuracy matters.
+  7. build_impedance plots Re(Z), not |Z|. Conventional impedance curves and measurements use magnitude; Re(Z) reads lower off-resonance. The title says "real part," so it's deliberate — just non-standard.
+  8. Qtc/fb use Bl²/Re (ideal source) while the simulated curves use Bl²/(Re+Rext). Standard T/S convention, but with Rext>0 the reported scalar Qtc won't match the plotted response — worth a doc note.

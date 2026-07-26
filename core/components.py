@@ -251,9 +251,9 @@ class ParentBody:
 @dtc.dataclass
 class PassiveRadiator:
     # All units are SI
-    m: float  # without coupled air mass. a.k.a mmd_pr.
-    k: float  # kmpr
-    Q: float  # rmpr
+    m: float  # moving mass without coupled air mass. a.k.a mmd_pr.
+    k: float  # suspension stiffness. a.k.a kmpr.
+    Qp: float  # mechanical quality factor at the PR's housed resonance
     S: float  # surface area
 
     def m_s(self):
@@ -275,4 +275,4 @@ class PassiveRadiator:
         Damping at fp due to port losses in case of vented box, or due to
         mechanical losses in case of passive radiator. Calculated from Qp.
         """
-        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.Q
+        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.Qp

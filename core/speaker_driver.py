@@ -81,9 +81,12 @@ class SpeakerDriver:
         # more derived parameters
         self.Kms = self.Mms * (self.fs * 2 * np.pi)**2
         self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
-        self.Ces = self.Bl**2 / self.Re
-        self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Ces)
-        self.Qes = (self.Mms * self.Kms)**0.5 / self.Ces
+        # Bl**2/Re is the electrical damping reflected into the mechanical domain: a
+        # resistance [N.s/m], not a compliance. It adds to the mechanical loss Rms to
+        # set the total (Qts) and electrical (Qes) quality factors.
+        self.Res = self.Bl**2 / self.Re
+        self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Res)
+        self.Qes = (self.Mms * self.Kms)**0.5 / self.Res
         zeta_speaker = 1 / 2 / self.Qts
         # ---- Free-air *response-peak* frequency -- NOT the damped natural frequency.
         #
