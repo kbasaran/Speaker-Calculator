@@ -394,24 +394,15 @@ class InputSectionTabWidget(qtw.QTabWidget):
         # form.add_row(spacer)
 
         # ---- Form logic
-        def adjust_form_for_calc_type(chosen_index):
-            is_define_coil = \
-                form.interactable_widgets["motor_spec_type"].itemData(chosen_index) == "define_coil"
+        def adjust_form_for_motor_calc_type(chosen_index):
+            is_define_coil = form.interactable_widgets["motor_spec_type"].itemData(chosen_index) == "define_coil"
             form.interactable_widgets["h_top_plate"].setEnabled(is_define_coil)
             form.interactable_widgets["airgap_clearance_inner"].setEnabled(is_define_coil)
             form.interactable_widgets["airgap_clearance_outer"].setEnabled(is_define_coil)
             form.interactable_widgets["h_former_under_coil"].setEnabled(is_define_coil)
             self.widget(0).interactable_widgets["dead_mass"].setEnabled(is_define_coil)
 
-        # def combo_box_contents_are_obsoleted(*args):
-        #     combo_box=form.interactable_widgets["coil_options"]
-        #     combo_box.clear()
-        #     combo_box.addItem("----")
-
-        form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(adjust_form_for_calc_type)
-
-        # for row_name in ["former_ID", "t_former", "w_stacking_coef", "Rlw", "reduce_per_layer", "h_winding_target"]:
-        #     form.interactable_widgets[row_name].valueChanged.connect(combo_box_contents_are_obsoleted)
+        form.interactable_widgets["motor_spec_type"].currentIndexChanged.connect(adjust_form_for_motor_calc_type)
 
         return form
 
@@ -422,20 +413,16 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.Title("Enclosure type"))
 
         enclosue_type_choice_buttons = pwi.ChoiceButtonGroup("enclosure_type",
-                                                        {0: "Free-air", 1: "Closed box", 2: "PR", 3: "Vented"},
+                                                        {0: "Free-air", 1: "Closed box", 2: "PR/Vented",},
                                                         {0: "Speaker assumed to be on an infinite baffle, with no acoustical loading on either side",
                                                          1: "Speaker rear side coupled to a sealed enclosure.",
-                                                         2: "Speaker rear side coupled to an enclosure with a passive raditor or a bass-reflex vent.",
-                                                         3: "Speaker rear side coupled to an enclosure with a bass-reflex vent.",
+                                                         2: "Speaker rear side coupled to an enclosure with a passive radiator or a bass-reflex vent.",
                                                          },
                                                         vertical=False,
                                                         )
 
         enclosue_type_choice_buttons.layout().setContentsMargins(0, 0, 0, 0)
         form.add_row(enclosue_type_choice_buttons)
-
-        # Vented option not implemented yet
-        form.interactable_widgets["enclosure_type"].buttons()[3].setEnabled(False)
 
         # ---- Closed box specs
         form.add_row(pwi.SunkenLine())
@@ -473,10 +460,10 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="Q<sub>l</sub> - leakage losses",
                      )
 
-        # ---- Passive radiator
+        # ---- PR/vent
         form.add_row(pwi.SunkenLine())
 
-        form.add_row(pwi.Title("Passive radiator specifications"))
+        form.add_row(pwi.Title("PR/Vented specifications"))
 
         form.add_row(pwi.ComboBox("dir_pr_vent",
                                   "Mounting orientation of the passive radiator (or reflex vent) relative"
@@ -505,14 +492,28 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="h - ratio (f<sub>p</sub> / f<sub>b</sub>)",
                      )
 
-        form.add_row(pwi.FloatSpinBox("spring_damping_ratio_pr",
-                                      "Ratio of the passive radiator's mechanical damping R<sub>p</sub>"
-                                      "\nto its suspension stiffness K<sub>p</sub>."
-                                      "\nUnit is seconds.",
-                                      decimals=4,
-                                      ),
-                     description="Spring damping ratio (R<sub>p</sub> / K<sub>p</sub>)",
-                     )
+        # Resonator spec type
+        form.add_row(pwi.ComboBox("resonator_spec_type",
+                                  "Choose the type of resonator and which parameters to use to set it up.",
+                                  [("PR - Define mass and damping ratio", "pr_1"),
+                                        ("Test tab", "pr_2"),
+                                   ],
+                                  ))
+        form.interactable_widgets["resonator_spec_type"].setStyleSheet(
+            "font-weight: bold")
+
+        # Stacked widget for different motor definition types
+        form.resonator_definition_stacked = qtw.QStackedWidget()
+        form.resonator_definition_stacked.setSizePolicy(qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Maximum)
+        # expands and pushes the next form rows down if I don't do the above line
+        form.interactable_widgets["resonator_spec_type"].currentIndexChanged.connect(
+            form.resonator_definition_stacked.setCurrentIndex)
+
+        form.add_row(form.resonator_definition_stacked)
+
+        # ---- First page: "Define PR"
+        resonator_definition_p1 = pwi.SubForm()
+        form.resonator_definition_stacked.addWidget(resonator_definition_p1)
 
         form.add_row(pwi.FloatSpinBox("area_ratio_pr",
                                       "Ratio of the passive radiator's surface area S<sub>p</sub>"
@@ -522,6 +523,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       min_max=(0.1, None),
                                       ),
                      description="Area ratio (S<sub>p</sub> / S<sub>d</sub>)",
+                     into_form=resonator_definition_p1
                      )
 
         form.add_row(pwi.FloatSpinBox("Mmdp",
@@ -531,6 +533,30 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       coeff_for_SI=1e-3,
                                       ),
                      description="M<sub>md,p</sub> - moving mass (excl. air)",
+                     into_form=resonator_definition_p1
+                     )
+
+        form.add_row(pwi.FloatSpinBox("spring_damping_ratio_pr",
+                                      "Ratio of the passive radiator's mechanical damping R<sub>p</sub>"
+                                      "\nto its suspension stiffness K<sub>p</sub>."
+                                      "\nUnit is seconds.",
+                                      decimals=4,
+                                      ),
+                     description="Spring damping ratio (R<sub>p</sub> / K<sub>p</sub>)",
+                     into_form=resonator_definition_p1
+                     )
+
+        # ---- Second page
+        resonator_definition_p2 = pwi.SubForm()
+        form.resonator_definition_stacked.addWidget(resonator_definition_p2)
+
+        form.add_row(pwi.FloatSpinBox("test_parameter_for_p2",
+                                      "test tooltip",
+                                      decimals=2,
+                                      min_max=(0.1, None),
+                                      ),
+                     description="Test parameter",
+                     into_form=resonator_definition_p2,
                      )
 
 

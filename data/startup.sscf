@@ -223,6 +223,14 @@
     "airgap_clearance_outer": 0.0005,
     "h_former_under_coil": 0.0005,
     "enclosure_type": 1,
+    "resonator_spec_type": {
+        "current_index": 0,
+        "current_data": "pr_1",
+        "current_text": "PR - Define mass and damping ratio",
+        "items": [
+        ]
+    },
+    "test_parameter_for_p2": 0.0,
     "Vb": 0.002,
     "Qa": 100.0,
     "Ql": 99999.9,
