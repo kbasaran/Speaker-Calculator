@@ -65,7 +65,7 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
         # Combined driver + passive radiator response (shows the PR notch).
         # Total radiated volume velocity sums the diaphragm and PR contributions.
         # velocs["PR/vent"] is already the PR's physical outward velocity, so the
-        # dir_pr sign is baked in and its volume velocity adds directly.
+        # dir_pr_vent sign is baked in and its volume velocity adds directly.
         if spk_sys.passive_radiator is not None:
             U_total = U_driver + spk_sys.passive_radiator.S * velocs["PR/vent, RMS"]  # volume velocity
             _, SPL_incl_pr = calculate_spl((freqs, U_total), 1.0)

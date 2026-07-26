@@ -515,9 +515,24 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="M<sub>md,p</sub> - moving mass (excl. air)",
                      )
 
+        form.add_row(pwi.ComboBox("dir_pr_vent",
+                                  "Mounting orientation of the passive radiator (or reflex vent) relative"
+                                  "\nto the driver."
+                                  "\n'Same with driver': the radiator faces the same way as the driver,"
+                                  "\nso their reaction forces on the cabinet add up."
+                                  "\n'On opposite direction': the radiator is mounted facing the opposite"
+                                  "\nway (opposed / force-cancelling), so its reaction force partly cancels"
+                                  "\nthe driver's cabinet vibration.",
+                                  [("Same with driver", 1),
+                                   ("On opposite direction", -1),
+                                   ],
+                                  ),
+                     description="Mounting orientation",
+                     )
+
 
         # ---- Form logic
-        pr_widget_keys = ("h_pr", "spring_damping_ratio_pr", "area_ratio_pr", "Mmdp")
+        pr_widget_keys = ("h_pr", "spring_damping_ratio_pr", "area_ratio_pr", "Mmdp", "dir_pr_vent")
 
         def adjust_form_for_enclosure_type(*_):
             enclosure_type = form.interactable_widgets["enclosure_type"].checkedId()

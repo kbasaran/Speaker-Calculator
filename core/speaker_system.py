@@ -39,7 +39,7 @@ class SpeakerSystem:
     enclosure: None | Enclosure = None
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
-    dir_pr: int = 1
+    dir_pr_vent: int = 1
 
     def __post_init__(self):
         self._build_symbolic_ss_model()
@@ -60,9 +60,9 @@ class SpeakerSystem:
         # It carries the sign of the PR's *acoustic* coupling to the box air only; the
         # PR suspension/inertia (Kpr, Rpr, Mpr) stay orientation-independent, and the
         # opposite mechanical recoil on the parent body then falls out automatically.
-        dir_pr = smp.symbols("dir_pr", real=True)
+        dir_pr_vent = smp.symbols("dir_pr_vent", real=True)
         # Signed effective PR area, used in every air-coupling (acoustic) term.
-        Spr_ac = dir_pr * Spr
+        Spr_ac = dir_pr_vent * Spr
 
         # Dynamic symbols
         x1, x2 = mech.dynamicsymbols("x(1:3)")
@@ -201,7 +201,7 @@ class SpeakerSystem:
             "Kpr": 0 if self.passive_radiator is None else self.passive_radiator.k,
             "Rpr": 0 if self.passive_radiator is None else self.passive_radiator.R(self.enclosure.Vba()),
             "Spr": 0 if self.passive_radiator is None else self.passive_radiator.S,
-            "dir_pr": self.dir_pr,
+            "dir_pr_vent": self.dir_pr_vent,
 
             "Kair": 0 if self.enclosure is None else air.Kair,  # 0 is trickery a bit, to disable the housing formulas.
             "Vba": 0 if self.enclosure is None else self.enclosure.Vba(),  # in fact Vba is infinite when no enclosure. but infinite is not allowed.
@@ -381,14 +381,14 @@ class SpeakerSystem:
 
         if self.passive_radiator is not None:  # remove later and return always
             # xpr is solved in the global (driver) frame. Report the PR's *physical*
-            # outward excursion: dir_pr flips it so positive always means the PR
+            # outward excursion: dir_pr_vent flips it so positive always means the PR
             # moving the same way the driver does when pushing air out of the box,
             # regardless of the mounting orientation.
-            xpr = self.dir_pr * self._get_response("xpr", V_source, freqs)
+            xpr = self.dir_pr_vent * self._get_response("xpr", V_source, freqs)
             disps["PR/vent, RMS"] = xpr
             disps["PR/vent, peak"] = xpr * 2**0.5
             if self.parent_body is not None:
-                x2_pr = self.dir_pr * x2  # cabinet motion projected onto the PR axis
+                x2_pr = self.dir_pr_vent * x2  # cabinet motion projected onto the PR axis
                 disps["PR/vent, peak, relative to parent"] = (xpr - x2_pr) * 2**0.5
                 disps["PR/vent, RMS, relative to parent"] = (xpr - x2_pr)
                 
@@ -409,11 +409,11 @@ class SpeakerSystem:
 
         if self.passive_radiator is not None:  # remove later and return always
             # physical outward velocity of the PR (see get_displacements for the
-            # dir_pr sign convention).
-            xpr_t = self.dir_pr * self._get_response("xpr_t", V_source, freqs)
+            # dir_pr_vent sign convention).
+            xpr_t = self.dir_pr_vent * self._get_response("xpr_t", V_source, freqs)
             velocs["PR/vent, RMS"] = xpr_t
             if self.parent_body is not None:
-                velocs["PR/vent, RMS, relative to parent"] = xpr_t - self.dir_pr * x2_t
+                velocs["PR/vent, RMS, relative to parent"] = xpr_t - self.dir_pr_vent * x2_t
         
         return velocs
 
@@ -468,9 +468,9 @@ class SpeakerSystem:
             force_pr = np.zeros(len(force_speaker))
         else:
             # accs["PR/vent"] is reported in the PR's physical frame; bring the
-            # inertial reaction back to the global frame (x dir_pr) so it sums
+            # inertial reaction back to the global frame (x dir_pr_vent) so it sums
             # consistently with the driver and parent-body forces below.
-            force_pr = accs["PR/vent, RMS"] * self.dir_pr * self.passive_radiator.m_s()  # inertial force
+            force_pr = accs["PR/vent, RMS"] * self.dir_pr_vent * self.passive_radiator.m_s()  # inertial force
             forces["Force from passive radiator to parent body, RMS"] = force_pr
             # forces["Reaction force from reference frame"] += force_pr
 

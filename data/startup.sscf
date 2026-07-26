@@ -230,6 +230,21 @@
     "spring_damping_ratio_pr": 0.005,
     "area_ratio_pr": 2.5,
     "Mmdp": 0.01,
+    "dir_pr_vent": {
+        "current_index": 0,
+        "current_data": 1,
+        "current_text": "Same with driver",
+        "items": [
+            [
+                "Same with driver",
+                1
+            ],
+            [
+                "On opposite direction",
+                -1
+            ]
+        ]
+    },
     "parent_body": 1,
     "mpb": 0.1,
     "kpb": 10000.0,
