@@ -478,6 +478,21 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.Title("Passive radiator specifications"))
 
+        form.add_row(pwi.ComboBox("dir_pr_vent",
+                                  "Mounting orientation of the passive radiator (or reflex vent) relative"
+                                  "\nto the driver."
+                                  "\n'Same with driver': the radiator faces the same way as the driver,"
+                                  "\nso their reaction forces on the cabinet add up."
+                                  "\n'On opposite direction': the radiator is mounted facing the opposite"
+                                  "\nway (opposed / force-cancelling), so its reaction force partly cancels"
+                                  "\nthe driver's cabinet vibration.",
+                                  [("Same with driver", 1),
+                                   ("On opposite direction", -1),
+                                   ],
+                                  ),
+                     description="Mounting orientation",
+                     )
+
         form.add_row(pwi.FloatSpinBox("h_pr",
                                       "Ratio of the passive radiator's free-air resonance f<sub>p</sub> to the"
                                       "\ndriver's sealed-box resonance f<sub>b</sub>."
@@ -516,21 +531,6 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       coeff_for_SI=1e-3,
                                       ),
                      description="M<sub>md,p</sub> - moving mass (excl. air)",
-                     )
-
-        form.add_row(pwi.ComboBox("dir_pr_vent",
-                                  "Mounting orientation of the passive radiator (or reflex vent) relative"
-                                  "\nto the driver."
-                                  "\n'Same with driver': the radiator faces the same way as the driver,"
-                                  "\nso their reaction forces on the cabinet add up."
-                                  "\n'On opposite direction': the radiator is mounted facing the opposite"
-                                  "\nway (opposed / force-cancelling), so its reaction force partly cancels"
-                                  "\nthe driver's cabinet vibration.",
-                                  [("Same with driver", 1),
-                                   ("On opposite direction", -1),
-                                   ],
-                                  ),
-                     description="Mounting orientation",
                      )
 
 
