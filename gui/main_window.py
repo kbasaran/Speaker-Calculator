@@ -389,7 +389,9 @@ class MainWindow(qtw.QMainWindow):
 
         spk_sys, V_source = self.speaker_model_state["system"], self.speaker_model_state["V_source"]
 
-        freqs = signal_tools.generate_log_spaced_freq_list(10, 1500, app_settings.get_value("calc_ppo"))
+        freqs = signal_tools.generate_log_spaced_freq_list(app_settings.get_value("f_min"),
+                                                           app_settings.get_value("f_max"),
+                                                           app_settings.get_value("calc_ppo"))
         V_spk = V_source / spk_sys.R_sys * spk_sys.speaker.Re
         W_spk = V_spk**2 / spk_sys.speaker.Re
 
