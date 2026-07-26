@@ -55,8 +55,14 @@ class SpeakerSystem:
         Rms, Rpb, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
         Kair, Vba, Rbox = smp.symbols("Kair, V_ba, R_box", real=True, positive=True)
         Sd, Spr, Bl, Re, Rext = smp.symbols("S_d, S_pr, Bl, R_e, R_ext", real=True, positive=True)
-        # Direction coefficient for passive radiator
-        # 1 if same direction with speaker, 0 if orthogonal, -1 if reverse direction
+        # Direction coefficient for the passive radiator relative to the driver axis:
+        # +1 same direction, -1 reverse (opposed / force-cancelling mount).
+        # It carries the sign of the PR's *acoustic* coupling to the box air only; the
+        # PR suspension/inertia (Kpr, Rpr, Mpr) stay orientation-independent, and the
+        # opposite mechanical recoil on the parent body then falls out automatically.
+        dir_pr = smp.symbols("dir_pr", real=True)
+        # Signed effective PR area, used in every air-coupling (acoustic) term.
+        Spr_ac = dir_pr * Spr
 
         # Dynamic symbols
         x1, x2 = mech.dynamicsymbols("x(1:3)")
@@ -76,7 +82,7 @@ class SpeakerSystem:
         # velocity, so the reaction force on each radiator scales with its own
         # area (Sd, Spr) and the driver and PR are coupled through the shared
         # lossy air. Rms and Rpr remain the elements' own mechanical losses.
-        U_box = Sd * (x1_t - x2_t) + Spr * (xpr_t - x2_t)
+        U_box = Sd * (x1_t - x2_t) + Spr_ac * (xpr_t - x2_t)
 
         # define state space system
         eqns = [
@@ -103,10 +109,10 @@ class SpeakerSystem:
                  + Rpr * (xpr_t - x2_t)
                  + Kpr * (xpr - x2)
 
-                 + Rbox * (Sd + Spr) * U_box
+                 + Rbox * (Sd + Spr_ac) * U_box
 
                  - p_housing * Sd
-                 - p_housing * Spr
+                 - p_housing * Spr_ac
 
                  - i_coil * Bl
                  ),
@@ -116,9 +122,9 @@ class SpeakerSystem:
                  - Rpr * (xpr_t - x2_t)
                  - Kpr * (xpr - x2)
 
-                 - Rbox * Spr * U_box
+                 - Rbox * Spr_ac * U_box
 
-                 + p_housing * Spr
+                 + p_housing * Spr_ac
                  ),
 
                 ]
@@ -130,7 +136,7 @@ class SpeakerSystem:
         # measured relative to the cabinet walls (parent body x2) -- consistent
         # with the box-loss term above. With no parent body x2 == 0.
         dependent_vars = {
-            p_housing: - (Kair / Vba * (Spr * (xpr - x2) + Sd * (x1 - x2))),
+            p_housing: - (Kair / Vba * (Spr_ac * (xpr - x2) + Sd * (x1 - x2))),
             i_coil: (Vsource - Bl * (x1_t - x2_t)) / (Rext + Re),
             }
 
@@ -374,12 +380,17 @@ class SpeakerSystem:
             disps["Diaphragm, RMS, relative to parent"] = (x1 - x2)
 
         if self.passive_radiator is not None:  # remove later and return always
-            xpr = self._get_response("xpr", V_source, freqs)
+            # xpr is solved in the global (driver) frame. Report the PR's *physical*
+            # outward excursion: dir_pr flips it so positive always means the PR
+            # moving the same way the driver does when pushing air out of the box,
+            # regardless of the mounting orientation.
+            xpr = self.dir_pr * self._get_response("xpr", V_source, freqs)
             disps["PR/vent, RMS"] = xpr
             disps["PR/vent, peak"] = xpr * 2**0.5
             if self.parent_body is not None:
-                disps["PR/vent, peak, relative to parent"] = (xpr - x2) * 2**0.5
-                disps["PR/vent, RMS, relative to parent"] = (xpr - x2)
+                x2_pr = self.dir_pr * x2  # cabinet motion projected onto the PR axis
+                disps["PR/vent, peak, relative to parent"] = (xpr - x2_pr) * 2**0.5
+                disps["PR/vent, RMS, relative to parent"] = (xpr - x2_pr)
                 
         return disps
 
@@ -397,10 +408,12 @@ class SpeakerSystem:
             velocs["Diaphragm, RMS, relative to parent"] = x1_t - x2_t
 
         if self.passive_radiator is not None:  # remove later and return always
-            xpr_t = self._get_response("xpr_t", V_source, freqs)
+            # physical outward velocity of the PR (see get_displacements for the
+            # dir_pr sign convention).
+            xpr_t = self.dir_pr * self._get_response("xpr_t", V_source, freqs)
             velocs["PR/vent, RMS"] = xpr_t
             if self.parent_body is not None:
-                velocs["PR/vent, RMS, relative to parent"] = xpr_t - x2_t
+                velocs["PR/vent, RMS, relative to parent"] = xpr_t - self.dir_pr * x2_t
         
         return velocs
 
@@ -454,7 +467,10 @@ class SpeakerSystem:
         if self.passive_radiator is None:
             force_pr = np.zeros(len(force_speaker))
         else:
-            force_pr = accs["PR/vent, RMS"] * self.passive_radiator.m_s()  # inertial force
+            # accs["PR/vent"] is reported in the PR's physical frame; bring the
+            # inertial reaction back to the global frame (x dir_pr) so it sums
+            # consistently with the driver and parent-body forces below.
+            force_pr = accs["PR/vent, RMS"] * self.dir_pr * self.passive_radiator.m_s()  # inertial force
             forces["Force from passive radiator to parent body, RMS"] = force_pr
             # forces["Reaction force from reference frame"] += force_pr
 
