@@ -19,8 +19,10 @@ import pyperclip
 
 from config.app_config import APP_DEFINITIONS, ABOUT_TEXT, singleton_settings
 from utils.paths import get_main_dir
-from gui.dialogs import (InputSectionTabWidget, SettingsDialog, CurveExportMenu,
-                          show_file_paths, update_coil_options_combobox)
+from gui.dialogs import SettingsDialog, CurveExportMenu
+from gui.help_menu import show_file_paths
+from gui.coil_options import update_coil_options_combobox
+from gui.input_section_tab_widget import InputSectionTabWidget
 from gui.plot_builders import PLOT_BUILDERS
 from gui import session_io
 
