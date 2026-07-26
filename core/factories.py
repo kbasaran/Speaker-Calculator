@@ -120,6 +120,7 @@ def build_or_update_SpeakerSystem(vals,
     if vals["enclosure_type"] in (1, 2):  # closed box or passive radiator
         enclosure = Enclosure(vals["Vb"],
                                  vals["Qa"],
+                                 vals["Ql"],
                                  )
     else:
         enclosure = None

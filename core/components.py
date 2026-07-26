@@ -187,7 +187,7 @@ class Enclosure:
     # All units are SI
     Vb: float
     Qa: float
-    # Ql: float = np.inf
+    Ql: float = np.inf  # leakage-loss quality factor; inf -> no leakage
 
     def Vba(self):  # effective acoustical volume
         return self.Vb
@@ -200,13 +200,23 @@ class Enclosure:
 
     def R(self, Sd, Mms, Kms):
         """
-        Damping at fb due to air absorption in box. Calculated from Qa.
+        Acoustic loss resistance of the enclosure [Pa.s/m^3], combining internal
+        absorption (Qa) and leakage (Ql).
+
+        It is referenced to the driver's boxed resonance so that, for a sealed
+        single-driver box, it reproduces the familiar Qa/Ql damping. Because it
+        is applied to the *volume* velocity into the box, the state-space model
+        weights each radiator's reaction by its own area (Sd, Spr) and couples
+        the driver and passive radiator through the shared lossy air.
+
+        The loss quality factors combine reciprocally: 1/Qb = 1/Qa + 1/Ql.
         """
-        # return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
-        if self.Vb == 0:
+        if self.Vb == 0 or Sd == 0:
             return 0
-        else:
-            return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
+        # driver-referred mechanical loss for Qa = Ql = 1, divided by Sd**2 to
+        # express it as an acoustic resistance acting on volume velocity
+        mech_ref = ((Kms + self.K(Sd)) * Mms)**0.5
+        return mech_ref / Sd**2 * (1 / self.Qa + 1 / self.Ql)
 
 
 @dtc.dataclass
