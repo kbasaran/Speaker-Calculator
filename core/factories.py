@@ -2,7 +2,6 @@ import logging
 
 import numpy as np
 
-from config.physics import air
 from core.calculations import calculate_air_mass
 from core.components import Wire, Coil, Motor, Enclosure, ParentBody, PassiveRadiator
 from core.speaker_driver import SpeakerDriver
@@ -34,9 +33,6 @@ def construct_PassiveRadiator(vals,
     m = vals["Mmdp"]                          # PassiveRadiator.m (moving mass, no air load)
     m_s = m + calculate_air_mass(S)           # with coupled air mass
 
-    Vba = enclosure.Vba()
-    k_box_pr = S**2 * air.Kair / Vba          # PR air-spring stiffness in the box
-
     # Driver's housed (sealed-box) resonance -- matches SpeakerSystem.fb
     fb = 1 / 2 / np.pi * ((speaker.Kms + enclosure.K(Sd)) / speaker.Mms)**0.5
     fp = vals["h_pr"] * fb                     # PR free-air resonance (the response notch)
@@ -44,12 +40,10 @@ def construct_PassiveRadiator(vals,
     # Invert f_free = 1/2pi * sqrt(k / m_s) for the suspension stiffness
     k = m_s * (2 * np.pi * fp)**2
 
-    # R_p = spring_damping_ratio_pr * K_p, then invert
-    # R(Vba) = sqrt((k_box_pr + k) * m_s) / Q  for the quality factor
+    # Mechanical damping resistance R_p = spring_damping_ratio_pr * K_p [N.s/m].
     Rp = vals["spring_damping_ratio_pr"] * k
-    Qp = ((k_box_pr + k) * m_s)**0.5 / Rp
 
-    return PassiveRadiator(m=m, k=k, Qp=Qp, S=S)
+    return PassiveRadiator(m=m, k=k, R=Rp, S=S)
 
 
 def construct_SpeakerDriver(vals) -> SpeakerDriver:
