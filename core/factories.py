@@ -144,6 +144,7 @@ def build_or_update_SpeakerSystem(vals,
                                 enclosure=enclosure,
                                 parent_body=parent_body,
                                 passive_radiator=passive_radiator,
+                                dir_pr_vent=vals["dir_pr_vent"]["current_data"],
                                 )
     else:
         spk_sys.update_values(speaker=speaker,
@@ -151,6 +152,7 @@ def build_or_update_SpeakerSystem(vals,
                               enclosure=enclosure,
                               parent_body=parent_body,
                               passive_radiator=passive_radiator,
+                              dir_pr_vent=vals["dir_pr_vent"]["current_data"],
                               )
 
     return spk_sys
