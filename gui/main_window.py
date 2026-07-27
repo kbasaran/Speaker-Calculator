@@ -100,12 +100,13 @@ class MainWindow(qtw.QMainWindow):
         self.title_textbox.setMaxLength(48)
 
         # ---- Center - results
-        self.results_textbox = qtw.QLabel()
-        self.results_textbox.setTextFormat(qtg.Qt.MarkdownText)
-        self.results_textbox.setAlignment(qtg.Qt.AlignTop)
-        self.results_textbox.setTextInteractionFlags(qtc.Qt.TextInteractionFlag.TextSelectableByMouse |
-                                                     qtc.Qt.TextInteractionFlag.TextSelectableByKeyboard,
-                                                     )
+        # Read-only QTextBrowser (not a QLabel): it wraps overlong lines to the
+        # widget width and scrolls when the summary is tall, so the summaries no
+        # longer need manual line breaks to fit a fixed width. Content is Markdown,
+        # so it must be set with setMarkdown() (setText() would treat the embedded
+        # <br>/<sub> tags as HTML and render the Markdown headers literally).
+        self.results_textbox = qtw.QTextBrowser()
+        self.results_textbox.setReadOnly(True)  # selectable by default when read-only
 
         # ---- Right hand side (graph etc.)
         rh_widget = qtw.QWidget()
@@ -206,10 +207,19 @@ class MainWindow(qtw.QMainWindow):
 
         mw_center_layout.addLayout(results_textbox_layout)
 
+        # Floor the results column at the width of a representative line so it is not
+        # cramped on launch. A QTextBrowser wraps to fit, so (unlike the old QLabel)
+        # it never demands width from its content -- this minimum is what keeps the
+        # panel wide enough. Pad for the frame border, the document margin and the
+        # vertical scrollbar so the sample line still fits without wrapping.
         expected_text_width = qtg.QFontMetrics(
             self.results_textbox.font()).horizontalAdvance(
                 "Bl : 5.555 Tm        Bl²/Re : 5.55 N²/W")
-        self.results_textbox.setMinimumWidth(int(expected_text_width * 1))
+        chrome_width = (2 * self.results_textbox.frameWidth()
+                        + 2 * int(self.results_textbox.document().documentMargin())
+                        + self.results_textbox.style().pixelMetric(
+                            qtw.QStyle.PixelMetric.PM_ScrollBarExtent))
+        self.results_textbox.setMinimumWidth(expected_text_width + chrome_width)
         self.results_textbox.setSizePolicy(
             qtw.QSizePolicy.Preferred, qtw.QSizePolicy.Preferred)
 
@@ -343,7 +353,7 @@ class MainWindow(qtw.QMainWindow):
                                          find_feasible_coils(self.get_state(), self.wires, logger),
                                          )
             if not self.input_form.interactable_widgets["coil_options"].currentData():
-                self.results_textbox.setText("\n\n### No coil found.\n Please check your input form.")
+                self.results_textbox.setMarkdown("\n\n### No coil found.\n Please check your input form.")
                 self.signal_bad_beep.emit()
                 return
 
@@ -357,7 +367,7 @@ class MainWindow(qtw.QMainWindow):
             # would need a non-positive port length) makes the model unbuildable, the
             # same way an infeasible coil-winding target does above. Report and abort
             # the update, leaving any previous model untouched.
-            self.results_textbox.setText(f"\n\n### Model update failed.\n{e}")
+            self.results_textbox.setMarkdown(f"\n\n### Model update failed.\n{e}")
             self.signal_bad_beep.emit()
             return
         V_source = calculate_voltage(vals["excitation_value"],
@@ -431,4 +441,4 @@ class MainWindow(qtw.QMainWindow):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
         summary_all = self.speaker_model_state["system"].get_summary(self.speaker_model_state["V_source"])
-        self.results_textbox.setText(summary_all)
+        self.results_textbox.setMarkdown(summary_all)

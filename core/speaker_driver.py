@@ -147,7 +147,7 @@ class SpeakerDriver:
                    "<br></br>"
                    f"V<sub>as</sub> : {self.Vas() * 1e3:.4g} l"
                    
-                   "<br/>  \n"
+                   "<br/>\n"
                    f"#### Mass and suspension"
                    "<br></br>"
                    f"M<sub>ms</sub> : {self.Mms*1000:.4g} g        "
@@ -156,7 +156,7 @@ class SpeakerDriver:
                    f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm        "
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
 
-                   "<br/>  \n"
+                   "<br/>\n"
                    "#### Displacements"
                    "<br></br>"
                    f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
