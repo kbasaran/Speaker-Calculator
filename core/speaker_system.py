@@ -27,7 +27,7 @@ from sympy.physics import mechanics as mech
 
 from config.physics import air
 from core.calculations import make_output_matrices, make_state_matrix_A, make_state_matrix_B
-from core.components import Enclosure, ParentBody, PassiveRadiator
+from core.components import Enclosure, ParentBody, PassiveRadiator, BassReflexPort
 from core.speaker_driver import SpeakerDriver
 
 
@@ -347,9 +347,26 @@ class SpeakerSystem:
                 "<br></br>"
                 f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
                 )
-            if isinstance(self.passive_radiator, PassiveRadiator):
-                summary += f"      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.S) / 1000:.4g} N/mm"
-                
+            # Resonator (passive radiator or bass-reflex vent). Check the vent first
+            # since BassReflexPort is a subclass of PassiveRadiator.
+            if isinstance(self.passive_radiator, BassReflexPort):
+                port = self.passive_radiator
+                fp = port.f_housed(self.enclosure.Vba())      # Helmholtz tuning
+                port_len = port.port_length()
+                summary += (
+                    f"      K<sub>enc,v</sub>: {self.enclosure.K(port.S) / 1000:.4g} N/mm"
+                    "<br></br>"
+                    f"f<sub>p</sub> (tuning): {fp:.4g} Hz"
+                    "<br></br>"
+                    f"Vent: {port.diameter() * 1000:.4g} mm dia., {port_len * 1000:.4g} mm long"
+                    )
+            elif isinstance(self.passive_radiator, PassiveRadiator):
+                summary += (
+                    f"      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.S) / 1000:.4g} N/mm"
+                    "<br></br>"
+                    f"f<sub>p</sub> (notch): {self.passive_radiator.f_free():.4g} Hz"
+                    )
+
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (

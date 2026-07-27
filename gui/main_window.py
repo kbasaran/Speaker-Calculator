@@ -350,7 +350,16 @@ class MainWindow(qtw.QMainWindow):
         vals = self.get_state()
         speaker_driver = construct_SpeakerDriver(vals)
         spk_sys = self.speaker_model_state["system"] if hasattr(self, "speaker_model_state") else None
-        speaker_system = build_or_update_SpeakerSystem(vals, speaker_driver, spk_sys)
+        try:
+            speaker_system = build_or_update_SpeakerSystem(vals, speaker_driver, spk_sys)
+        except ValueError as e:
+            # An infeasible resonator (e.g. a bass-reflex vent that is over-tuned and
+            # would need a non-positive port length) makes the model unbuildable, the
+            # same way an infeasible coil-winding target does above. Report and abort
+            # the update, leaving any previous model untouched.
+            self.results_textbox.setText(f"\n\n### Model update failed.\n{e}")
+            self.signal_bad_beep.emit()
+            return
         V_source = calculate_voltage(vals["excitation_value"],
                                         vals["excitation_type"]["current_data"],
                                         re=speaker_driver.Re,
