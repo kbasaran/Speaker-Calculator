@@ -214,7 +214,7 @@ class MainWindow(qtw.QMainWindow):
         # vertical scrollbar so the sample line still fits without wrapping.
         expected_text_width = qtg.QFontMetrics(
             self.results_textbox.font()).horizontalAdvance(
-                "Bl : 5.555 Tm        Bl²/Re : 5.55 N²/W")
+                "Bl : 5.555 Tm      Bl²/Re : 5.55 N²/W ")
         chrome_width = (2 * self.results_textbox.frameWidth()
                         + 2 * int(self.results_textbox.document().documentMargin())
                         + self.results_textbox.style().pixelMetric(
