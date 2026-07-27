@@ -175,7 +175,7 @@ class Motor:
             f"{self.airgap_radii[0] * 1e3:.3f} + "
             f"{self.airgap_radii[1] * 1e3:.3f} = "
             f"{self.airgap_radii[2] * 1e3:.3f} mm"
-            "<br/>  \n"
+            "<br/>\n"
             f"{self.coil.get_summary()}"
             )
 

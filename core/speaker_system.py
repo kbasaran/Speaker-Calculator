@@ -340,7 +340,7 @@ class SpeakerSystem:
         
         if isinstance(self.enclosure, Enclosure):
             summary += (
-                "<br/>  \n"
+                "<br/>\n"
                 "#### Enclosure"
                 "<br></br>"
                 f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
@@ -370,7 +370,7 @@ class SpeakerSystem:
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (
-                "<br/>  \n"
+                "<br/>\n"
                 "#### Parent body"
                 "\n"
                 "##### Assuming child masses are decoupled"
