@@ -277,3 +277,37 @@ class PassiveRadiator:
         vented box, or suspension losses for a passive radiator.)
         """
         return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.R
+
+
+@dtc.dataclass
+class BassReflexPort(PassiveRadiator):
+    """A bass-reflex vent, modelled as a passive radiator with *zero* suspension
+    stiffness (k = 0): the air plug in the tube has no restoring force of its own,
+    so the whole "spring" is the enclosure air. It reuses the PassiveRadiator
+    interface (m_s, k, R, S) unchanged, so the state-space model treats it exactly
+    like a PR -- the Helmholtz resonance then falls out of the air coupling alone.
+
+    Extra state vs. a PR:
+        end_correction : total acoustic end-correction length [m], summed over both
+                         ends, from the exit-flare geometry. It splits the total
+                         co-vibrating acoustic mass m_s into the physical tube air
+                         slug (self.m -> port_length) and the radiation end
+                         correction, so the same tuning can be reported as a
+                         buildable tube length.
+    """
+    end_correction: float = 0.0
+
+    def m_s(self):
+        # Total co-vibrating acoustic mass = tube air slug (self.m) + end-correction
+        # air. Unlike a PR (flat piston -> calculate_air_mass), a vent's end
+        # correction depends on its termination geometry, so it is carried
+        # explicitly rather than assumed flanged.
+        return self.m + air.RHO * self.S * self.end_correction
+
+    def port_length(self):
+        "Physical length of the vent tube [m] (excludes the end corrections)."
+        return self.m / (air.RHO * self.S)
+
+    def diameter(self):
+        "Internal diameter of the (circular) port [m]."
+        return 2 * (self.S / np.pi)**0.5

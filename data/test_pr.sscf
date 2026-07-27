@@ -230,7 +230,27 @@
         "items": [
         ]
     },
-    "test_parameter_for_p2": 0.0,
+    "port_diameter": 0.05,
+    "Qp": 15.0,
+    "exit_flare_type": {
+        "current_index": 1,
+        "current_data": 0.732,
+        "current_text": "One end flanged, one free",
+        "items": [
+            [
+                "Both ends flanged / flared",
+                0.85
+            ],
+            [
+                "One end flanged, one free",
+                0.732
+            ],
+            [
+                "Both ends free",
+                0.614
+            ]
+        ]
+    },
     "Vb": 0.04,
     "Qa": 30.0,
     "Ql": 99999.9,

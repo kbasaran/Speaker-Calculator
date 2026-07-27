@@ -496,7 +496,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.ComboBox("resonator_spec_type",
                                   "Choose the type of resonator and which parameters to use to set it up.",
                                   [("PR - Define mass and damping ratio", "pr_1"),
-                                        ("Test tab", "pr_2"),
+                                        ("Bass reflex - Define port and Q", "br_1"),
                                    ],
                                   ))
         form.interactable_widgets["resonator_spec_type"].setStyleSheet(
@@ -512,8 +512,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(form.resonator_definition_stacked)
 
         # ---- First page: "Define PR"
-        resonator_definition_p1 = pwi.SubForm()
-        form.resonator_definition_stacked.addWidget(resonator_definition_p1)
+        resonator_definition_pr1 = pwi.SubForm()
+        form.resonator_definition_stacked.addWidget(resonator_definition_pr1)
 
         form.add_row(pwi.FloatSpinBox("area_ratio_pr",
                                       "Ratio of the passive radiator's surface area S<sub>p</sub>"
@@ -523,7 +523,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       min_max=(0.1, None),
                                       ),
                      description="Area ratio (S<sub>p</sub> / S<sub>d</sub>)",
-                     into_form=resonator_definition_p1
+                     into_form=resonator_definition_pr1
                      )
 
         form.add_row(pwi.FloatSpinBox("Mmdp",
@@ -533,7 +533,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       coeff_for_SI=1e-3,
                                       ),
                      description="M<sub>md,p</sub> - moving mass (excl. air)",
-                     into_form=resonator_definition_p1
+                     into_form=resonator_definition_pr1
                      )
 
         form.add_row(pwi.FloatSpinBox("spring_damping_ratio_pr",
@@ -543,36 +543,84 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       decimals=4,
                                       ),
                      description="Spring damping ratio (R<sub>p</sub> / K<sub>p</sub>)",
-                     into_form=resonator_definition_p1
+                     into_form=resonator_definition_pr1
                      )
 
-        # ---- Second page
-        resonator_definition_p2 = pwi.SubForm()
-        form.resonator_definition_stacked.addWidget(resonator_definition_p2)
+        # ---- Second page: "Bass reflex"
+        # A reflex vent is modelled as the same third degree of freedom as the
+        # passive radiator, but with zero suspension stiffness (the air plug in the
+        # tube has no restoring force of its own). It therefore reuses h_pr (=fp/fb)
+        # and dir_pr_vent, and only needs the port-specific inputs below.
+        resonator_definition_br1 = pwi.SubForm()
+        form.resonator_definition_stacked.addWidget(resonator_definition_br1)
 
-        form.add_row(pwi.FloatSpinBox("test_parameter_for_p2",
-                                      "test tooltip",
+        form.add_row(pwi.FloatSpinBox("port_diameter",
+                                      "Internal diameter of the reflex port (vent)."
+                                      "\nSets the port cross-sectional area S<sub>v</sub> = π/4 · D<sub>v</sub>²."
+                                      "\nLarger diameters lower the port air velocity (less chuffing)"
+                                      "\nbut require a longer tube for the same tuning."
+                                      "\nUnit is mm.",
+                                      decimals=2,
+                                      coeff_for_SI=1e-3,
+                                      ),
+                     description="D<sub>v</sub> - port diameter",
+                     into_form=resonator_definition_br1,
+                     )
+
+        form.add_row(pwi.FloatSpinBox("Qp",
+                                      "Quality factor of the reflex port at the tuning frequency,"
+                                      "\ncapturing the vent losses (turbulence, friction, leakage)."
+                                      "\nHigher values mean a lower-loss, more sharply tuned port."
+                                      "\nUnitless quantity.",
                                       decimals=2,
                                       min_max=(0.1, None),
                                       ),
-                     description="Test parameter",
-                     into_form=resonator_definition_p2,
+                     description="Q<sub>p</sub> - port quality factor",
+                     into_form=resonator_definition_br1,
+                     )
+
+        # End-correction coefficient k, expressed as a multiple of the port
+        # diameter D_v: the total effective-length addition is k * D_v (sum of both
+        # ends). Used only to convert the required acoustic mass into a physical
+        # tube length for reporting -- it does not enter the acoustic model.
+        # Classic values (Dickason): both ends flanged 0.850, one end flanged 0.732,
+        # both ends free 0.614.
+        form.add_row(pwi.ComboBox("exit_flare_type",
+                                  "Termination geometry of the port ends, which sets the acoustic"
+                                  "\nend correction used to compute the physical port length."
+                                  "\nThe correction added to the tube length is k &middot; D<sub>v</sub>,"
+                                  "\nwhere k depends on how each end is terminated.",
+                                  [("Both ends flanged / flared", 0.850),
+                                   ("One end flanged, one free", 0.732),
+                                   ("Both ends free", 0.614),
+                                   ],
+                                  ),
+                     description="Exit flare type",
+                     into_form=resonator_definition_br1,
                      )
 
 
         # ---- Form logic
-        pr_widget_keys = ("h_pr", "spring_damping_ratio_pr", "area_ratio_pr", "Mmdp", "dir_pr_vent")
+        # All resonator inputs are active only for the PR/Vented enclosure. The
+        # resonator_definition_stacked widget already shows just the page for the
+        # selected resonator_spec_type (PR vs bass reflex), so the enable state only
+        # needs to follow the enclosure type; the shared inputs (dir_pr_vent, h_pr)
+        # serve both the passive radiator and the vent.
+        resonator_widget_keys = ("dir_pr_vent", "h_pr", "resonator_spec_type",
+                                  "spring_damping_ratio_pr", "area_ratio_pr", "Mmdp",  # PR page
+                                  "port_diameter", "Qp", "exit_flare_type",            # bass reflex page
+                                  )
 
         def adjust_form_for_enclosure_type(*_):
             enclosure_type = form.interactable_widgets["enclosure_type"].checkedId()
-            has_box = enclosure_type in (1, 2)  # closed box or passive radiator
-            has_pr = enclosure_type == 2
+            has_box = enclosure_type in (1, 2)  # closed box or PR/vented
+            has_resonator = enclosure_type == 2
 
             form.interactable_widgets["Vb"].setEnabled(has_box)
             form.interactable_widgets["Qa"].setEnabled(has_box)
             form.interactable_widgets["Ql"].setEnabled(has_box)
-            for key in pr_widget_keys:
-                form.interactable_widgets[key].setEnabled(has_pr)
+            for key in resonator_widget_keys:
+                form.interactable_widgets[key].setEnabled(has_resonator)
 
         form.interactable_widgets["enclosure_type"].idToggled.connect(adjust_form_for_enclosure_type)
         # adjustment at start

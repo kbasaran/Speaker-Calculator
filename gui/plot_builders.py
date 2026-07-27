@@ -59,7 +59,6 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
         _, SPL_Xpeak_limited = calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
 
         curves.update({"SPL piston mode, Xpeak limited": SPL_Xpeak_limited,
-                       "SPL piston mode": SPL,
                        })
 
         # Combined driver + passive radiator response (shows the PR notch).
@@ -69,7 +68,10 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
         if spk_sys.passive_radiator is not None:
             U_total = U_driver + spk_sys.passive_radiator.S * velocs["PR/vent, RMS"]  # volume velocity
             _, SPL_incl_pr = calculate_spl((freqs, U_total), 1.0)
-            curves.update({"SPL piston mode, incl. PR": SPL_incl_pr})
+            curves.update({"SPL piston mode incl. radiator": SPL_incl_pr})
+
+        curves.update({"SPL piston mode": SPL,
+                       })
 
         if spk_sys.speaker.Re == spk_sys.R_sys:
             title = f"SPL@1m, Half-space\n{V_spk:.4g}V {W_spk:.3g}Watt@Re"
