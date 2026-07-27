@@ -88,11 +88,20 @@ def construct_BassReflexPort(vals, spec: str,
     Rp = (k_box * m_s)**0.5 / vals["Qp"]
 
     # Split the acoustic mass into the physical tube air slug and the end correction.
-    # A negative tube length means the requested tuning cannot be met at this
-    # diameter (the end correction alone over-tunes); it is left to the caller/summary
-    # to flag -- the acoustic model stays correct because m_s() is unaffected.
     end_correction = vals["exit_flare_type"]["current_data"] * vals["port_diameter"]
     m_tube = m_s - air.RHO * S * end_correction
+
+    # A non-positive tube length means no buildable port meets this target: the
+    # enclosure and tuning call for less air mass than the port's end correction
+    # alone. Fail the model update -- the same way an infeasible coil-winding target
+    # does -- instead of returning a nonsensical negative-length vent.
+    if m_tube <= 0:
+        raise ValueError(
+            "Bass-reflex vent is not realizable: the required port length is "
+            "non-positive (the enclosure and tuning need less air mass than the "
+            "port's end correction alone). Adjust the port diameter, the tuning "
+            "ratio h, or the enclosure volume."
+            )
 
     return BassReflexPort(m=m_tube, k=0.0, R=Rp, S=S, end_correction=end_correction)
 
