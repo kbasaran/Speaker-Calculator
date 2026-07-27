@@ -136,13 +136,13 @@ class SpeakerDriver:
         "Summary in markup language."
         summary = ("## Speaker unit"
                    "<br></br>"
-                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL        "
+                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL      "
                    f"R<sub>e</sub> : {self.Re:.2f} ohm"
                    "<br></br>"
-                   f"Bl : {self.Bl:.4g} Tm        "
+                   f"Bl : {self.Bl:.4g} Tm      "
                    f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W"
                    "<br></br>"
-                   f"Q<sub>es</sub> : {self.Qes:.3g}        "
+                   f"Q<sub>es</sub> : {self.Qes:.3g}      "
                    f"Q<sub>ts</sub> : {self.Qts:.3g}"
                    "<br></br>"
                    f"V<sub>as</sub> : {self.Vas() * 1e3:.4g} l"
@@ -150,10 +150,10 @@ class SpeakerDriver:
                    "<br/>\n"
                    f"#### Mass and suspension"
                    "<br></br>"
-                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g        "
-                   f"M<sub>md</sub> : {self.Mmd*1000:.4g} g"
+                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g      "
+                   f"M<sub>md</sub> : {self.Mmd*1000:.4g}"
                    "<br></br>"
-                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm        "
+                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm      "
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
 
                    "<br/>\n"
@@ -164,7 +164,7 @@ class SpeakerDriver:
 
         if self.motor is not None:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary += f"      X<sub>crash</sub> : {Xcrash*1000:.3g} mm (recomm.)"
+            summary += f"      X<sub>crash_recommended</sub> : {Xcrash*1000:.3g}"
 
         if V_spk > 0:
             # Suspension feasibility
@@ -177,7 +177,7 @@ class SpeakerDriver:
                     )
 
         if self.motor is not None:
-            summary += "\n----\n"
+            summary += "\n\n----\n"
             summary += self.motor.get_summary()
 
         return summary

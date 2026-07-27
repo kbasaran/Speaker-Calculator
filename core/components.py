@@ -116,9 +116,9 @@ class Coil:
                    f"L<sub>total</sub>: {self.total_wire_length():.3g} m        "
                    f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
                    "<br></br>"
-                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm        w<sub>max</sub> : {self.w_max*1e3:.4g} mm"
+                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g}        w<sub>max</sub> : {self.w_max*1e3:.4g}"
                    "<br></br>"
-                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm        OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
+                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g}        OD<sub>max</sub> : {self.OD_max*1e3:.4g}"
                    )
         return summary
 
@@ -166,9 +166,9 @@ class Motor:
             "<br></br>"
             f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm"
             "<br></br>"
-            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm"
+            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g}"
             "<br></br>"
-            f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
+            f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g}"
             "<br></br>"
             "Airgap radii:"
             "<br></br>"

@@ -332,45 +332,60 @@ class SpeakerSystem:
         V_spk = V_source / self.R_sys * self.speaker.Re
         summary = self.speaker.get_summary(V_spk)
 
-        summary += ("\n----\n"
-                    "#### System"
-                    "<br></br>"
-                    f"R<sub>sys</sub>: {self.R_sys:.2f} ohm"
-                   )
-        
-        if isinstance(self.enclosure, Enclosure):
+        summary += ("\n\n----\n")
+
+        # Each system-level section is introduced by a single "\n" (never a
+        # line-leading "<br/>", which would open a Markdown HTML block and swallow
+        # every following heading) and ends with a trailing inline "<br/>" so the
+        # next header gets the same blank-line gap as the sections above. Check the
+        # vent first since BassReflexPort is a subclass of PassiveRadiator.
+        if isinstance(self.passive_radiator, BassReflexPort):
+            port = self.passive_radiator
+            fp = port.f_housed(self.enclosure.Vba())      # Helmholtz tuning
+            port_len = port.port_length()
             summary += (
-                "<br/>\n"
+                "\n"
+                "#### Bass reflex"
+                "<br></br>"
+                f"K<sub>enc,v</sub>: {self.enclosure.K(port.S) / 1000:.4g} N/mm"
+                "<br></br>"
+                f"f<sub>p</sub> (tuning): {fp:.4g} Hz"
+                "<br></br>"
+                f"Vent: {port.diameter() * 1000:.4g} mm dia., {port_len * 1000:.4g} mm long"
+                "<br/>"
+                )
+        elif isinstance(self.passive_radiator, PassiveRadiator):
+            summary += (
+                "\n"
+                "#### Passive Radiator"
+                "<br></br>"
+                f"K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.S) / 1000:.4g} N/mm"
+                "<br></br>"
+                f"f<sub>p</sub> (notch): {self.passive_radiator.f_free():.4g} Hz"
+                "<br/>"
+                )
+        elif isinstance(self.enclosure, Enclosure):
+            summary += (
+                "\n"
                 "#### Enclosure"
                 "<br></br>"
                 f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
                 "<br></br>"
                 f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
+                "<br/>"
                 )
-            # Resonator (passive radiator or bass-reflex vent). Check the vent first
-            # since BassReflexPort is a subclass of PassiveRadiator.
-            if isinstance(self.passive_radiator, BassReflexPort):
-                port = self.passive_radiator
-                fp = port.f_housed(self.enclosure.Vba())      # Helmholtz tuning
-                port_len = port.port_length()
-                summary += (
-                    f"      K<sub>enc,v</sub>: {self.enclosure.K(port.S) / 1000:.4g} N/mm"
+
+        summary += ("\n"
+                    "#### System"
                     "<br></br>"
-                    f"f<sub>p</sub> (tuning): {fp:.4g} Hz"
-                    "<br></br>"
-                    f"Vent: {port.diameter() * 1000:.4g} mm dia., {port_len * 1000:.4g} mm long"
-                    )
-            elif isinstance(self.passive_radiator, PassiveRadiator):
-                summary += (
-                    f"      K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.S) / 1000:.4g} N/mm"
-                    "<br></br>"
-                    f"f<sub>p</sub> (notch): {self.passive_radiator.f_free():.4g} Hz"
-                    )
+                    f"R<sub>sys</sub>: {self.R_sys:.2f} ohm"
+                    "<br/>"
+                   )
 
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (
-                "<br/>\n"
+                "\n"
                 "#### Parent body"
                 "\n"
                 "##### Assuming child masses are decoupled"
