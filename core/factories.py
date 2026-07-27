@@ -3,11 +3,17 @@ import logging
 import numpy as np
 
 from core.calculations import calculate_air_mass
-from core.components import Wire, Coil, Motor, Enclosure, ParentBody, PassiveRadiator
+from core.components import Wire, Coil, Motor, Enclosure, ParentBody, PassiveRadiator, BassReflexPort
 from core.speaker_driver import SpeakerDriver
 from core.speaker_system import SpeakerSystem
+from config.physics import air
 
 logger = logging.getLogger(__name__)
+
+
+def _driver_sealed_fb(speaker: SpeakerDriver, enclosure: Enclosure) -> float:
+    "Driver's housed (sealed-box) resonance f_b -- matches SpeakerSystem.fb."
+    return 1 / 2 / np.pi * ((speaker.Kms + enclosure.K(speaker.Sd)) / speaker.Mms)**0.5
 
 
 def construct_PassiveRadiator(vals,
@@ -34,7 +40,7 @@ def construct_PassiveRadiator(vals,
     m_s = m + calculate_air_mass(S)           # with coupled air mass
 
     # Driver's housed (sealed-box) resonance -- matches SpeakerSystem.fb
-    fb = 1 / 2 / np.pi * ((speaker.Kms + enclosure.K(Sd)) / speaker.Mms)**0.5
+    fb = _driver_sealed_fb(speaker, enclosure)
     fp = vals["h_pr"] * fb                     # PR free-air resonance (the response notch)
 
     # Invert f_free = 1/2pi * sqrt(k / m_s) for the suspension stiffness
@@ -44,6 +50,51 @@ def construct_PassiveRadiator(vals,
     Rp = vals["spring_damping_ratio_pr"] * k
 
     return PassiveRadiator(m=m, k=k, R=Rp, S=S)
+
+
+def construct_BassReflexPort(vals, spec: str,
+                             speaker: SpeakerDriver,
+                             enclosure: Enclosure,
+                             ) -> BassReflexPort:
+    """Build a BassReflexPort from the user-facing design parameters.
+
+    User inputs (in `vals`, already converted to SI):
+        h_pr            : f_p / f_b (port tuning / driver sealed-box resonance)
+                          -- shared with the passive radiator.
+        port_diameter   : internal diameter of the vent [m].
+        Qp              : port quality factor (losses) at the tuning frequency.
+        exit_flare_type : end-correction coefficient k on the diameter; the total
+                          end correction (both ends) is k * port_diameter.
+
+    A vent is a passive radiator with zero suspension stiffness, so its resonance
+    is set entirely by the enclosure air. The required acoustic mass is therefore
+    *derived* from the target tuning (the inverse of the PR, where mass is an
+    input), and the physical port length falls out of that mass.
+    """
+    if spec != "br_1":
+        raise NotImplementedError(f"Bass-reflex spec type not implemented: {spec}")
+
+    S = np.pi / 4 * vals["port_diameter"]**2
+
+    fb = _driver_sealed_fb(speaker, enclosure)   # driver housed resonance
+    fp = vals["h_pr"] * fb                        # port tuning (Helmholtz) frequency
+
+    # Enclosure air acts as the port's only spring. Total acoustic mass needed to
+    # tune the (stiffness-free) port to fp: m_s = k_box / (2*pi*fp)**2.
+    k_box = enclosure.K(S)
+    m_s = k_box / (2 * np.pi * fp)**2
+
+    # Port loss resistance, inverting BassReflexPort.Qp() with k = 0.
+    Rp = (k_box * m_s)**0.5 / vals["Qp"]
+
+    # Split the acoustic mass into the physical tube air slug and the end correction.
+    # A negative tube length means the requested tuning cannot be met at this
+    # diameter (the end correction alone over-tunes); it is left to the caller/summary
+    # to flag -- the acoustic model stays correct because m_s() is unaffected.
+    end_correction = vals["exit_flare_type"]["current_data"] * vals["port_diameter"]
+    m_tube = m_s - air.RHO * S * end_correction
+
+    return BassReflexPort(m=m_tube, k=0.0, R=Rp, S=S, end_correction=end_correction)
 
 
 def construct_SpeakerDriver(vals) -> SpeakerDriver:
@@ -127,8 +178,18 @@ def build_or_update_SpeakerSystem(vals,
     else:
         parent_body = None
 
-    if vals["enclosure_type"] == 2:  # passive radiator
-        passive_radiator = construct_PassiveRadiator(vals, speaker, enclosure)
+    if vals["enclosure_type"] == 2:  # PR or bass-reflex vent
+        # resonator_spec_type identifiers are "<family>_<variant>": "pr" for a
+        # passive radiator, "br" for a bass-reflex vent. Dispatch on the family so
+        # future input variants (e.g. "br_2") slot in without new top-level branches.
+        spec = vals["resonator_spec_type"]["current_data"]
+        family = spec.split("_")[0]
+        if family == "pr":
+            passive_radiator = construct_PassiveRadiator(vals, speaker, enclosure)
+        elif family == "br":
+            passive_radiator = construct_BassReflexPort(vals, spec, speaker, enclosure)
+        else:
+            raise ValueError(f"Unknown resonator spec type: {spec}")
     else:
         passive_radiator = None
 
