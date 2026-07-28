@@ -118,7 +118,7 @@
                 }
             ],
             [
-                "2L CCAW220 -> Re=4.31, Lm=83.05, Qts=1.16",
+                "2L CCAW220 -> Re=4.31, Lm=83.04, Qts=1.16",
                 {
                     "Bavg": 0.5,
                     "airgap_clearance_inner": 0.0005,
@@ -223,13 +223,43 @@
     "airgap_clearance_outer": 0.0005,
     "h_former_under_coil": 0.0005,
     "enclosure_type": 1,
+    "Vb": 0.002,
+    "Qa": 100.0,
+    "Ql": 99999.9,
+    "dir_pr_vent": {
+        "current_index": 0,
+        "current_data": 1,
+        "current_text": "Same with driver",
+        "items": [
+            [
+                "Same with driver",
+                1
+            ],
+            [
+                "On opposite direction",
+                -1
+            ]
+        ]
+    },
+    "h_pr": 0.7,
     "resonator_spec_type": {
         "current_index": 0,
         "current_data": "pr_1",
         "current_text": "PR - Define mass and damping ratio",
         "items": [
+            [
+                "PR - Define mass and damping ratio",
+                "pr_1"
+            ],
+            [
+                "Bass reflex - Define port and Q",
+                "br_1"
+            ]
         ]
     },
+    "area_ratio_pr": 2.5,
+    "Mmdp": 0.01,
+    "spring_damping_ratio_pr": 0.005,
     "port_diameter": 0.05,
     "Qp": 15.0,
     "exit_flare_type": {
@@ -251,29 +281,7 @@
             ]
         ]
     },
-    "Vb": 0.002,
-    "Qa": 100.0,
-    "Ql": 99999.9,
-    "h_pr": 0.7,
-    "spring_damping_ratio_pr": 0.005,
-    "area_ratio_pr": 2.5,
-    "Mmdp": 0.01,
-    "dir_pr_vent": {
-        "current_index": 0,
-        "current_data": 1,
-        "current_text": "Same with driver",
-        "items": [
-            [
-                "Same with driver",
-                1
-            ],
-            [
-                "On opposite direction",
-                -1
-            ]
-        ]
-    },
-    "parent_body": 1,
+    "parent_body": 0,
     "mpb": 0.1,
     "kpb": 10000.0,
     "rpb": 3.0,
