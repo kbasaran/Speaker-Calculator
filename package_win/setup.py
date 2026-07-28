@@ -2,16 +2,27 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from cx_Freeze import setup, Executable
-from config.app_config import APP_DEFINITIONS
 from pathlib import Path
+from cx_Freeze import setup, Executable
 # https://cx-freeze.readthedocs.io/en/stable/setup_script.html
 
+# This script lives in package_win/, one level below the project root. Anchor every
+# source path to the root and put the root on sys.path so the project imports and
+# the file globbing work regardless of the directory the build is launched from
+# (the build itself is run from package_win/ so build/ and dist/ land there).
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from config.app_config import APP_DEFINITIONS
+
+# include_files entries are (absolute source, path-inside-the-build). Sources are
+# absolute so the build does not depend on the current directory; destinations stay
+# root-relative so the frozen layout mirrors the source tree.
 files_to_include = [
-    (str(Path("./LICENSE")), str(Path("./LICENSE"))),
-    (str(Path("./README.md")), str(Path("./README.md"))),
-    (str(Path(APP_DEFINITIONS["icon_path"])), str(Path(APP_DEFINITIONS["icon_path"]))),
-    *[(str(file.relative_to(Path(__file__).parent)),) * 2 for file in Path(__file__).parent.joinpath("data").rglob("*")],
+    (str(ROOT / "LICENSE"), "LICENSE"),
+    (str(ROOT / "README.md"), "README.md"),
+    (str(ROOT / APP_DEFINITIONS["icon_path"]), APP_DEFINITIONS["icon_path"]),
+    *[(str(file), str(file.relative_to(ROOT))) for file in (ROOT / "data").rglob("*")],
     ]
 
 # sounddevice/soundfile ship their PortAudio/libsndfile binaries in package data
@@ -47,12 +58,12 @@ bdist_msi_options = {
                     }]
     }
 
-executables=[Executable("main.py",
+executables=[Executable(str(ROOT / "main.py"),
                         copyright=APP_DEFINITIONS["copyright"],
                         base="gui",
                         shortcut_name=APP_DEFINITIONS["app_name"] + " v" + APP_DEFINITIONS["version"],
                         shortcut_dir="DesktopFolder",
-                        icon=APP_DEFINITIONS["icon_path"],
+                        icon=str(ROOT / APP_DEFINITIONS["icon_path"]),
                         ),
             ]
 
