@@ -14,6 +14,17 @@ files_to_include = [
     *[(str(file.relative_to(Path(__file__).parent)),) * 2 for file in Path(__file__).parent.joinpath("data").rglob("*")],
     ]
 
+# sounddevice/soundfile ship their PortAudio/libsndfile binaries in package data
+# folders that cx_Freeze's import analysis does not pick up. Locate them from the
+# installed packages and bundle each at the same relative path when it exists
+# (e.g. _sounddevice_data ships on Windows, not on Linux).
+for pkg_name, data_dir_name in (("sounddevice", "_sounddevice_data"),
+                                ("soundfile", "_soundfile_data")):
+    module = __import__(pkg_name)
+    data_dir = Path(module.__file__).parent / data_dir_name
+    if data_dir.is_dir():
+        files_to_include.append((str(data_dir), data_dir_name))
+
 print("Warning.. Adding following additional files to package:")
 for pair in files_to_include:
     print("\t" + pair[0])
@@ -21,7 +32,9 @@ print()
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
-    "packages": ["numpy", "scipy", "matplotlib", "sympy", "pandas"],  # RecursionError in cx_Freeze if these are not provided
+    "packages": ["numpy", "scipy", "matplotlib", "sympy", "pandas",  # RecursionError in cx_Freeze if these are not provided
+                 "odf",  # dynamically imported by pandas as the .ods engine; not visible to static analysis
+                 "sounddevice", "soundfile"],  # ship their bundled PortAudio/libsndfile binaries
     "include_files": files_to_include,
     "silent_level": 1,
 }
