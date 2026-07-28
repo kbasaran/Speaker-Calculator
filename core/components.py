@@ -112,7 +112,7 @@ class Coil:
                    f"Fill ratio: {self.fill_ratio * 100:.3g} %"
                    "</p>"
                    "<p>"
-                   f"L<sub>total</sub>: {self.total_wire_length():.3g} m&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"L<sub>total</sub> : {self.total_wire_length():.3g} m&nbsp;&nbsp;&nbsp;&nbsp;"
                    f"h<sub>nom</sub> : {self.h_winding * 1000:.4g}<br>"
                    f"w<sub>nom</sub> : {self.w_nom*1e3:.4g}&nbsp;&nbsp;&nbsp;&nbsp;w<sub>max</sub> : {self.w_max*1e3:.4g}<br>"
                    f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g}&nbsp;&nbsp;&nbsp;&nbsp;OD<sub>max</sub> : {self.OD_max*1e3:.4g}"
