@@ -4,7 +4,7 @@ from pathlib import Path
 from generictools.settings import SettingsManager
 
 APP_DEFINITIONS = {"app_name": "Speaker Calculator",
-                   "version": "0.3.4",
+                   "version": "0.4.0",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2026 Kerem Basaran",
                    "icon_path": "images/logo2025.ico",  # relative posix path
@@ -14,7 +14,7 @@ APP_DEFINITIONS = {"app_name": "Speaker Calculator",
                    "website": "https://github.com/kbasaran",
                    }
 # uncomment for release candidate builds
-APP_DEFINITIONS["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+# APP_DEFINITIONS["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 # Text shown in the Help -> About dialog.
 ABOUT_TEXT = "\n".join([
