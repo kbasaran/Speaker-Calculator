@@ -469,7 +469,8 @@ class MainWindow(qtw.QMainWindow):
         self.graph.ax.set_ylabel(spec.ylabel)
 
         for i, (name, y) in enumerate(spec.curves.items()):
-            self.graph.add_line2d(i, name, (freqs, y), update_figure=False)
+            self.graph.add_line2d(i, name, (freqs, y), update_figure=False,
+                                  line2d_kwargs=spec.line_kwargs.get(name, {}))
 
         self.graph.update_figure()
 
