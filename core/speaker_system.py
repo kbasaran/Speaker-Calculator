@@ -30,6 +30,11 @@ from core.calculations import make_output_matrices, make_state_matrix_A, make_st
 from core.components import Enclosure, ParentBody, PassiveRadiator, BassReflexPort
 from core.speaker_driver import SpeakerDriver
 
+# Peak vent air velocity above which a port tends to "chuff" (audible turbulence /
+# dynamic compression). ~17 m/s is the common conservative rule of thumb, roughly
+# 5% of the speed of sound; above it the port area should be increased.
+_PORT_CHUFF_VELOCITY = 17.0  # m/s
+
 
 @dtc.dataclass
 class SpeakerSystem:
@@ -327,13 +332,19 @@ class SpeakerSystem:
                                                             D[[i], :],
                                                             )
 
-    def get_summary(self, V_source: float = 0) -> str:
-        "Summary in HTML (rendered by Qt's rich-text engine via setHtml)."
+    def get_summary(self, V_source: float = 0, freqs: np.ndarray = None) -> str:
+        """Summary in HTML (rendered by Qt's rich-text engine via setHtml).
+
+        If `freqs` is given, the drive-level checks that need a frequency sweep are
+        appended: peak vent air velocity (chuffing) for a bass-reflex box and peak
+        PR excursion (bottoming) for a passive radiator. Without `freqs` those two
+        lines are simply omitted, so the summary still works without a sweep.
+        """
         V_spk = V_source / self.R_sys * self.speaker.Re
         summary = self.speaker.get_summary(V_spk)
 
         summary += ("<h2>System</h2>"
-                    f"R<sub>sys</sub>: {self.R_sys:.2f} ohm"
+                    f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
                     )
 
         # Spacing is governed by the results box's default stylesheet, so each section
@@ -341,49 +352,110 @@ class SpeakerSystem:
         # BassReflexPort is a subclass of PassiveRadiator.
         if isinstance(self.passive_radiator, BassReflexPort):
             port = self.passive_radiator
+            Vba = self.enclosure.Vba()
             fp = port.f_housed(self.enclosure.Vba())      # Helmholtz tuning
             port_len = port.port_length()
+            diam = port.diameter()
+            L_eff = port_len + port.end_correction        # acoustic length of the air slug
+            f_pipe = air.c_air / (2 * L_eff)              # first half-wave (organ-pipe) mode
             summary += (
                 "<h4>Bass reflex</h4>"
                 "<p>"
-                f"K<sub>enc,v</sub>: {self.enclosure.K(port.S) / 1000:.4g} N/mm<br>"
-                f"f<sub>p</sub> (tuning): {fp:.4g} Hz<br>"
-                f"Vent: {port.diameter() * 1000:.4g} mm dia., {port_len * 1000:.4g} mm long"
+                f"f<sub>p_housed</sub> : {fp:.4g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"f<sub>p_free</sub> : {f_pipe:.4g}<br>"
+                
+                f"Port : &#8960;{diam * 1000:.4g} mm × {port_len * 1000:.4g} mm<br>"
+
+                f"f<sub>b</sub> : {self.fb:.4g} Hz&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"Q<sub>p</sub> : {port.Qp(Vba):.3g}<br>"
+                
+                f"{self._alpha_html()}<br>"
+                
+                f"S<sub>v</sub>/S<sub>d</sub> : {port.S / self.speaker.Sd:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"L/D : {port_len / diam:.3g}<br>"
                 "</p>"
                 )
+            if freqs is not None:
+                v_peak = self._peak_port_velocity(V_source, freqs)
+                mach = v_peak / air.c_air
+                warn = ("<br>&#9888; chuffing likely"
+                        if v_peak > _PORT_CHUFF_VELOCITY else "")
+                summary += (
+                    "<p>"
+                    f"v<sub>port,peak</sub> : {v_peak:.3g} m/s (Mach {mach:.3f})"
+                    f"{warn}"
+                    "</p>"
+                    )
         elif isinstance(self.passive_radiator, PassiveRadiator):
+            pr = self.passive_radiator
+            Vba = self.enclosure.Vba()
+            f_free = pr.f_free()                          # response notch
             summary += (
                 "<h4>Passive Radiator</h4>"
                 "<p>"
-                f"K<sub>pr</sub>: {self.passive_radiator.k / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
-                f"K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.S) / 1000:.4g} N/mm<br>"
-                f"f<sub>p</sub> (notch): {self.passive_radiator.f_free():.4g} Hz"
+                f"f<sub>p_housed</sub> : {pr.f_housed(Vba):.4g} Hz&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"f<sub>p_free</sub> : {f_free:.4g}<br>"
+                
+                f"M<sub>s,pr</sub> : {pr.m_s() * 1000:.4g} g<br>"
+                
+                f"f<sub>b</sub> : {self.fb:.4g} Hz&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"Q<sub>p</sub> : {pr.Qp(Vba):.3g}<br>"
+                
+                f"K<sub>pr</sub> : {pr.k / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"K<sub>pr,housed</sub> : {(pr.k + pr.k_box(Vba)) / 1000:.4g}<br>"
+                
+                f"{self._alpha_html()}"
                 "</p>"
                 )
+            if freqs is not None:
+                x_pr = self._peak_pr_excursion(V_source, freqs) * 1000
+                xp = self.speaker.Xpeak
+                summary += (
+                    "<p>"
+                    f"x<sub>pr,peak</sub> : {x_pr:.3g} mm"
+                    "</p>"
+                    )
         elif isinstance(self.enclosure, Enclosure):
             summary += (
                 "<h4>Enclosure</h4>"
                 "<p>"
-                f"Q<sub>tc</sub>: {self.Qtc:.3g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>b</sub>: {self.fb:.4g} Hz<br>"
-                f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
+                f"Q<sub>tc</sub> : {self.Qtc:.3g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>b</sub> : {self.fb:.4g} Hz<br>"
+                f"K<sub>enc,s</sub> : {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
                 "</p>"
                 )
 
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (
-                "<h4>Parent body</h4>"
-                "<h5>Assuming child masses are decoupled</h5>"
+                "<h2>Parent body</h2>"
+                "<h4>Assuming child masses are decoupled</h4>"
                 "<p>"
-                f"Q<sub>pb</sub>: {self.parent_body.Q():.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
+                f"Q<sub>pb</sub> : {self.parent_body.Q():.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
                 "</p>"
-                "<h5>Assuming child masses are coupled</h5>"
+                "<h4>Assuming child masses are coupled</h4>"
                 "<p>"
-                f"Q<sub>pb,c</sub>: {self.parent_body.Q(coupled_masses):.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
+                f"Q<sub>pb,c</sub> : {self.parent_body.Q(coupled_masses):.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
                 "</p>"
                 )
 
         return summary
+
+    def _alpha_html(self) -> str:
+        "Compliance-ratio fragment α = V_as / V_b, or empty when there is no box air."
+        if self.enclosure is None or self.enclosure.Vb <= 0:
+            return ""
+        alpha = self.speaker.Vas() / self.enclosure.Vb
+        return f"α (V<sub>as</sub>/V<sub>b</sub>) : {alpha:.3g}"
+
+    def _peak_port_velocity(self, V_source, freqs: np.ndarray) -> float:
+        "Peak air-particle velocity in the vent [m/s] over the given frequency range."
+        v_rms = self.get_velocities(V_source, freqs)["PR/vent, RMS"]
+        return float(np.max(np.abs(v_rms))) * 2**0.5
+
+    def _peak_pr_excursion(self, V_source, freqs: np.ndarray) -> float:
+        "Peak PR diaphragm excursion [m] over the given frequency range."
+        x_peak = self.get_displacements(V_source, freqs)["PR/vent, peak"]
+        return float(np.max(np.abs(x_peak)))
 
     def _get_response(self, output_name: str, V_source, freqs: np.ndarray) -> np.ndarray:
         # Frequency response of one output of the system to a given source voltage

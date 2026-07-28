@@ -476,5 +476,11 @@ class MainWindow(qtw.QMainWindow):
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
-        summary_all = self.speaker_model_state["system"].get_summary(self.speaker_model_state["V_source"])
+        # The sweep-based summary checks (port chuffing velocity, PR excursion) need
+        # a frequency array; reuse the same range/resolution as the graph.
+        freqs = signal_tools.generate_log_spaced_freq_list(app_settings.get_value("f_min"),
+                                                           app_settings.get_value("f_max"),
+                                                           app_settings.get_value("calc_ppo"))
+        summary_all = self.speaker_model_state["system"].get_summary(
+            self.speaker_model_state["V_source"], freqs)
         self.results_textbox.setHtml(_rule_under_h2(summary_all))
