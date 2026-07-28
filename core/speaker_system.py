@@ -370,9 +370,9 @@ class SpeakerSystem:
                 f"Q<sub>p</sub> : {port.Qp(Vba):.3g}<br>"
                 
                 f"{self._alpha_html()}<br>"
-                
+
                 f"S<sub>v</sub>/S<sub>d</sub> : {port.S / self.speaker.Sd:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
-                f"L/D : {port_len / diam:.3g}<br>"
+                f"L/D : {port_len / diam:.3g}"
                 "</p>"
                 )
             if freqs is not None:
@@ -427,14 +427,10 @@ class SpeakerSystem:
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (
-                "<h2>Parent body</h2>"
-                "<h4>Cabinet mass only</h4>"
+                "<h4>Parent body</h4>"
                 "<p>"
-                f"Q<sub>pb</sub> : {self.parent_body.Q():.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
-                "</p>"
-                "<h4>Cabinet + driver + PR moving mass</h4>"
-                "<p>"
-                f"Q<sub>pb,c</sub> : {self.parent_body.Q(coupled_masses):.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
+                f"Q<sub>pb,single</sub> : {self.parent_body.Q():.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb,single</sub>: {self.parent_body.f():.4g} Hz<br>"
+                f"Q<sub>pb,coupled</sub> : {self.parent_body.Q(coupled_masses):.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb,coupled</sub>: {self.parent_body.f(coupled_masses):.4g}"
                 "</p>"
                 )
 
