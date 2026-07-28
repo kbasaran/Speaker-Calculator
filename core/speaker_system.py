@@ -355,6 +355,7 @@ class SpeakerSystem:
             summary += (
                 "<h4>Passive Radiator</h4>"
                 "<p>"
+                f"K<sub>pr</sub>: {self.passive_radiator.k / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
                 f"K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.S) / 1000:.4g} N/mm<br>"
                 f"f<sub>p</sub> (notch): {self.passive_radiator.f_free():.4g} Hz"
                 "</p>"
