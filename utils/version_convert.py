@@ -17,6 +17,7 @@ __email__ = "kbasaran@gmail.com"
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from pathlib import Path
+import copy
 import pickle
 import pathlib
 import inspect
@@ -86,24 +87,80 @@ def detect_version(file: Path) -> str:
     return ".".join(stamp.split(".")[:2])
 
 
+# Default values for the keys added by the v0.4 save format (passive-radiator /
+# bass-reflex resonator inputs, plus the enclosure leakage factor Ql). These are a
+# frozen snapshot of the v0.4 defaults -- a migration should reproduce the schema
+# as it was at that release, not track later default changes. Combobox widgets are
+# stored the same way the app serialises them (current_index / _data / _text, and
+# an items list where the app writes one).
+V04_NEW_KEY_DEFAULTS = {
+    "resonator_spec_type": {
+        "current_index": 0,
+        "current_data": "pr_1",
+        "current_text": "PR - Define mass and damping ratio",
+        "items": [],
+        },
+    "port_diameter": 0.05,
+    "Qp": 15.0,
+    "exit_flare_type": {
+        "current_index": 1,
+        "current_data": 0.732,
+        "current_text": "One end flanged, one free",
+        "items": [
+            ["Both ends flanged / flared", 0.85],
+            ["One end flanged, one free", 0.732],
+            ["Both ends free", 0.614],
+            ],
+        },
+    "Ql": 99999.9,
+    "h_pr": 0.7,
+    "spring_damping_ratio_pr": 0.005,
+    "area_ratio_pr": 2.5,
+    "Mmdp": 0.01,
+    "dir_pr_vent": {
+        "current_index": 0,
+        "current_data": 1,
+        "current_text": "Same with driver",
+        "items": [
+            ["Same with driver", 1],
+            ["On opposite direction", -1],
+            ],
+        },
+    }
+
+
+def convert_v03_to_v04(state: dict) -> dict:
+    """Upgrade a v0.2/v0.3 JSON state dict to the v0.4 schema.
+
+    v0.4 added the passive-radiator / bass-reflex resonator inputs and the
+    enclosure leakage factor Ql (see V04_NEW_KEY_DEFAULTS). Older files predate the
+    vented enclosure option, so those keys are simply filled with defaults; they
+    stay inert unless the user later switches to the resonator enclosure type.
+
+    Only missing keys are added, so this is idempotent -- safe to run on a file
+    that already carries some or all of the v0.4 keys.
+    """
+    for key, default in V04_NEW_KEY_DEFAULTS.items():
+        state.setdefault(key, copy.deepcopy(default))
+    return state
+
+
 def convert_any(file: Path) -> dict:
-    suffix = file.suffixes[-1]
-    
-    if suffix == ".scf":  # v0.2.0        
-        with open(file, "r") as f:
-            state = json.load(f)
-        
-    elif suffix == ".sscf":
-        try:                
-            with open(file, "r") as f:  # >v0.2.0
-                state = json.load(f)
+    """Load a session file of any past format and return a current-schema state dict."""
+    version = detect_version(file)
 
-        except UnicodeDecodeError:  # <v0.2.0
-            state = convert_v01_to_v02(file)
-
+    if version == "0.1":
+        state = convert_v01_to_v02(file)   # unpickle -> v0.2-schema dict
     else:
-        raise RuntimeError("Was not able to convert file.")
-    
+        with open(file, "r", encoding="utf-8") as f:
+            state = json.load(f)
+
+    # Bring every pre-0.4 format up to the current (v0.4) schema. v0.1 has already
+    # been lifted to the v0.2 schema above, and v0.2/v0.3 share one schema, so the
+    # same upgrade covers all three; on a v0.4 file it is a no-op.
+    if version in ("0.1", "0.2", "0.3"):
+        state = convert_v03_to_v04(state)
+
     return state
             
 
