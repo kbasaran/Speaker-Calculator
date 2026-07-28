@@ -54,6 +54,38 @@ class IgnoreErrorsUnpickler(pickle.Unpickler):
             return DummyObject
 
 
+def detect_version(file: Path) -> str:
+    """Detect the on-disk save-format generation of a session file.
+
+    Returns a "<major>.<minor>" string:
+
+      - "0.1" : a Python pickle (binary) -- the original format, which predates
+                the JSON formats and carries no version stamp.
+      - "0.2" and onwards : JSON. The generation is read straight from the
+                'application_data.version' stamp written at save time
+                (e.g. "0.4.0rc..." -> "0.4"). That stamp is kept accurate at every
+                release, so it is trusted directly rather than sniffing the schema.
+    """
+    # v0.1 files are pickles; reading them as JSON/UTF-8 text fails -- with a
+    # UnicodeDecodeError for the usual binary pickle protocols, or a
+    # JSONDecodeError for an ASCII (protocol 0) pickle.
+    try:
+        with open(file, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return "0.1"
+
+    if not isinstance(state, dict):
+        raise RuntimeError(f"Unrecognised session file structure: {file}")
+
+    stamp = (state.get("application_data") or {}).get("version", "")
+    if not stamp:
+        raise RuntimeError(
+            f"JSON session file has no 'application_data.version' stamp: {file}"
+            )
+    return ".".join(stamp.split(".")[:2])
+
+
 def convert_any(file: Path) -> dict:
     suffix = file.suffixes[-1]
     

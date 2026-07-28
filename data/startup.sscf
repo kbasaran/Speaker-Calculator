@@ -281,7 +281,7 @@
     "user_title": "",
     "application_data": {
         "app_name": "Speaker Calculator",
-        "version": "0.3.3rc251022",
+        "version": "0.4.0",
         "description": "Loudspeaker design and calculations",
         "copyright": "Copyright (C) 2026 Kerem Basaran",
         "icon_path": "images/logo2025.ico",
