@@ -1,4 +1,6 @@
 import json
+import html
+import re
 import dataclasses
 import logging
 from pathlib import Path
@@ -28,6 +30,24 @@ from gui import session_io
 
 logger = logging.getLogger(__name__)
 app_settings = singleton_settings()
+
+# A single <h2> title with a rule hugging its underside. Qt's rich-text engine
+# won't render border-bottom on a heading block and leaves an uncontrollable gap
+# under a bare <hr>, so the only way to sit the rule tight under the title is a
+# single-cell table with a bottom border on the cell. The inner h2 has margin:0
+# so the rule's distance from the text is set purely by the cell's padding-bottom;
+# the table's own margins provide the spacing above/below the whole title block.
+_H2_WITH_RULE = (
+    "<table width='100%' cellspacing='0' cellpadding='0'"
+    " style='margin-top:14px; margin-bottom:3px;'>"
+    "<tr><td style='border-bottom:1px solid #808080; padding-bottom:1px;'>"
+    "<h2 style='margin:0'>\\1</h2></td></tr></table>"
+)
+
+
+def _rule_under_h2(html: str) -> str:
+    "Wrap every <h2>...</h2> so a horizontal rule sits directly under the title."
+    return re.sub(r"<h2>(.*?)</h2>", _H2_WITH_RULE, html)
 
 
 class MainWindow(qtw.QMainWindow):
@@ -102,11 +122,27 @@ class MainWindow(qtw.QMainWindow):
         # ---- Center - results
         # Read-only QTextBrowser (not a QLabel): it wraps overlong lines to the
         # widget width and scrolls when the summary is tall, so the summaries no
-        # longer need manual line breaks to fit a fixed width. Content is Markdown,
-        # so it must be set with setMarkdown() (setText() would treat the embedded
-        # <br>/<sub> tags as HTML and render the Markdown headers literally).
+        # longer need manual line breaks to fit a fixed width. Content is HTML
+        # (headings, <sub>, <br>, <hr>), set with setHtml() -- this avoids the
+        # CommonMark parsing quirks (setext headings, HTML-block swallowing,
+        # blank-line sensitivity) that plagued the earlier setMarkdown() approach.
         self.results_textbox = qtw.QTextBrowser()
         self.results_textbox.setReadOnly(True)  # selectable by default when read-only
+        # All vertical spacing between headings and paragraphs lives here, in one
+        # stylesheet, instead of in per-line <br> spacer hacks. Because it is the
+        # document's *default* stylesheet it persists across clear()/setHtml() calls,
+        # so every heading gets a uniform gap regardless of what precedes it.
+        self.results_textbox.document().setDefaultStyleSheet(
+            # <h2> is not styled here: each <h2> is wrapped (at render time, see
+            # _rule_under_h2) in a single-cell table so the rule hugging the title
+            # can use a table-cell border -- Qt's rich-text engine ignores
+            # border-bottom on ordinary heading blocks and adds an uncontrollable gap
+            # under a bare <hr>, so neither of those can sit tight under the title.
+            "h3 { margin-top: 12px; margin-bottom: 3px; }"
+            "h4 { margin-top: 12px; margin-bottom: 2px; }"
+            "h5 { margin-top: 8px;  margin-bottom: 2px; }"
+            "p  { margin-top: 2px;  margin-bottom: 2px; }"
+            )
 
         # ---- Right hand side (graph etc.)
         rh_widget = qtw.QWidget()
@@ -353,7 +389,7 @@ class MainWindow(qtw.QMainWindow):
                                          find_feasible_coils(self.get_state(), self.wires, logger),
                                          )
             if not self.input_form.interactable_widgets["coil_options"].currentData():
-                self.results_textbox.setMarkdown("\n\n### No coil found.\n Please check your input form.")
+                self.results_textbox.setHtml("<h3>No coil found.</h3><p>Please check your input form.</p>")
                 self.signal_bad_beep.emit()
                 return
 
@@ -367,7 +403,7 @@ class MainWindow(qtw.QMainWindow):
             # would need a non-positive port length) makes the model unbuildable, the
             # same way an infeasible coil-winding target does above. Report and abort
             # the update, leaving any previous model untouched.
-            self.results_textbox.setMarkdown(f"\n\n### Model update failed.\n{e}")
+            self.results_textbox.setHtml(f"<h3>Model update failed.</h3><p>{html.escape(str(e))}</p>")
             self.signal_bad_beep.emit()
             return
         V_source = calculate_voltage(vals["excitation_value"],
@@ -441,4 +477,4 @@ class MainWindow(qtw.QMainWindow):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
         summary_all = self.speaker_model_state["system"].get_summary(self.speaker_model_state["V_source"])
-        self.results_textbox.setMarkdown(summary_all)
+        self.results_textbox.setHtml(_rule_under_h2(summary_all))
