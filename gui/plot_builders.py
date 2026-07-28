@@ -23,6 +23,14 @@ class PlotSpec:
     title: str = ""
     ylabel: str = ""
     ylimits_policy: str | None = None
+    # Optional per-curve matplotlib line kwargs (keyed by curve name). Curves not
+    # listed here are drawn with the default (solid) style.
+    line_kwargs: dict[str, dict] = field(default_factory=dict)
+
+
+def _dotted_for_peak(curve_names) -> dict[str, dict]:
+    """Line kwargs drawing 'peak' curves dotted, leaving RMS (and any others) solid."""
+    return {name: {"linestyle": ":"} for name in curve_names if "peak" in name.lower()}
 
 
 def _voltage_line(spk_sys, V_source, V_spk) -> str:
@@ -99,8 +107,9 @@ def build_relative_displacements(spk_sys, freqs, V_source, V_spk, W_spk) -> Plot
               for key, val in spk_sys.get_displacements(V_source, freqs).items()
               if "relative" in key}
     return PlotSpec(curves,
-                    title=f"Relative Displacements\n{_voltage_line(spk_sys, V_source, V_spk)}",
+                    title=f"Displacements - relative to parent body\n{_voltage_line(spk_sys, V_source, V_spk)}",
                     ylabel="mm",
+                    line_kwargs=_dotted_for_peak(curves),
                     )
 
 
@@ -109,8 +118,9 @@ def build_displacements(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
               for key, val in spk_sys.get_displacements(V_source, freqs).items()
               if "relative" not in key}
     return PlotSpec(curves,
-                    title=f"Displacements\n{_voltage_line(spk_sys, V_source, V_spk)}",
+                    title=f"Absolute displacements\n{_voltage_line(spk_sys, V_source, V_spk)}",
                     ylabel="mm",
+                    line_kwargs=_dotted_for_peak(curves),
                     )
 
 
