@@ -428,11 +428,11 @@ class SpeakerSystem:
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (
                 "<h2>Parent body</h2>"
-                "<h4>Assuming child masses are decoupled</h4>"
+                "<h4>Cabinet mass only</h4>"
                 "<p>"
                 f"Q<sub>pb</sub> : {self.parent_body.Q():.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
                 "</p>"
-                "<h4>Assuming child masses are coupled</h4>"
+                "<h4>Cabinet + driver + PR moving mass</h4>"
                 "<p>"
                 f"Q<sub>pb,c</sub> : {self.parent_body.Q(coupled_masses):.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
                 "</p>"
