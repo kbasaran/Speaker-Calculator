@@ -133,51 +133,52 @@ class SpeakerDriver:
         return air.Kair / self.Kms * self.Sd**2
 
     def get_summary(self, V_spk: float = 0) -> str:
-        "Summary in markup language."
-        summary = ("## Speaker unit"
-                   "<br></br>"
-                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL      "
-                   f"R<sub>e</sub> : {self.Re:.2f} ohm"
-                   "<br></br>"
-                   f"Bl : {self.Bl:.4g} Tm      "
-                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W"
-                   "<br></br>"
-                   f"Q<sub>es</sub> : {self.Qes:.3g}      "
-                   f"Q<sub>ts</sub> : {self.Qts:.3g}"
-                   "<br></br>"
+        "Summary in HTML (rendered by Qt's rich-text engine via setHtml)."
+        # Vertical spacing between headings/paragraphs is governed centrally by the
+        # results box's default stylesheet, so this markup only carries structure:
+        # <h2>/<h4> headings, <p> paragraphs, <br> intra-paragraph breaks. Column
+        # gaps within a line use &nbsp; runs (HTML collapses ordinary spaces).
+        summary = ("<h2>Speaker unit</h2>"
+                   "<p>"
+                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"R<sub>e</sub> : {self.Re:.2f} ohm<br>"
+                   f"Bl : {self.Bl:.4g} Tm&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W<br>"
+                   f"Q<sub>es</sub> : {self.Qes:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"Q<sub>ts</sub> : {self.Qts:.3g}<br>"
                    f"V<sub>as</sub> : {self.Vas() * 1e3:.4g} l"
-                   
-                   "<br/>\n"
-                   f"#### Mass and suspension"
-                   "<br></br>"
-                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g      "
-                   f"M<sub>md</sub> : {self.Mmd*1000:.4g}"
-                   "<br></br>"
-                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm      "
-                   f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
+                   "</p>"
 
-                   "<br/>\n"
-                   "#### Displacements"
-                   "<br></br>"
+                   "<h4>Mass and suspension</h4>"
+                   "<p>"
+                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"M<sub>md</sub> : {self.Mmd*1000:.4g}<br>"
+                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
+                   "</p>"
+
+                   "<h4>Displacements</h4>"
+                   "<p>"
                    f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
                    )
 
         if self.motor is not None:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary += f"      X<sub>crash_recommended</sub> : {Xcrash*1000:.3g}"
+            summary += f"&nbsp;&nbsp;&nbsp;&nbsp;X<sub>crash_recommended</sub> : {Xcrash*1000:.3g}"
 
         if V_spk > 0:
             # Suspension feasibility
             summary += (
-                   # "\n"
-                   # "##### Motor force vs. suspension"
-                   "<br></br>"
+                   "<br>"
                    "F<sub>motor, RMS</sub> / F<sub>suspension</sub>(X<sub>peak</sub>/2): "
                    f"{self.Bl * V_spk / self.Re / self.Kms / (self.Xpeak / 2):.0%}"
                     )
 
+        summary += "</p>"
+
         if self.motor is not None:
-            summary += "\n\n----\n"
+            # No separator here: the Motor section is set off by the rule under its
+            # own <h2> (see Motor.get_summary), matching the "Speaker unit" heading.
             summary += self.motor.get_summary()
 
         return summary
