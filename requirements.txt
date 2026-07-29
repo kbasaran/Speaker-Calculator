@@ -1,11 +1,9 @@
-pyside6 == 6.10.*
+pyside6
 odfpy
-pandas == 2.3.*
-numpy == 2.3.*
+pandas
 sympy
-pyperclip == 1.11.*
-matplotlib == 3.10.*
-scipy == 1.17.*
+matplotlib
+scipy
 soundfile
-sounddevice == 0.5.*
-cx-freeze == 8.6.*
+sounddevice
+cx-freeze
