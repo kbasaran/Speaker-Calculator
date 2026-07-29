@@ -15,7 +15,6 @@ import numpy as np
 from core.calculations import calculate_voltage
 from core.factories import construct_SpeakerDriver, build_or_update_SpeakerSystem
 from core.coil_winding import find_feasible_coils
-import pyperclip
 
 from config.app_config import APP_DEFINITIONS, ABOUT_TEXT, singleton_settings
 from utils.paths import get_main_dir
@@ -403,8 +402,7 @@ class MainWindow(qtw.QMainWindow):
             return
         else:
             model = self.speaker_model_state["system"]
-            pyperclip.copy(json.dumps(dataclasses.asdict(model), indent=4))
-            self.signal_good_beep.emit()
+            self.signal_bad_beep.emit()
 
     def update_graph(self, checked_id):
         self.graph.clear_graph()
