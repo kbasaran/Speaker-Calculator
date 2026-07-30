@@ -560,7 +560,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\nLarger diameters lower the port air velocity (less chuffing)"
                                       "\nbut require a longer tube for the same tuning."
                                       "\nUnit is mm.",
-                                      decimals=2,
+                                      decimals=1,
+                                      min_max=(0.1, None),
                                       coeff_for_SI=1e-3,
                                       ),
                      description="D<sub>v</sub> - port diameter",
@@ -572,7 +573,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\ncapturing the vent losses (turbulence, friction, leakage)."
                                       "\nHigher values mean a lower-loss, more sharply tuned port."
                                       "\nUnitless quantity.",
-                                      decimals=2,
+                                      decimals=1,
                                       min_max=(0.1, None),
                                       ),
                      description="Q<sub>p</sub> - port quality factor",
