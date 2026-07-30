@@ -2,6 +2,9 @@
 no errors when the load file has invalid parameters like R_serial (R_serial is no more in use)
 export seems broken
 remove get_main_dir and use app_settings to provide such information.
+
+
+
 # Important features to add
 
 
@@ -9,8 +12,11 @@ remove get_main_dir and use app_settings to provide such information.
 # Nice to have
 add definition list for all the terms used into the electraoacoustics file.
 such as V_in, V_spk, R_sys, R_nom, etc.
+better explanation when port is too small in diameter
+System title in summary disappears but horizontal line stays
 
 when motor definition type changes to Bl and Mmx, paste values from model into the widgets
+link bl and re from mms type to mmd type - this changes the json files
 
 add sine sweep time signal of displacements
 
