@@ -43,7 +43,7 @@ def _voltage_line(spk_sys, V_source, V_spk) -> str:
     """
     if spk_sys.speaker.Re == spk_sys.R_sys:
         return f"{V_spk:.4g}V"
-    return f"System: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
+    return f"System: {V_source:.4g}V, Speaker: {V_spk:.4g}V @ Re"
 
 
 def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
@@ -84,9 +84,9 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
                        })
 
         if spk_sys.speaker.Re == spk_sys.R_sys:
-            title = f"SPL @ 1m, Half-space\n{V_spk:.4g}V {W_spk:.3g}Watt@Re"
+            title = f"SPL @ 1m, Half-space\n{V_spk:.4g}V {W_spk:.3g}Watt @ Re"
         else:
-            title = f"SPL @ 1m, Half-space\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V {W_spk:.3g}Watt@Re"
+            title = f"SPL @ 1m, Half-space\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V {W_spk:.3g}Watt @ Re"
         ylabel = "dBSPL"
 
     return PlotSpec(curves, title, ylabel, ylimits_policy="SPL")
