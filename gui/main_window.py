@@ -466,7 +466,8 @@ class MainWindow(qtw.QMainWindow):
 
         self.graph.set_y_limits_policy(spec.ylimits_policy)
         self.graph.set_title(spec.title)
-        self.graph.ax.set_ylabel(spec.ylabel)
+        self.graph.set_xlabel(spec.xlabel)
+        self.graph.set_ylabel(spec.ylabel)
 
         for i, (name, y) in enumerate(spec.curves.items()):
             self.graph.add_line2d(i, name, (freqs, y), update_figure=False,
