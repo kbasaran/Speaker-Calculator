@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from core.calculations import calculate_spl
+from core.components import BassReflexPort
 
 
 @dataclass
@@ -118,6 +119,8 @@ def build_displacements(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
     curves = {key: np.abs(val) * 1e3
               for key, val in spk_sys.get_displacements(V_source, freqs).items()
               if "relative" not in key}
+    if isinstance(spk_sys.passive_radiator, BassReflexPort):
+        curves = {key: val for key, val in curves.items() if "vent" not in key.lower()}
     return PlotSpec(curves,
                     title=f"Absolute displacements\n{_voltage_line(spk_sys, V_source, V_spk)}",
                     ylabel="mm",
