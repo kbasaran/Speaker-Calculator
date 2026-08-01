@@ -22,6 +22,7 @@ class PlotSpec:
     curves: dict[str, np.ndarray] = field(default_factory=dict)
     title: str = ""
     ylabel: str = ""
+    xlabel: str = "frequency"
     ylimits_policy: str | None = None
     # Optional per-curve matplotlib line kwargs (keyed by curve name). Curves not
     # listed here are drawn with the default (solid) style.
