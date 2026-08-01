@@ -145,6 +145,32 @@ def convert_v03_to_v04(state: dict) -> dict:
     return state
 
 
+def convert_v04_to_v05(state: dict) -> dict:
+    """Upgrade a v0.4 JSON state dict to the v0.5 schema.
+
+    v0.5 keeps 'Bl_p2'/'Bl_p3' (and 'Re_p2'/'Re_p3') permanently in sync in the GUI,
+    since they describe the same physical motor parameter on the two direct-entry
+    pages. Older files may have a genuinely different value stored in each half of
+    a pair (e.g. the page that wasn't active was left at its default), so instead
+    of letting load order silently decide which value survives, resolve each pair
+    to the value that belonged to whichever 'motor_spec_type' was actually active.
+
+    Idempotent: a file where both pairs already match is a no-op.
+    """
+    mode = (state.get("motor_spec_type") or {}).get("current_data")
+    if mode == "define_Bl_Re_Mms":
+        bl_src, re_src = "Bl_p3", "Re_p3"
+    else:
+        bl_src, re_src = "Bl_p2", "Re_p2"
+
+    bl = state.get(bl_src, state.get("Bl_p2", state.get("Bl_p3")))
+    re_val = state.get(re_src, state.get("Re_p2", state.get("Re_p3")))
+
+    state["Bl_p2"] = state["Bl_p3"] = bl
+    state["Re_p2"] = state["Re_p3"] = re_val
+    return state
+
+
 def convert_any(file: Path) -> dict:
     """Load a session file of any past format and return a current-schema state dict."""
     version = detect_version(file)
@@ -160,6 +186,10 @@ def convert_any(file: Path) -> dict:
     # same upgrade covers all three; on a v0.4 file it is a no-op.
     if version in ("0.1", "0.2", "0.3"):
         state = convert_v03_to_v04(state)
+
+    # Bring every pre-0.5 format up to the current (v0.5) schema.
+    if version in ("0.1", "0.2", "0.3", "0.4"):
+        state = convert_v04_to_v05(state)
 
     return state
             

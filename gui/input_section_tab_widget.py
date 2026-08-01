@@ -352,6 +352,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      into_form=motor_definition_p3,
                      )
 
+        # Bl and Re mean the same thing on both pages, so keep each pair synced
+        # regardless of which page the user edits.
+        form.interactable_widgets["Bl_p2"].valueChanged.connect(form.interactable_widgets["Bl_p3"].setValue)
+        form.interactable_widgets["Bl_p3"].valueChanged.connect(form.interactable_widgets["Bl_p2"].setValue)
+        form.interactable_widgets["Re_p2"].valueChanged.connect(form.interactable_widgets["Re_p3"].setValue)
+        form.interactable_widgets["Re_p3"].valueChanged.connect(form.interactable_widgets["Re_p2"].setValue)
+
         # ---- Mechanical specs
         form.add_row(pwi.SunkenLine())
 
