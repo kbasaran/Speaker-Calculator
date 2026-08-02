@@ -60,6 +60,7 @@ class SpeakerSystem:
         Rms, Rpb, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
         Kair, Vba, Rbox = smp.symbols("Kair, V_ba, R_box", real=True, positive=True)
         Sd, Spr, Bl, Re, Rext = smp.symbols("S_d, S_pr, Bl, R_e, R_ext", real=True, positive=True)
+        Le = smp.symbols("L_e", real=True, positive=True)  # voice coil inductance
         # Direction coefficient for the passive radiator relative to the driver axis:
         # +1 same direction, -1 reverse (opposed / force-cancelling mount).
         # It carries the sign of the PR's *acoustic* coupling to the box air only; the
@@ -80,6 +81,7 @@ class SpeakerSystem:
         x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
+        i_coil_t = smp.diff(i_coil, t)
 
         # Net volume velocity pushed into the box air, relative to the enclosure
         # walls (which move with the parent body x2). The box absorption/leakage
@@ -89,8 +91,10 @@ class SpeakerSystem:
         # lossy air. Rms and Rpr remain the elements' own mechanical losses.
         U_box = Sd * (x1_t - x2_t) + Spr_ac * (xpr_t - x2_t)
 
-        # define state space system
-        eqns = [
+        # ---- Mechanical equations of motion (three force balances).
+        # i_coil (the coil current) is left symbolic here so the same three
+        # equations can serve both the resistive and the inductive model below.
+        mech_eqns = [
 
                 (
                  - Mms * x1_tt
@@ -134,56 +138,83 @@ class SpeakerSystem:
 
                 ]
 
-        # p_housing and i_coil are not state variables, because they are linearly dependent
-        # on the state variables. They are substituted into the equations of motion,
-        # and made available as outputs of the system through the C and D matrices.
-        # box pressure depends on the net volume displaced into the enclosure,
-        # measured relative to the cabinet walls (parent body x2) -- consistent
-        # with the box-loss term above. With no parent body x2 == 0.
-        dependent_vars = {
-            p_housing: - (Kair / Vba * (Spr_ac * (xpr - x2) + Sd * (x1 - x2))),
-            i_coil: (Vsource - Bl * (x1_t - x2_t)) / (Rext + Re),
-            }
+        # Box pressure is a dependent (algebraic) variable in both models: it is
+        # linearly dependent on the state variables, substituted into the equations of
+        # motion, and made available as an output through the C/D matrices. Box pressure
+        # depends on the net volume displaced into the enclosure, measured relative to
+        # the cabinet walls (parent body x2). With no parent body x2 == 0.
+        p_housing_expr = - (Kair / Vba * (Spr_ac * (xpr - x2) + Sd * (x1 - x2)))
 
-        eqns = [eqn.subs(dependent_vars) for eqn in eqns]
+        # Resistive-coil current: with no inductance the coil is purely resistive, so
+        # the current follows the terminal voltage minus the back-EMF instantaneously
+        # and is itself a dependent (algebraic) variable.
+        i_coil_resistive_expr = (Vsource - Bl * (x1_t - x2_t)) / (Rext + Re)
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
         input_vars = [Vsource]  # input variables
-        state_diffs = [var.diff() for var in state_vars]  # state differentials
 
-        # output variables, as expressions of state variables and input variables
-        # key: name to access the ss model with, val: expression
-        output_exprs = {"x1": x1,
-                        "x1_t": x1_t,
-                        "x2": x2,
-                        "x2_t": x2_t,
-                        "xpr": xpr,
-                        "xpr_t": xpr_t,
-                        "p_housing": dependent_vars[p_housing],
-                        "i_coil": dependent_vars[i_coil],
-                        }
-
-        # dictionary of all sympy symbols used in model
+        # dictionary of all sympy symbols used in the models (union across both)
         self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
 
-        # solve for state differentials
-        sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
-        if len(sols) == 0:
-            raise RuntimeError("No solution found for the equation.")
+        def assemble(state_vars, eqns, i_coil_output_expr):
+            "Solve for the state differentials and build the symbolic A/B/C/D matrices."
+            state_diffs = [var.diff() for var in state_vars]
 
-        # ---- SS model with symbols
-        A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
-        B_sym = make_state_matrix_B(state_vars, state_diffs, input_vars, sols)  # input matrix
-        # output matrix and feedforward matrix, one row per output
-        C_sym, D_sym = make_output_matrices(output_exprs.values(), state_vars, input_vars)
+            # solve for state differentials
+            sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
+            if len(sols) == 0:
+                raise RuntimeError("No solution found for the equation.")
 
-        self._symbolic_ss = {"A": A_sym,  # system matrix
-                             "B": B_sym,  # input matrix
-                             "C": C_sym,  # output matrix
-                             "D": D_sym,  # feedforward matrix
-                             "state_vars": state_vars,
-                             "output_names": list(output_exprs.keys()),
+            A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
+            B_sym = make_state_matrix_B(state_vars, state_diffs, input_vars, sols)  # input matrix
+
+            # output variables, as expressions of state variables and input variables
+            # key: name to access the ss model with, val: expression. The output order
+            # is identical between models so downstream (name-based) access is uniform.
+            output_exprs = {"x1": x1,
+                            "x1_t": x1_t,
+                            "x2": x2,
+                            "x2_t": x2_t,
+                            "xpr": xpr,
+                            "xpr_t": xpr_t,
+                            "p_housing": p_housing_expr,
+                            "i_coil": i_coil_output_expr,
                             }
+            # output matrix and feedforward matrix, one row per output
+            C_sym, D_sym = make_output_matrices(output_exprs.values(), state_vars, input_vars)
+
+            return {"A": A_sym,  # system matrix
+                    "B": B_sym,  # input matrix
+                    "C": C_sym,  # output matrix
+                    "D": D_sym,  # feedforward matrix
+                    "state_vars": state_vars,
+                    "output_names": list(output_exprs.keys()),
+                    }
+
+        # ---- Resistive model (Le == 0): i_coil is algebraic, six states.
+        # This is the exact model used whenever the coil has no inductance; it is
+        # order-6 and reproduces the historical behaviour bit-for-bit.
+        resistive_eqns = [eqn.subs({p_housing: p_housing_expr,
+                                    i_coil: i_coil_resistive_expr}) for eqn in mech_eqns]
+        self._symbolic_ss_resistive = assemble(
+            [x1, x1_t, x2, x2_t, xpr, xpr_t],
+            resistive_eqns,
+            i_coil_resistive_expr,
+            )
+
+        # ---- Inductive model (Le > 0): i_coil is a genuine seventh state, governed
+        # by the electrical loop equation V = (Re + Rext)*i + Le*di/dt + Bl*(x1_t - x2_t).
+        # i_coil is appended LAST so the mechanical state indices (and the parent-body /
+        # passive-radiator disabling slices in update_values) are unchanged. This model
+        # cannot be reached by substituting Le = 0 -- the electrical row carries a sole
+        # 1/Le factor and would divide by zero -- which is why the two models are kept
+        # separate and selected by value.
+        elec_eqn = -Le * i_coil_t + Vsource - (Rext + Re) * i_coil - Bl * (x1_t - x2_t)
+        inductive_eqns = [eqn.subs({p_housing: p_housing_expr}) for eqn in mech_eqns] + [elec_eqn]
+        self._symbolic_ss_inductive = assemble(
+            [x1, x1_t, x2, x2_t, xpr, xpr_t, i_coil],
+            inductive_eqns,
+            i_coil,  # the output reads the state directly
+            )
 
     def _get_parameter_names_to_values(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
@@ -197,6 +228,7 @@ class SpeakerSystem:
             "Sd": self.speaker.Sd,
             "Bl": self.speaker.Bl,
             "Re": self.speaker.Re,
+            "Le": self.speaker.Le,
 
             "Mpb": np.inf if self.parent_body is None else self.parent_body.m,
             "Kpb": 0 if self.parent_body is None else self.parent_body.k,
@@ -235,6 +267,14 @@ class SpeakerSystem:
 
         # ---- Update scalars
         self.R_sys = self.speaker.Re + self.Rext
+
+        # ---- Select the electrical model. A non-zero coil inductance turns the coil
+        # current into a genuine state variable (the inductive model); a zero inductance
+        # keeps it algebraic (the exact, order-6 resistive model). See
+        # _build_symbolic_ss_model for why Le == 0 cannot be reached inside the inductive
+        # model (it divides by Le), so the two models are kept separate.
+        self._symbolic_ss = (self._symbolic_ss_inductive if self.speaker.Le > 0
+                             else self._symbolic_ss_resistive)
 
         # ---- Substitute values into the model matrices
         symbols_to_values = self.get_symbols_to_values()

@@ -134,6 +134,7 @@ def construct_SpeakerDriver(vals) -> SpeakerDriver:
                                           motor=motor,
                                           dead_mass=vals["dead_mass"],
 
+                                          Le=vals["Le"],
                                           Rlw=vals["Rlw"],
                                           Xpeak=vals["Xpeak"],
                                           )
@@ -147,6 +148,7 @@ def construct_SpeakerDriver(vals) -> SpeakerDriver:
                                           Re=vals["Re_p2"],
                                           Mmd=vals["Mmd_p2"],
 
+                                          Le=vals["Le"],
                                           Xpeak=vals["Xpeak"],
                                           )
 
@@ -159,6 +161,7 @@ def construct_SpeakerDriver(vals) -> SpeakerDriver:
                                           Re=vals["Re_p3"],
                                           Mms=vals["Mms_p3"],
 
+                                          Le=vals["Le"],
                                           Xpeak=vals["Xpeak"],
                                           )
     else:
