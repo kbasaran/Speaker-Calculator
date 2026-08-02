@@ -4,6 +4,7 @@
     "Xpeak": 0.005,
     "dead_mass": 0.004,
     "Sd": 0.005200000000000001,
+    "Le": 0.0,
     "excitation_type": {
         "current_index": 0,
         "current_data": "V",
@@ -212,12 +213,12 @@
             ]
         ]
     },
-    "Bl_p2": 0.01,
-    "Re_p2": 0.01,
-    "Mmd_p2": 1e-06,
-    "Bl_p3": 3.0,
+    "Bl_p2": 4.0,
+    "Re_p2": 4.0,
+    "Mmd_p2": 0.004,
+    "Bl_p3": 4.0,
     "Re_p3": 4.0,
-    "Mms_p3": 0.004,
+    "Mms_p3": 0.0045000000000000005,
     "h_top_plate": 0.005,
     "airgap_clearance_inner": 0.0005,
     "airgap_clearance_outer": 0.0005,
@@ -289,7 +290,7 @@
     "user_title": "",
     "application_data": {
         "app_name": "Speaker Calculator",
-        "version": "0.4.0",
+        "version": "0.6.0",
         "description": "Loudspeaker design and calculations",
         "copyright": "Copyright (C) 2026 Kerem Basaran",
         "icon_path": "images/logo2025.ico",
