@@ -105,6 +105,16 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="S<sub>d</sub>"
                      )
 
+        form.add_row(pwi.FloatSpinBox("Le",
+                                      "Voice coil inductance."
+                                      "\nUnit is mH.",
+                                      decimals=3,
+                                      coeff_for_SI=1e-3,
+                                      min_max=(0, None),
+                                      ),
+                     description="L<sub>e</sub>",
+                     )
+
         # ---- Electrical input
         form.add_row(pwi.SunkenLine())
 

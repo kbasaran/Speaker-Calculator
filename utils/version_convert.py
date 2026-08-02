@@ -171,6 +171,20 @@ def convert_v04_to_v05(state: dict) -> dict:
     return state
 
 
+def convert_v05_to_v06(state: dict) -> dict:
+    """Upgrade a v0.5 JSON state dict to the v0.6 schema.
+
+    v0.6 added the voice coil inductance 'Le' to the general specifications.
+    Older files predate this input, so the key is simply filled with its default
+    of 0 (SI units, i.e. 0 H).
+
+    Only missing keys are added, so this is idempotent -- safe to run on a file
+    that already carries the v0.6 keys.
+    """
+    state.setdefault("Le", 0.0)
+    return state
+
+
 def convert_any(file: Path) -> dict:
     """Load a session file of any past format and return a current-schema state dict."""
     version = detect_version(file)
@@ -190,6 +204,10 @@ def convert_any(file: Path) -> dict:
     # Bring every pre-0.5 format up to the current (v0.5) schema.
     if version in ("0.1", "0.2", "0.3", "0.4"):
         state = convert_v04_to_v05(state)
+
+    # Bring every pre-0.6 format up to the current (v0.6) schema.
+    if version in ("0.1", "0.2", "0.3", "0.4", "0.5"):
+        state = convert_v05_to_v06(state)
 
     return state
             
