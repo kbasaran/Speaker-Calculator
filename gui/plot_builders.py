@@ -53,7 +53,7 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
         accs = spk_sys.get_accelerations(V_source, freqs)
         curves.update({key.replace("Diaphragm", "Moving mass"): 20*np.log10(np.abs(acc)/1e-6)
                        for key, acc in accs.items() if "relative" not in key})
-        title = f"Acceleration, \n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}"
+        title = f"Acceleration\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}"
         ylabel = r"dB ref. $\mathregular{10^{-6}}$m/s²"
 
     else:  # speaker
