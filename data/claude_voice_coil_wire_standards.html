@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>International standards for voice coil wire dimensions</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #222; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; }
+  code { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  ul { padding-left: 1.3rem; }
+  .sources li { margin-bottom: 0.3rem; }
+  a { color: #0645ad; }
+</style>
+</head>
+<body>
+
+<h1>International standards for voice coil wire dimensions</h1>
+<p>Reference notes for basing <code>wire_table.ods</code> on established magnet-wire standards, matched
+against what the table already tracks (bare/overall diameter, resistance/m, mass/m, insulation build).</p>
+
+<h2>The core international standard: IEC 60317</h2>
+<p><strong>IEC 60317</strong> ("Specifications for particular types of winding wires") is the international
+reference for enamelled round copper wire. It's split into:</p>
+<ul>
+  <li><strong>Part 0-1 / 0-2 / 0-3</strong>: general requirements &mdash; nominal bare-conductor diameter
+      series (a Renard R20 preferred-number progression), diameter tolerances, and min/max <em>overall</em>
+      (coated) diameter for <strong>Grade 1</strong> (thin build) vs <strong>Grade 2</strong> (thick build),
+      roughly 0.02&ndash;1.6&nbsp;mm depending on grade/part.</li>
+  <li><strong>Numbered parts</strong> (e.g. -3, -8, -12, -13, -20...): specific enamel chemistries and
+      thermal classes &mdash; polyurethane (class 130/155), polyester/polyesterimide overcoated with
+      polyamide-imide (class 180/200), polyvinyl acetal (class 120), etc. Class 180/200 wires are the
+      common choice for voice coils since they tolerate the heat a driver's motor generates.</li>
+  <li><strong>Self-bonding variants</strong> (important for voice coils, since the winding is heat- or
+      solvent-fused into a rigid self-supporting cylinder rather than glued):
+      <strong>IEC 60317-35</strong> (solderable polyurethane, class 155, w/ bonding layer),
+      <strong>-36</strong> (solderable polyesterimide, class 180, w/ bonding layer),
+      <strong>-37</strong> (polyesterimide, class 200, w/ bonding layer),
+      <strong>-38</strong> (dual-coated, class 200, w/ bonding layer).</li>
+</ul>
+<p>Regional adoptions of this same standard: <strong>EN 60317</strong> (Europe, identical text),
+<strong>GB/T 6109</strong> (China), and it's closely harmonized with <strong>JIS C3202</strong> (Japan) &mdash;
+Elektrisola's published datasheet is explicitly framed as "based on IEC 60317, based on JIS 3202" and gives
+real numeric bare/overall-diameter, resistance/m and mass/m tables per size, which is a good ready-made
+cross-reference if the IEC document itself (paywalled, numeric tables not public) is hard to get hold of.</p>
+
+<h2>North American alternative: NEMA MW 1000 (ANSI/NEMA MW 1000)</h2>
+<p>Sizes wire by <strong>AWG</strong> rather than a metric diameter series, with
+<strong>Single / Heavy / Triple / Quad</strong> film-build classes (Heavy &asymp; 2&times; the insulation
+increase of Single). This is what most US magnet-wire suppliers (MWS Wire, Superior Essex) quote against.
+If you want your table indexed by AWG instead of &micro;m, this is the standard to follow instead of
+IEC 60317.</p>
+
+<h2>For CCAW entries specifically</h2>
+<p>The <code>CCAW</code> rows (copper-clad aluminium) aren't plain copper, so the base-metal geometry is
+covered separately: <strong>GB/T 29197-2012</strong> (China) and <strong>ASTM B566</strong> are the specs
+usually cited for CCA wire construction, while the enamel/insulation build on top of it still follows the
+same IEC 60317 (or NEMA MW 1000) grade system as copper wire.</p>
+
+<h2>Practical recommendation</h2>
+<p>Since the existing table is already vendor-catalog-shaped (named sizes in &micro;m, <code>w_avg</code>/
+<code>w_max</code>/<code>resistance</code>/<code>mass_density</code>), the cleanest path is: use
+<strong>IEC 60317-0-1's Grade 1/Grade 2 diameter series</strong> as the backbone (so <code>nominal_size</code>
+steps match the actual preferred sizes wire is manufactured in), and cross-check bare/overall diameter,
+resistance and mass-per-length against a real supplier datasheet built to that standard &mdash; the
+Elektrisola PDF below is a solid one to compare against &mdash; rather than trying to buy/transcribe the
+IEC document itself.</p>
+
+<h2>Sources</h2>
+<ul class="sources">
+  <li><a href="https://standards.globalspec.com/std/13416161/iec-60317-0-1">IEC 60317-0-1 &ndash; GlobalSpec</a></li>
+  <li><a href="https://cdn.standards.iteh.ai/samples/102360/47d5095c2c794c1098f568b622bb0302/IEC-60317-0-2-2020.pdf">IEC 60317-0-2:2020 (sample PDF)</a></li>
+  <li><a href="https://standards.globalspec.com/std/1274534/DS/EN%2060317-13">IEC 60317-13 &ndash; GlobalSpec (class 200)</a></li>
+  <li><a href="https://www.amazon.com/IEC-60317-36-Ed-Specifications-polyesterimide/dp/2832292070">IEC 60317-36 (self-bonding polyesterimide)</a></li>
+  <li><a href="https://www.elektrisola.com/Attachments/TechnicalDataBySize/ELEKTRISOLA_EnCuWire_IECJIS_Datasheet_eng.pdf">Elektrisola &mdash; Enamelled copper wire technical data, based on IEC 60317 / JIS 3202</a></li>
+  <li><a href="https://www.elektrisola.com/Attachments/TechnicalData/enamelled_copper_wire_english.pdf">Elektrisola &mdash; Diameters, tolerances and technical data</a></li>
+  <li><a href="https://mwswire.com/bondable-magnet-wire/">MWS Wire &ndash; Bondable Magnet Wire</a></li>
+  <li><a href="https://webstore.ansi.org/preview-pages/NEMA/preview_ANSI+NEMA+MW+1000-2015.pdf">ANSI/NEMA MW 1000-2015 (preview)</a></li>
+  <li><a href="https://mwswire.com/magnet-wire-calculator/">MWS Wire &ndash; Magnet Wire Calculator (NEMA MW 1000 based)</a></li>
+  <li><a href="https://en.wikipedia.org/wiki/Copper-clad_aluminium_wire">Copper-clad aluminium wire &ndash; Wikipedia</a></li>
+</ul>
+
+</body>
+</html>
