@@ -157,8 +157,8 @@ class SpeakerDriver:
 
                    "<h4>Mass and suspension</h4>"
                    "<p>"
-                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g&nbsp;&nbsp;&nbsp;&nbsp;"
-                   f"M<sub>md</sub> : {self.Mmd*1000:.4g}<br>"
+                   f"M<sub>md</sub> : {self.Mmd*1000:.4g} g&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"M<sub>ms</sub> : {self.Mms*1000:.4g}<br>"
                    f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
                    "</p>"
