@@ -1,4 +1,7 @@
+import dataclasses as dtc
+
 from config.app_config import singleton_settings
+from config.physics import air
 from utils.paths import get_main_dir
 import generictools.personalized_widgets as pwi
 
@@ -18,6 +21,21 @@ def show_file_paths(parent_window):
                    )
 
     popup = pwi.ResultTextBox("File paths",
+                              result_text,
+                              monospace=False,
+                              parent=parent_window,
+                              markdown=True,
+                              )
+
+    popup.exec()
+
+
+def show_physics_constants(parent_window):
+    lines = [f"#### {field.name}<br></br>{getattr(air, field.name)}"
+             for field in dtc.fields(air)]
+    result_text = "<br></br>  \n".join(lines)
+
+    popup = pwi.ResultTextBox("Physics constants",
                               result_text,
                               monospace=False,
                               parent=parent_window,
