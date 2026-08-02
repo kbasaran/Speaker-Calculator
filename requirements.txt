@@ -5,8 +5,7 @@ numpy == 2.3.*
 sympy
 pyperclip == 1.11.*
 matplotlib == 3.10.*
-acoustics >= 0.2.6
-scipy == 1.15.*  # for pyacoustics 2.0 compatibility
+scipy == 1.17.*
 soundfile
 sounddevice == 0.5.*
 cx-freeze == 8.6.*

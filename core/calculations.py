@@ -33,7 +33,11 @@ def calculate_air_mass(sd: float) -> float:
     :param sd: Diaphragm effective surface area in m².
     :return: Air mass in kg.
     """
-    return 1.13 * (sd) ** (3 / 2)
+    # Low-frequency co-vibrating air mass on BOTH faces of a flat circular piston:
+    # 2 * (8/3) * rho * a**3 with radius a = sqrt(sd/pi), i.e.
+    # 2*(8/3)*rho/pi**1.5 * sd**1.5. Coefficient ~= 1.134 for air at 25 C (was
+    # hardcoded 1.13); derived from air.RHO so it tracks the configured air density.
+    return 2 * (8 / 3) * air.RHO / np.pi**1.5 * sd ** (3 / 2)
 
 
 def calculate_lm(bl: float, re: float, mms: float, sd: float) -> float:
@@ -75,7 +79,7 @@ def calculate_spl(xty: Tuple[Any, Any], sd: float) -> Tuple[np.ndarray, np.ndarr
     Calculate SPL using simplified radiation impedance * acceleration.
 
     :param xty: Tuple containing (frequencies, RMS velocities).
-    :param sd: Diaphragm effective surface area in m².
+    :param sd: Diaphragm effective surface area in m². Use 1 if xty is volume velocity U.
     :return: Tuple of (frequencies, SPL values in dB).
     """
     a = np.sqrt(sd / np.pi)  # piston radius
@@ -142,6 +146,22 @@ def make_state_matrix_B(state_vars, state_diffs, input_vars, sols):
         matrix.append(coeffs)
 
     return smp.Matrix(matrix)
+
+
+def make_output_matrices(output_exprs, state_vars, input_vars):
+    # Output matrix (C) and feedforward matrix (D)
+
+    C, D = [], []
+    for output_expr in output_exprs:
+        # Each row corresponds to an output, as listed in output_exprs.
+        # An output has to be a linear combination of the state variables
+        # and the input variables, so that it can be expressed with
+        # constant coefficients.
+        expanded = smp.expand(output_expr)
+        C.append([expanded.coeff(state_var) for state_var in state_vars])
+        D.append([expanded.coeff(input_var) for input_var in input_vars])
+
+    return smp.Matrix(C), smp.Matrix(D)
 
 
 def make_state_matrix_A(state_vars, state_diffs, sols):
