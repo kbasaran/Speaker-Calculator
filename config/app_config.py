@@ -49,7 +49,7 @@ DEFAULTS = {
     "author": APP_DEFINITIONS["author"],
     "author_short": APP_DEFINITIONS["author_short"],
     "version": APP_DEFINITIONS["version"],
-    "vc_table_file": "data/wire table.ods",
+    "vc_table_file": "data/wire_table.ods",
     "startup_state_file": "data/startup.sscf",
     "f_min": 10,
     "f_max": 1500,
