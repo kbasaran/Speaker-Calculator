@@ -5,7 +5,7 @@ Lumped element calculation tool for loudspeaker design, made using Qt for Python
 * Modelling of loudspeaker response in free-air and closed box.
   * SPL, electrical impedance, displacements, net forces
 * Automatic calculation of most appropriate coil winding for given user parameters.
-  * Wire properties are read from user editable "wire table.ods".
+  * Wire properties are read from user editable "wire_table.ods".
   * Possible to calculate for different types of wire section (round, flat, etc.)
 * Includes a second degree of freedom to observe the effects on parent structure.
 * Possible to manipulate graph settings and export curves.
@@ -51,10 +51,10 @@ The application uses a linear model with 3 degrees of freedom to do the calculat
 > The third degree of freedom which represents the vented port or passive radiator is not included in this version.
 
 ### Coil windings
-The application will give you coil winding options based on the winding height and the coil resistance you input as requirement. To be able to do this, a separate table that has information on different wire types needs to be provided by the user. This table is stored in `wire table.ods` which is located in subfolder `data` in the installation folder.
+The application will give you coil winding options based on the winding height and the coil resistance you input as requirement. To be able to do this, a separate table that has information on different wire types needs to be provided by the user. This table is stored in `wire_table.ods` which is located in subfolder `data` in the installation folder.
 
 > [!TIP]
-> To see the location of `wire table.ods` in your computer go to *Help -> Show paths of assets..* from within the application.
+> To see the location of `wire_table.ods` in your computer go to *Help -> Show paths of assets..* from within the application.
 
 ### Wire table file content
 This file contains *Sheet1* which contains the following columns for each wire type.
