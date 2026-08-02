@@ -23,7 +23,7 @@ Lumped element calculation tool for loudspeaker design, made using Qt for Python
 * Nonlinearities in the system
 * Calculation of magnetic flux
 * Calculation of mass of speaker components (with the exception of the windings)
-* Electrical inductance and modal behaviour
+* Modal behaviour
 
 ## Screenshots
 
