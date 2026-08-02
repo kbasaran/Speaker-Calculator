@@ -22,7 +22,7 @@ import pyperclip
 from config.app_config import APP_DEFINITIONS, ABOUT_TEXT, singleton_settings
 from utils.paths import get_main_dir
 from gui.dialogs import SettingsDialog, CurveExportMenu
-from gui.help_menu import show_file_paths
+from gui.help_menu import show_file_paths, show_physics_constants
 from gui.coil_options import update_coil_options_combobox
 from gui.input_section_tab_widget import InputSectionTabWidget
 from gui.plot_builders import PLOT_BUILDERS
@@ -97,6 +97,7 @@ class MainWindow(qtw.QMainWindow):
 
         help_menu = menu_bar.addMenu("Help")
         paths_action = help_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
+        physics_action = help_menu.addAction("Show physics constants..", lambda: show_physics_constants(self))
         about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
