@@ -47,6 +47,7 @@ class SpeakerDriver:
     motor: None | Motor = None  # None or 'Motor' instance
     dead_mass: float = None  # provide only if motor is 'Motor' instance
     Rlw: float = 0  # series electrical resistance between the speaker terminals and the coil (leadwire etc.). provide only if motor is 'Motor' instance.
+    Le: float = 0  # voice coil inductance [H]. 0 means a purely resistive coil.
     Xpeak: float = None
 
     def __post_init__(self):
@@ -153,8 +154,9 @@ class SpeakerDriver:
                    f"Q<sub>es</sub> : {self.Qes:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
                    f"Q<sub>ts</sub> : {self.Qts:.3g}<br>"
                    f"V<sub>as</sub> : {self.Vas() * 1e3:.4g} l"
+                   f"&nbsp;&nbsp;&nbsp;&nbsp;L<sub>e</sub> : {self.Le * 1e3:.4g} mH"
                    "</p>"
-
+                   
                    "<h4>Mass and suspension</h4>"
                    "<p>"
                    f"M<sub>md</sub> : {self.Mmd*1000:.4g} g&nbsp;&nbsp;&nbsp;&nbsp;"
