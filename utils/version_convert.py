@@ -17,6 +17,7 @@ __email__ = "kbasaran@gmail.com"
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from pathlib import Path
+import copy
 import pickle
 import pathlib
 import inspect
@@ -54,24 +55,160 @@ class IgnoreErrorsUnpickler(pickle.Unpickler):
             return DummyObject
 
 
-def convert_any(file: Path) -> dict:
-    suffix = file.suffixes[-1]
-    
-    if suffix == ".scf":  # v0.2.0        
-        with open(file, "r") as f:
+def detect_version(file: Path) -> str:
+    """Detect the on-disk save-format generation of a session file.
+
+    Returns a "<major>.<minor>" string:
+
+      - "0.1" : a Python pickle (binary) -- the original format, which predates
+                the JSON formats and carries no version stamp.
+      - "0.2" and onwards : JSON. The generation is read straight from the
+                'application_data.version' stamp written at save time
+                (e.g. "0.4.0rc..." -> "0.4"). That stamp is kept accurate at every
+                release, so it is trusted directly rather than sniffing the schema.
+    """
+    # v0.1 files are pickles; reading them as JSON/UTF-8 text fails -- with a
+    # UnicodeDecodeError for the usual binary pickle protocols, or a
+    # JSONDecodeError for an ASCII (protocol 0) pickle.
+    try:
+        with open(file, "r", encoding="utf-8") as f:
             state = json.load(f)
-        
-    elif suffix == ".sscf":
-        try:                
-            with open(file, "r") as f:  # >v0.2.0
-                state = json.load(f)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return "0.1"
 
-        except UnicodeDecodeError:  # <v0.2.0
-            state = convert_v01_to_v02(file)
+    if not isinstance(state, dict):
+        raise RuntimeError(f"Unrecognised session file structure: {file}")
 
+    stamp = (state.get("application_data") or {}).get("version", "")
+    if not stamp:
+        raise RuntimeError(
+            f"JSON session file has no 'application_data.version' stamp: {file}"
+            )
+    return ".".join(stamp.split(".")[:2])
+
+
+# Default values for the keys added by the v0.4 save format (passive-radiator /
+# bass-reflex resonator inputs, plus the enclosure leakage factor Ql). These are a
+# frozen snapshot of the v0.4 defaults -- a migration should reproduce the schema
+# as it was at that release, not track later default changes. Combobox widgets are
+# stored the same way the app serialises them (current_index / _data / _text, and
+# an items list where the app writes one).
+V04_NEW_KEY_DEFAULTS = {
+    "resonator_spec_type": {
+        "current_index": 0,
+        "current_data": "pr_1",
+        "current_text": "PR - Define mass and damping ratio",
+        "items": [],
+        },
+    "port_diameter": 0.05,
+    "Qp": 15.0,
+    "exit_flare_type": {
+        "current_index": 1,
+        "current_data": 0.732,
+        "current_text": "One end flanged, one free",
+        "items": [
+            ["Both ends flanged / flared", 0.85],
+            ["One end flanged, one free", 0.732],
+            ["Both ends free", 0.614],
+            ],
+        },
+    "Ql": 99999.9,
+    "h_pr": 0.7,
+    "spring_damping_ratio_pr": 0.005,
+    "area_ratio_pr": 2.5,
+    "Mmdp": 0.01,
+    "dir_pr_vent": {
+        "current_index": 0,
+        "current_data": 1,
+        "current_text": "Same with driver",
+        "items": [
+            ["Same with driver", 1],
+            ["On opposite direction", -1],
+            ],
+        },
+    }
+
+
+def convert_v03_to_v04(state: dict) -> dict:
+    """Upgrade a v0.2/v0.3 JSON state dict to the v0.4 schema.
+
+    v0.4 added the passive-radiator / bass-reflex resonator inputs and the
+    enclosure leakage factor Ql (see V04_NEW_KEY_DEFAULTS). Older files predate the
+    vented enclosure option, so those keys are simply filled with defaults; they
+    stay inert unless the user later switches to the resonator enclosure type.
+
+    Only missing keys are added, so this is idempotent -- safe to run on a file
+    that already carries some or all of the v0.4 keys.
+    """
+    for key, default in V04_NEW_KEY_DEFAULTS.items():
+        state.setdefault(key, copy.deepcopy(default))
+    return state
+
+
+def convert_v04_to_v05(state: dict) -> dict:
+    """Upgrade a v0.4 JSON state dict to the v0.5 schema.
+
+    v0.5 keeps 'Bl_p2'/'Bl_p3' (and 'Re_p2'/'Re_p3') permanently in sync in the GUI,
+    since they describe the same physical motor parameter on the two direct-entry
+    pages. Older files may have a genuinely different value stored in each half of
+    a pair (e.g. the page that wasn't active was left at its default), so instead
+    of letting load order silently decide which value survives, resolve each pair
+    to the value that belonged to whichever 'motor_spec_type' was actually active.
+
+    Idempotent: a file where both pairs already match is a no-op.
+    """
+    mode = (state.get("motor_spec_type") or {}).get("current_data")
+    if mode == "define_Bl_Re_Mms":
+        bl_src, re_src = "Bl_p3", "Re_p3"
     else:
-        raise RuntimeError("Was not able to convert file.")
-    
+        bl_src, re_src = "Bl_p2", "Re_p2"
+
+    bl = state.get(bl_src, state.get("Bl_p2", state.get("Bl_p3")))
+    re_val = state.get(re_src, state.get("Re_p2", state.get("Re_p3")))
+
+    state["Bl_p2"] = state["Bl_p3"] = bl
+    state["Re_p2"] = state["Re_p3"] = re_val
+    return state
+
+
+def convert_v05_to_v06(state: dict) -> dict:
+    """Upgrade a v0.5 JSON state dict to the v0.6 schema.
+
+    v0.6 added the voice coil inductance 'Le' to the general specifications.
+    Older files predate this input, so the key is simply filled with its default
+    of 0 (SI units, i.e. 0 H).
+
+    Only missing keys are added, so this is idempotent -- safe to run on a file
+    that already carries the v0.6 keys.
+    """
+    state.setdefault("Le", 0.0)
+    return state
+
+
+def convert_any(file: Path) -> dict:
+    """Load a session file of any past format and return a current-schema state dict."""
+    version = detect_version(file)
+
+    if version == "0.1":
+        state = convert_v01_to_v02(file)   # unpickle -> v0.2-schema dict
+    else:
+        with open(file, "r", encoding="utf-8") as f:
+            state = json.load(f)
+
+    # Bring every pre-0.4 format up to the current (v0.4) schema. v0.1 has already
+    # been lifted to the v0.2 schema above, and v0.2/v0.3 share one schema, so the
+    # same upgrade covers all three; on a v0.4 file it is a no-op.
+    if version in ("0.1", "0.2", "0.3"):
+        state = convert_v03_to_v04(state)
+
+    # Bring every pre-0.5 format up to the current (v0.5) schema.
+    if version in ("0.1", "0.2", "0.3", "0.4"):
+        state = convert_v04_to_v05(state)
+
+    # Bring every pre-0.6 format up to the current (v0.6) schema.
+    if version in ("0.1", "0.2", "0.3", "0.4", "0.5"):
+        state = convert_v05_to_v06(state)
+
     return state
             
 

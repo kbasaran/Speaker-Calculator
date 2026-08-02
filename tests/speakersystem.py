@@ -71,21 +71,21 @@ def test():
     t = np.arange(0, 0.1, 1/100000)
     u = 2**0.5 * np.sin(25 * 2 * np.pi * t)
     youts = {}
-    for i, (key, model) in enumerate(my_system.ss_models.items()):
-        _, _, yout = signal.lsim(model, U=u, T=t)
-        youts[key] = yout[:, i]
+    for key, model in my_system.ss_models.items():
+        _, yout, _ = signal.lsim(model, U=u, T=t)
+        youts[key] = yout
 
-    relative_disp = youts['x1(t)'] - youts['x2(t)']
+    relative_disp = youts['x1'] - youts['x2']
     if not (min(relative_disp), max(relative_disp) == -0.00024944613211834703, 0.0002494474248713049):
         print("relative displacements NOT PASS test")
     else:
         print("relative displacements PASS")
     print("relative disp min, max:")
     print(min(relative_disp), max(relative_disp))
-    plt.plot(t, youts['x1(t)'])
-    plt.plot(t, youts['x2(t)'])
-    plt.plot(t, youts['x1(t)'] - youts['x2(t)'])
-    plt.plot(t, youts['x_pr(t)'])
+    plt.plot(t, youts['x1'])
+    plt.plot(t, youts['x2'])
+    plt.plot(t, youts['x1'] - youts['x2'])
+    plt.plot(t, youts['xpr'])
     plt.grid()
     plt.show()
 
@@ -102,12 +102,12 @@ def test():
     # print("forces: real, abs")
     # print(np.real(forces["Force from parent body to reference frame, RMS"]), np.abs(forces["Force from parent body to reference frame, RMS"]))
 
-    w, y = signal.freqresp(my_system.ss_models["x1(t)"], w=2*np.pi*freqs)
+    w, y = signal.freqresp(my_system.ss_models["x1"], w=2*np.pi*freqs)
     y_rms_for_10Vrms = np.abs(y) * 10
     y_for_10Vrms = y_rms_for_10Vrms * 2**0.5
     plt.semilogx(freqs, y_rms_for_10Vrms)
     plt.grid()
-    plt.title("x1(t), RMS")
+    plt.title("x1, RMS")
     for i, freq in enumerate(freqs):
         if int(freq) == 200 or i==0 or i==len(freqs)-1:
             print(f"{freqs[i]:.5g}Hz: {y_rms_for_10Vrms[i] * 1e3:.5g}mm RMS")

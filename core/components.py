@@ -101,24 +101,22 @@ class Coil:
             )
 
     def get_summary(self) -> str:
-        "Summary in markup language."
-        summary = ("#### Windings"
-                   "<br></br>"
-                   f"{self.wire.name}, {self.wire.shape[0].upper() + self.wire.shape[1:]}, N<sub>wind</sub>: {sum(self.N_windings)}"
-                   "<br></br>"
-                   f"{self.N_windings}"
-                   "<br></br>"
-                   f"m<sub>windings</sub>: {(self.mass * 1e3):.4g} g"
-                   "<br></br>"
+        "Summary in HTML."
+        # Two <p> blocks (windings / dimensions); the paragraph break replaces the
+        # old double <br></br> spacer.
+        summary = ("<h4>Windings</h4>"
+                   "<p>"
+                   f"{self.wire.name}, {self.wire.shape[0].upper() + self.wire.shape[1:]}, N<sub>wind</sub>: {sum(self.N_windings)}<br>"
+                   f"{self.N_windings}<br>"
+                   f"m<sub>windings</sub>: {(self.mass * 1e3):.4g} g<br>"
                    f"Fill ratio: {self.fill_ratio * 100:.3g} %"
-                   "<br></br>"
-                   "<br></br>"
-                   f"L<sub>total</sub>: {self.total_wire_length():.3g} m        "
-                   f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
-                   "<br></br>"
-                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g} mm        w<sub>max</sub> : {self.w_max*1e3:.4g} mm"
-                   "<br></br>"
-                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g} mm        OD<sub>max</sub> : {self.OD_max*1e3:.4g} mm"
+                   "</p>"
+                   "<p>"
+                   f"L<sub>total</sub> : {self.total_wire_length():.3g} m&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"h<sub>nom</sub> : {self.h_winding * 1000:.4g}<br>"
+                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g}&nbsp;&nbsp;&nbsp;&nbsp;w<sub>max</sub> : {self.w_max*1e3:.4g}<br>"
+                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g}&nbsp;&nbsp;&nbsp;&nbsp;OD<sub>max</sub> : {self.OD_max*1e3:.4g}"
+                   "</p>"
                    )
         return summary
 
@@ -162,20 +160,16 @@ class Motor:
          ))
 
         summary = (
-            "## Motor"
-            "<br></br>"
-            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm"
-            "<br></br>"
-            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g} mm"
-            "<br></br>"
-            f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g} mm"
-            "<br></br>"
-            "Airgap radii:"
-            "<br></br>"
+            "<h2>Motor</h2>"
+            "<p>"
+            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm<br>"
+            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g}<br>"
+            f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g}<br>"
+            "Airgap radii:<br>"
             f"{self.airgap_radii[0] * 1e3:.3f} + "
             f"{self.airgap_radii[1] * 1e3:.3f} = "
             f"{self.airgap_radii[2] * 1e3:.3f} mm"
-            "<br/>  \n"
+            "</p>"
             f"{self.coil.get_summary()}"
             )
 
@@ -187,7 +181,7 @@ class Enclosure:
     # All units are SI
     Vb: float
     Qa: float
-    # Ql: float = np.inf
+    Ql: float = np.inf  # leakage-loss quality factor; inf -> no leakage
 
     def Vba(self):  # effective acoustical volume
         return self.Vb
@@ -200,13 +194,23 @@ class Enclosure:
 
     def R(self, Sd, Mms, Kms):
         """
-        Damping at fb due to air absorption in box. Calculated from Qa.
+        Acoustic loss resistance of the enclosure [Pa.s/m^3], combining internal
+        absorption (Qa) and leakage (Ql).
+
+        It is referenced to the driver's boxed resonance so that, for a sealed
+        single-driver box, it reproduces the familiar Qa/Ql damping. Because it
+        is applied to the *volume* velocity into the box, the state-space model
+        weights each radiator's reaction by its own area (Sd, Spr) and couples
+        the driver and passive radiator through the shared lossy air.
+
+        The loss quality factors combine reciprocally: 1/Qb = 1/Qa + 1/Ql.
         """
-        # return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa + ((Kms + self.K(Sd)) * Mms)**0.5 / self.Ql
-        if self.Vb == 0:
+        if self.Vb == 0 or Sd == 0:
             return 0
-        else:
-            return ((Kms + self.K(Sd)) * Mms)**0.5 / self.Qa
+        # driver-referred mechanical loss for Qa = Ql = 1, divided by Sd**2 to
+        # express it as an acoustic resistance acting on volume velocity
+        mech_ref = ((Kms + self.K(Sd)) * Mms)**0.5
+        return mech_ref / Sd**2 * (1 / self.Qa + 1 / self.Ql)
 
 
 @dtc.dataclass
@@ -229,18 +233,21 @@ class ParentBody:
     def f(self, coupled_masses=0):
         # undamped natural frequency a.k.a. resonance frequency
         f2_undamped = 1 / 2 / np.pi * (self.k / (self.m + coupled_masses))**0.5
-        # f2_damped = f2_undamped * (1 - 2 * self.zeta()**2)**0.5
-        # if np.iscomplex(f2_damped):
-        #     f2_damped = None
+        # For the *displacement response-peak* frequency (not the damped natural /
+        # ringing frequency) use w0*sqrt(1 - 2*zeta**2); see SpeakerDriver.__post_init__
+        # for the undamped-natural vs damped-natural vs response-peak distinction.
+        # f2_response_peak = f2_undamped * (1 - 2 * self.zeta()**2)**0.5
+        # if np.iscomplex(f2_response_peak):
+        #     f2_response_peak = None
         return f2_undamped
 
 
 @dtc.dataclass
 class PassiveRadiator:
     # All units are SI
-    m: float  # without coupled air mass. a.k.a mmd_pr.
-    k: float  # kmpr
-    Q: float  # rmpr
+    m: float  # moving mass without coupled air mass. a.k.a mmd_pr.
+    k: float  # suspension stiffness. a.k.a kmpr.
+    R: float  # mechanical damping resistance [N.s/m]. a.k.a rmpr. Box-independent.
     S: float  # surface area
 
     def m_s(self):
@@ -257,9 +264,44 @@ class PassiveRadiator:
         "Stiffness from air in enclosure."
         return self.S**2 * air.Kair / Vba
 
-    def R(self, Vba):
+    def Qp(self, Vba):
         """
-        Damping at fp due to port losses in case of vented box, or due to
-        mechanical losses in case of passive radiator. Calculated from Qp.
+        Mechanical quality factor at the PR's housed resonance, derived from the
+        box-independent damping resistance R. (At fp the loss is port losses for a
+        vented box, or suspension losses for a passive radiator.)
         """
-        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.Q
+        return ((self.k_box(Vba) + self.k) * self.m_s())**0.5 / self.R
+
+
+@dtc.dataclass
+class BassReflexPort(PassiveRadiator):
+    """A bass-reflex vent, modelled as a passive radiator with *zero* suspension
+    stiffness (k = 0): the air plug in the tube has no restoring force of its own,
+    so the whole "spring" is the enclosure air. It reuses the PassiveRadiator
+    interface (m_s, k, R, S) unchanged, so the state-space model treats it exactly
+    like a PR -- the Helmholtz resonance then falls out of the air coupling alone.
+
+    Extra state vs. a PR:
+        end_correction : total acoustic end-correction length [m], summed over both
+                         ends, from the exit-flare geometry. It splits the total
+                         co-vibrating acoustic mass m_s into the physical tube air
+                         slug (self.m -> port_length) and the radiation end
+                         correction, so the same tuning can be reported as a
+                         buildable tube length.
+    """
+    end_correction: float = 0.0
+
+    def m_s(self):
+        # Total co-vibrating acoustic mass = tube air slug (self.m) + end-correction
+        # air. Unlike a PR (flat piston -> calculate_air_mass), a vent's end
+        # correction depends on its termination geometry, so it is carried
+        # explicitly rather than assumed flanged.
+        return self.m + air.RHO * self.S * self.end_correction
+
+    def port_length(self):
+        "Physical length of the vent tube [m] (excludes the end corrections)."
+        return self.m / (air.RHO * self.S)
+
+    def diameter(self):
+        "Internal diameter of the (circular) port [m]."
+        return 2 * (self.S / np.pi)**0.5

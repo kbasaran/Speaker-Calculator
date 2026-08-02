@@ -1,10 +1,9 @@
 {
-    "fs": 100.0,
-    "Qms": 8.0,
-    "Xpeak": 0.005,
+    "fs": 26.5,
+    "Qms": 6.3,
+    "Xpeak": 0.008,
     "dead_mass": 0.004,
-    "Sd": 0.005200000000000001,
-    "Le": 0.0,
+    "Sd": 0.03563,
     "excitation_type": {
         "current_index": 0,
         "current_data": "V",
@@ -24,13 +23,13 @@
             ]
         ]
     },
-    "excitation_value": 2.83,
+    "excitation_value": 28.88,
     "Rnom": 0.01,
-    "Rext": 0.0,
+    "Rext": 0.2,
     "motor_spec_type": {
-        "current_index": 0,
-        "current_data": "define_coil",
-        "current_text": "Define Coil Dimensions and Average B",
+        "current_index": 2,
+        "current_data": "define_Bl_Re_Mms",
+        "current_text": "Define Bl, Re, Mms",
         "items": [
             [
                 "Define Coil Dimensions and Average B",
@@ -213,20 +212,20 @@
             ]
         ]
     },
-    "Bl_p2": 4.0,
-    "Re_p2": 4.0,
-    "Mmd_p2": 0.004,
-    "Bl_p3": 4.0,
-    "Re_p3": 4.0,
-    "Mms_p3": 0.0045000000000000005,
+    "Bl_p2": 0.01,
+    "Re_p2": 0.01,
+    "Mmd_p2": 1e-06,
+    "Bl_p3": 11.85,
+    "Re_p3": 5.56,
+    "Mms_p3": 0.045520000000000005,
     "h_top_plate": 0.005,
     "airgap_clearance_inner": 0.0005,
     "airgap_clearance_outer": 0.0005,
     "h_former_under_coil": 0.0005,
-    "enclosure_type": 1,
-    "Vb": 0.002,
-    "Qa": 100.0,
-    "Ql": 99999.9,
+    "enclosure_type": 2,
+    "Vb": 0.058,
+    "Qa": 80.0,
+    "Ql": 15.0,
     "dir_pr_vent": {
         "current_index": 0,
         "current_data": 1,
@@ -242,11 +241,11 @@
             ]
         ]
     },
-    "h_pr": 0.7,
+    "h_pr": 0.679,
     "resonator_spec_type": {
-        "current_index": 0,
-        "current_data": "pr_1",
-        "current_text": "PR - Define mass and damping ratio",
+        "current_index": 1,
+        "current_data": "br_1",
+        "current_text": "Bass reflex - Define port and Q",
         "items": [
             [
                 "PR - Define mass and damping ratio",
@@ -258,11 +257,11 @@
             ]
         ]
     },
-    "area_ratio_pr": 2.5,
-    "Mmdp": 0.01,
-    "spring_damping_ratio_pr": 0.005,
-    "port_diameter": 0.05,
-    "Qp": 15.0,
+    "area_ratio_pr": 1.5,
+    "Mmdp": 0.1,
+    "spring_damping_ratio_pr": 0.0005,
+    "port_diameter": 0.092,
+    "Qp": 80.0,
     "exit_flare_type": {
         "current_index": 1,
         "current_data": 0.732,
@@ -283,14 +282,14 @@
         ]
     },
     "parent_body": 0,
-    "mpb": 0.1,
-    "kpb": 10000.0,
-    "rpb": 3.0,
+    "mpb": 10.0,
+    "kpb": 50000.0,
+    "rpb": 25.0,
     "user_notes": "",
     "user_title": "",
     "application_data": {
         "app_name": "Speaker Calculator",
-        "version": "0.6.0",
+        "version": "0.4.0",
         "description": "Loudspeaker design and calculations",
         "copyright": "Copyright (C) 2026 Kerem Basaran",
         "icon_path": "images/logo2025.ico",

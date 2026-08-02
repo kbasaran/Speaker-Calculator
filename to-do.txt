@@ -1,16 +1,12 @@
 # Bugs
-no errors when the load file has invalid parameters like R_serial (R_serial is no more in use)
-export seems broken
-remove get_main_dir and use app_settings to provide such information.
-# Important features to add
 
+
+# Important features to add
 
 
 # Nice to have
 add definition list for all the terms used into the electraoacoustics file.
 such as V_in, V_spk, R_sys, R_nom, etc.
-
-when motor definition type changes to Bl and Mmx, paste values from model into the widgets
 
 add sine sweep time signal of displacements
 
@@ -24,9 +20,13 @@ deltaphase = 2*np.pi*instfreq/P
 cphase = np.cumsum(deltaphase)
 sig = np.sin(cphase)
 
-auto update when any value in user_form changes
 
 
 add:
 - Peak displacement at 1020Hz: 0.0143 mm
 - Peak displacement overall: 0.313 mm
+
+
+from Claude
+ Recommendations (naming, dead code, documented limits)
+  6. No voice-coil inductance Le anywhere — impedance has no HF rise and SPL ignores Le. Already acknowledged in the impedance title; flagging in case HF accuracy matters.

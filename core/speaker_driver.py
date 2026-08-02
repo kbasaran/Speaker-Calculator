@@ -23,6 +23,12 @@ from config.physics import air
 from core.calculations import calculate_air_mass, calculate_lm, calculate_coil_to_bottom_plate_clearance
 from core.components import Motor
 
+# Suspension that is too weak compared to the motor forces available
+# may cause poor recovery to rest position and be prone to
+# DC offset. A comparison of suspension force at Xmax/2 vs. the
+# motor force is a good indicator against this.
+_F_MOTOR_PER_KMS_LOW_LIMIT = 2
+
 
 @dtc.dataclass
 class SpeakerDriver:
@@ -41,6 +47,7 @@ class SpeakerDriver:
     motor: None | Motor = None  # None or 'Motor' instance
     dead_mass: float = None  # provide only if motor is 'Motor' instance
     Rlw: float = 0  # series electrical resistance between the speaker terminals and the coil (leadwire etc.). provide only if motor is 'Motor' instance.
+    Le: float = 0  # voice coil inductance [H]. 0 means a purely resistive coil.
     Xpeak: float = None
 
     def __post_init__(self):
@@ -81,11 +88,50 @@ class SpeakerDriver:
         # more derived parameters
         self.Kms = self.Mms * (self.fs * 2 * np.pi)**2
         self.Rms = (self.Mms * self.Kms)**0.5 / self.Qms
-        self.Ces = self.Bl**2 / self.Re
-        self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Ces)
-        self.Qes = (self.Mms * self.Kms)**0.5 / self.Ces
+        # Bl**2/Re is the electrical damping reflected into the mechanical domain: a
+        # resistance [N.s/m], not a compliance. It adds to the mechanical loss Rms to
+        # set the total (Qts) and electrical (Qes) quality factors.
+        self.Res = self.Bl**2 / self.Re
+        self.Qts = (self.Mms * self.Kms)**0.5 / (self.Rms + self.Res)
+        self.Qes = (self.Mms * self.Kms)**0.5 / self.Res
         zeta_speaker = 1 / 2 / self.Qts
-        self.fs_damped = self.fs * (1 - 2 * zeta_speaker**2)**0.5  # complex number if overdamped system
+        # ---- Free-air *response-peak* frequency -- NOT the damped natural frequency.
+        #
+        # A driven mass-spring-damper (the driver, the boxed driver, the parent body)
+        # has SEVERAL distinct characteristic frequencies that are easy to confuse.
+        # With w0 = sqrt(K/M) the undamped natural frequency and zeta the damping ratio:
+        #
+        #   1) Undamped natural frequency:  w0            (here self.fs)
+        #      The frequency where the mass reactance and the suspension stiffness
+        #      reactance exactly cancel.
+        #
+        #   2) Damped natural frequency:    w0*sqrt(1 - zeta**2)
+        #      The frequency of the FREE, decaying oscillation the cone rings at when
+        #      plucked and released -- a transient / pole property. It is the SAME for
+        #      displacement, velocity and acceleration, and exists for zeta < 1.
+        #
+        #   3) Response-peak frequency:     (steady-state, sinusoidally driven)
+        #      The frequency at which the DRIVEN amplitude is largest. This one depends
+        #      on WHICH quantity is observed, and so is generally different from (2):
+        #        - displacement peak:  w0*sqrt(1 - 2*zeta**2)   (BELOW w0)
+        #        - velocity peak:      w0                        (AT w0)
+        #        - acceleration peak:  w0/sqrt(1 - 2*zeta**2)   (ABOVE w0)
+        #      Why displacement peaks below w0: at w0 the mass and stiffness cancel, so
+        #      the force sees only the damper and VELOCITY is maximal there. Since
+        #      displacement = velocity / w, dividing by a smaller w just below w0 makes
+        #      the displacement larger -- pushing its peak below w0.
+        #
+        # (2) and (3) are answers to two different experiments -- "pluck it and hear it
+        # ring" vs "drive it and find the biggest steady response" -- so there is no
+        # reason for them to coincide. They all collapse onto w0 as zeta -> 0.
+        #
+        # The value below is the DISPLACEMENT response peak (the "bump" on the
+        # excursion/SPL curve). It is real only for zeta < 1/sqrt(2) (Qts > 0.707);
+        # for heavier damping the magnitude response is maximally flat with no peak, so
+        # the sqrt turns imaginary and the value is reported as nan.
+        self.fs_response_peak = self.fs * (1 - 2 * zeta_speaker**2)**0.5
+        if np.iscomplex(self.fs_response_peak):  # no response peak (Qts <= 1/sqrt(2))
+            self.fs_response_peak = np.nan
 
     def Lm(self):
         return calculate_lm(self.Bl, self.Re, self.Mms, self.Sd)  # sensitivity per W@Re
@@ -94,51 +140,57 @@ class SpeakerDriver:
         return air.Kair / self.Kms * self.Sd**2
 
     def get_summary(self, V_spk: float = 0) -> str:
-        "Summary in markup language."
-        summary = ("## Speaker unit"
-                   "<br></br>"
-                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL        "
-                   f"R<sub>e</sub> : {self.Re:.2f} ohm"
-                   "<br></br>"
-                   f"Bl : {self.Bl:.4g} Tm        "
-                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W"
-                   "<br></br>"
-                   f"Q<sub>es</sub> : {self.Qes:.3g}        "
-                   f"Q<sub>ts</sub> : {self.Qts:.3g}"
-                   "<br></br>"
+        "Summary in HTML (rendered by Qt's rich-text engine via setHtml)."
+        # Vertical spacing between headings/paragraphs is governed centrally by the
+        # results box's default stylesheet, so this markup only carries structure:
+        # <h2>/<h4> headings, <p> paragraphs, <br> intra-paragraph breaks. Column
+        # gaps within a line use &nbsp; runs (HTML collapses ordinary spaces).
+        summary = ("<h2>Speaker unit</h2>"
+                   "<p>"
+                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"R<sub>e</sub> : {self.Re:.2f} ohm<br>"
+                   f"Bl : {self.Bl:.4g} Tm&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W<br>"
+                   f"Q<sub>es</sub> : {self.Qes:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"Q<sub>ts</sub> : {self.Qts:.3g}<br>"
                    f"V<sub>as</sub> : {self.Vas() * 1e3:.4g} l"
+                   f"&nbsp;&nbsp;&nbsp;&nbsp;L<sub>e</sub> : {self.Le * 1e3:.4g} mH"
+                   "</p>"
                    
-                   "<br/>  \n"
-                   f"#### Mass and suspension"
-                   "<br></br>"
-                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g        "
-                   f"M<sub>md</sub> : {self.Mmd*1000:.4g} g"
-                   "<br></br>"
-                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm        "
+                   "<h4>Mass and suspension</h4>"
+                   "<p>"
+                   f"M<sub>md</sub> : {self.Mmd*1000:.4g} g&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"M<sub>ms</sub> : {self.Mms*1000:.4g}<br>"
+                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
+                   "</p>"
 
-                   "<br/>  \n"
-                   "#### Displacements"
-                   "<br></br>"
+                   "<h4>Displacements</h4>"
+                   "<p>"
                    f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
                    )
 
         if self.motor is not None:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary += f"      X<sub>crash</sub> : {Xcrash*1000:.3g} mm (recomm.)"
+            summary += f"&nbsp;&nbsp;&nbsp;&nbsp;X<sub>crash_recommended</sub> : {Xcrash*1000:.3g}"
 
         if V_spk > 0:
             # Suspension feasibility
+            f_motor_per_kms_ratio = self.Bl * V_spk / self.Re / self.Kms / (self.Xpeak / 2)
+            warn = ("<br>&#9888; low suspension recovery"
+                    if f_motor_per_kms_ratio > _F_MOTOR_PER_KMS_LOW_LIMIT else "")
             summary += (
-                   # "\n"
-                   # "##### Motor force vs. suspension"
-                   "<br></br>"
+                   "<br>"
                    "F<sub>motor, RMS</sub> / F<sub>suspension</sub>(X<sub>peak</sub>/2): "
-                   f"{self.Bl * V_spk / self.Re / self.Kms / (self.Xpeak / 2):.0%}"
+                   f"{f_motor_per_kms_ratio:.0%}"
+                   f"{warn}"
                     )
 
+        summary += "</p>"
+
         if self.motor is not None:
-            summary += "\n----\n"
+            # No separator here: the Motor section is set off by the rule under its
+            # own <h2> (see Motor.get_summary), matching the "Speaker unit" heading.
             summary += self.motor.get_summary()
 
         return summary
