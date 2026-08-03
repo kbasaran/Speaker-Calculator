@@ -101,24 +101,22 @@ class Coil:
             )
 
     def get_summary(self) -> str:
-        "Summary in markup language."
-        summary = ("#### Windings"
-                   "<br></br>"
-                   f"{self.wire.name}, {self.wire.shape[0].upper() + self.wire.shape[1:]}, N<sub>wind</sub>: {sum(self.N_windings)}"
-                   "<br></br>"
-                   f"{self.N_windings}"
-                   "<br></br>"
-                   f"m<sub>windings</sub>: {(self.mass * 1e3):.4g} g"
-                   "<br></br>"
+        "Summary in HTML."
+        # Two <p> blocks (windings / dimensions); the paragraph break replaces the
+        # old double <br></br> spacer.
+        summary = ("<h4>Windings</h4>"
+                   "<p>"
+                   f"{self.wire.name}, {self.wire.shape[0].upper() + self.wire.shape[1:]}, N<sub>wind</sub>: {sum(self.N_windings)}<br>"
+                   f"{self.N_windings}<br>"
+                   f"m<sub>windings</sub>: {(self.mass * 1e3):.4g} g<br>"
                    f"Fill ratio: {self.fill_ratio * 100:.3g} %"
-                   "<br></br>"
-                   "<br></br>"
-                   f"L<sub>total</sub>: {self.total_wire_length():.3g} m        "
-                   f"h<sub>nom</sub> : {self.h_winding * 1000:.4g} mm"
-                   "<br></br>"
-                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g}        w<sub>max</sub> : {self.w_max*1e3:.4g}"
-                   "<br></br>"
-                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g}        OD<sub>max</sub> : {self.OD_max*1e3:.4g}"
+                   "</p>"
+                   "<p>"
+                   f"L<sub>total</sub> : {self.total_wire_length():.3g} m&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"h<sub>nom</sub> : {self.h_winding * 1000:.4g}<br>"
+                   f"w<sub>nom</sub> : {self.w_nom*1e3:.4g}&nbsp;&nbsp;&nbsp;&nbsp;w<sub>max</sub> : {self.w_max*1e3:.4g}<br>"
+                   f"OD<sub>nom</sub> : {self.OD_nom*1e3:.4g}&nbsp;&nbsp;&nbsp;&nbsp;OD<sub>max</sub> : {self.OD_max*1e3:.4g}"
+                   "</p>"
                    )
         return summary
 
@@ -162,20 +160,16 @@ class Motor:
          ))
 
         summary = (
-            "## Motor"
-            "<br></br>"
-            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm"
-            "<br></br>"
-            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g}"
-            "<br></br>"
-            f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g}"
-            "<br></br>"
-            "Airgap radii:"
-            "<br></br>"
+            "<h2>Motor</h2>"
+            "<p>"
+            f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm<br>"
+            f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g}<br>"
+            f"ID<sub>top plate</sub> : {(self.coil.OD_max + 2 * self.airgap_clearance_outer) * 1000:.4g}<br>"
+            "Airgap radii:<br>"
             f"{self.airgap_radii[0] * 1e3:.3f} + "
             f"{self.airgap_radii[1] * 1e3:.3f} = "
             f"{self.airgap_radii[2] * 1e3:.3f} mm"
-            "<br/>\n"
+            "</p>"
             f"{self.coil.get_summary()}"
             )
 

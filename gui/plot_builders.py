@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from core.calculations import calculate_spl
+from core.components import BassReflexPort
 
 
 @dataclass
@@ -22,18 +23,27 @@ class PlotSpec:
     curves: dict[str, np.ndarray] = field(default_factory=dict)
     title: str = ""
     ylabel: str = ""
+    xlabel: str = "frequency"
     ylimits_policy: str | None = None
+    # Optional per-curve matplotlib line kwargs (keyed by curve name). Curves not
+    # listed here are drawn with the default (solid) style.
+    line_kwargs: dict[str, dict] = field(default_factory=dict)
 
 
-def _voltage_line(spk_sys, V_source, V_spk) -> str:
+def _dotted_for_peak(curve_names) -> dict[str, dict]:
+    """Line kwargs drawing 'peak' curves dotted, leaving RMS (and any others) solid."""
+    return {name: {"linestyle": ":"} for name in curve_names if "peak" in name.lower()}
+
+
+def _voltage_line(spk_sys, V_source, V_spk, W_spk) -> str:
     """Second title line describing the excitation voltage.
 
     When the speaker Re equals the system resistance there is no series
     network, so a single voltage is shown; otherwise both are reported.
     """
     if spk_sys.speaker.Re == spk_sys.R_sys:
-        return f"{V_spk:.4g}V"
-    return f"System: {V_source:.4g}V, Speaker: {V_spk:.4g}V"
+        return f"{V_spk:.4g}V {W_spk:.3g}Watt @ Re"
+    return f"System: {V_source:.4g}V, Speaker: {V_spk:.4g}V {W_spk:.3g}Watt @ Re"
 
 
 def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
@@ -43,7 +53,7 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
         accs = spk_sys.get_accelerations(V_source, freqs)
         curves.update({key.replace("Diaphragm", "Moving mass"): 20*np.log10(np.abs(acc)/1e-6)
                        for key, acc in accs.items() if "relative" not in key})
-        title = f"Acceleration, {V_source:.4g}V {W_spk:.3g}Watt@Re"
+        title = f"Acceleration, \n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}"
         ylabel = r"dB ref. $\mathregular{10^{-6}}$m/s²"
 
     else:  # speaker
@@ -73,10 +83,7 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
         curves.update({"SPL piston mode": SPL,
                        })
 
-        if spk_sys.speaker.Re == spk_sys.R_sys:
-            title = f"SPL@1m, Half-space\n{V_spk:.4g}V {W_spk:.3g}Watt@Re"
-        else:
-            title = f"SPL@1m, Half-space\nSystem: {V_source:.4g}V, Speaker: {V_spk:.4g}V {W_spk:.3g}Watt@Re"
+        title = f"SPL @ 1m, Half-space\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}"
         ylabel = "dBSPL"
 
     return PlotSpec(curves, title, ylabel, ylimits_policy="SPL")
@@ -88,7 +95,7 @@ def build_impedance(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
     # inductance is modelled, so |Z| stays flat at high frequency.
     curves = {key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()}
     return PlotSpec(curves,
-                    title="Electrical impedance magnitude |Z| - no inductance",
+                    title="Electrical impedance magnitude |Z| (no inductance)",
                     ylabel="ohm",
                     ylimits_policy="impedance",
                     )
@@ -99,8 +106,9 @@ def build_relative_displacements(spk_sys, freqs, V_source, V_spk, W_spk) -> Plot
               for key, val in spk_sys.get_displacements(V_source, freqs).items()
               if "relative" in key}
     return PlotSpec(curves,
-                    title=f"Relative Displacements\n{_voltage_line(spk_sys, V_source, V_spk)}",
+                    title=f"Displacements - relative to parent body\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}",
                     ylabel="mm",
+                    line_kwargs=_dotted_for_peak(curves),
                     )
 
 
@@ -108,16 +116,19 @@ def build_displacements(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
     curves = {key: np.abs(val) * 1e3
               for key, val in spk_sys.get_displacements(V_source, freqs).items()
               if "relative" not in key}
+    if isinstance(spk_sys.passive_radiator, BassReflexPort):
+        curves = {key: val for key, val in curves.items() if "vent" not in key.lower()}
     return PlotSpec(curves,
-                    title=f"Displacements\n{_voltage_line(spk_sys, V_source, V_spk)}",
+                    title=f"Absolute displacements\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}",
                     ylabel="mm",
+                    line_kwargs=_dotted_for_peak(curves),
                     )
 
 
 def build_forces(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
     curves = {key: np.abs(val) for key, val in spk_sys.get_forces(V_source, freqs).items()}
     return PlotSpec(curves,
-                    title=f"Forces\n{_voltage_line(spk_sys, V_source, V_spk)}",
+                    title=f"Forces\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}",
                     ylabel="N",
                     )
 
@@ -125,15 +136,15 @@ def build_forces(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
 def build_velocities(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
     curves = {key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()}
     return PlotSpec(curves,
-                    title=f"Velocities\n{_voltage_line(spk_sys, V_source, V_spk)}",
+                    title=f"Velocities\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}",
                     ylabel="m/s",
                     )
 
 
-def build_phase(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
+def build_phase(spk_sys, freqs, *args) -> PlotSpec:
     curves = dict(spk_sys.get_phases(freqs).items())
     return PlotSpec(curves,
-                    title=f"Phase for displacements\n{_voltage_line(spk_sys, V_source, V_spk)}",
+                    title=f"Phase for displacements",
                     ylabel="degrees",
                     ylimits_policy="phase",
                     )

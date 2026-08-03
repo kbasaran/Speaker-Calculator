@@ -105,6 +105,16 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      description="S<sub>d</sub>"
                      )
 
+        form.add_row(pwi.FloatSpinBox("Le",
+                                      "Voice coil inductance."
+                                      "\nUnit is mH.",
+                                      decimals=3,
+                                      coeff_for_SI=1e-3,
+                                      min_max=(0, None),
+                                      ),
+                     description="L<sub>e</sub>",
+                     )
+
         # ---- Electrical input
         form.add_row(pwi.SunkenLine())
 
@@ -352,6 +362,13 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      into_form=motor_definition_p3,
                      )
 
+        # Bl and Re mean the same thing on both pages, so keep each pair synced
+        # regardless of which page the user edits.
+        form.interactable_widgets["Bl_p2"].valueChanged.connect(form.interactable_widgets["Bl_p3"].setValue)
+        form.interactable_widgets["Bl_p3"].valueChanged.connect(form.interactable_widgets["Bl_p2"].setValue)
+        form.interactable_widgets["Re_p2"].valueChanged.connect(form.interactable_widgets["Re_p3"].setValue)
+        form.interactable_widgets["Re_p3"].valueChanged.connect(form.interactable_widgets["Re_p2"].setValue)
+
         # ---- Mechanical specs
         form.add_row(pwi.SunkenLine())
 
@@ -560,7 +577,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\nLarger diameters lower the port air velocity (less chuffing)"
                                       "\nbut require a longer tube for the same tuning."
                                       "\nUnit is mm.",
-                                      decimals=2,
+                                      decimals=1,
+                                      min_max=(0.1, None),
                                       coeff_for_SI=1e-3,
                                       ),
                      description="D<sub>v</sub> - port diameter",
@@ -572,7 +590,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\ncapturing the vent losses (turbulence, friction, leakage)."
                                       "\nHigher values mean a lower-loss, more sharply tuned port."
                                       "\nUnitless quantity.",
-                                      decimals=2,
+                                      decimals=1,
                                       min_max=(0.1, None),
                                       ),
                      description="Q<sub>p</sub> - port quality factor",

@@ -1,4 +1,6 @@
 import json
+import html
+import re
 import dataclasses
 import logging
 from pathlib import Path
@@ -19,7 +21,7 @@ from core.coil_winding import find_feasible_coils
 from config.app_config import APP_DEFINITIONS, ABOUT_TEXT, singleton_settings
 from utils.paths import get_main_dir
 from gui.dialogs import SettingsDialog, CurveExportMenu
-from gui.help_menu import show_file_paths
+from gui.help_menu import show_file_paths, show_physics_constants
 from gui.coil_options import update_coil_options_combobox
 from gui.input_section_tab_widget import InputSectionTabWidget
 from gui.plot_builders import PLOT_BUILDERS
@@ -27,6 +29,24 @@ from gui import session_io
 
 logger = logging.getLogger(__name__)
 app_settings = singleton_settings()
+
+# A single <h2> title with a rule hugging its underside. Qt's rich-text engine
+# won't render border-bottom on a heading block and leaves an uncontrollable gap
+# under a bare <hr>, so the only way to sit the rule tight under the title is a
+# single-cell table with a bottom border on the cell. The inner h2 has margin:0
+# so the rule's distance from the text is set purely by the cell's padding-bottom;
+# the table's own margins provide the spacing above/below the whole title block.
+_H2_WITH_RULE = (
+    "<table width='100%' cellspacing='0' cellpadding='0'"
+    " style='margin-top:14px; margin-bottom:3px;'>"
+    "<tr><td style='border-bottom:1px solid #808080; padding-bottom:1px;'>"
+    "<h2 style='margin:0'>\\1</h2></td></tr></table>"
+)
+
+
+def _rule_under_h2(html: str) -> str:
+    "Wrap every <h2>...</h2> so a horizontal rule sits directly under the title."
+    return re.sub(r"<h2>(.*?)</h2>", _H2_WITH_RULE, html)
 
 
 class MainWindow(qtw.QMainWindow):
@@ -76,6 +96,7 @@ class MainWindow(qtw.QMainWindow):
 
         help_menu = menu_bar.addMenu("Help")
         paths_action = help_menu.addAction("Show paths of assets..", lambda: show_file_paths(self))
+        physics_action = help_menu.addAction("Show physics constants..", lambda: show_physics_constants(self))
         about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
@@ -101,11 +122,27 @@ class MainWindow(qtw.QMainWindow):
         # ---- Center - results
         # Read-only QTextBrowser (not a QLabel): it wraps overlong lines to the
         # widget width and scrolls when the summary is tall, so the summaries no
-        # longer need manual line breaks to fit a fixed width. Content is Markdown,
-        # so it must be set with setMarkdown() (setText() would treat the embedded
-        # <br>/<sub> tags as HTML and render the Markdown headers literally).
+        # longer need manual line breaks to fit a fixed width. Content is HTML
+        # (headings, <sub>, <br>, <hr>), set with setHtml() -- this avoids the
+        # CommonMark parsing quirks (setext headings, HTML-block swallowing,
+        # blank-line sensitivity) that plagued the earlier setMarkdown() approach.
         self.results_textbox = qtw.QTextBrowser()
         self.results_textbox.setReadOnly(True)  # selectable by default when read-only
+        # All vertical spacing between headings and paragraphs lives here, in one
+        # stylesheet, instead of in per-line <br> spacer hacks. Because it is the
+        # document's *default* stylesheet it persists across clear()/setHtml() calls,
+        # so every heading gets a uniform gap regardless of what precedes it.
+        self.results_textbox.document().setDefaultStyleSheet(
+            # <h2> is not styled here: each <h2> is wrapped (at render time, see
+            # _rule_under_h2) in a single-cell table so the rule hugging the title
+            # can use a table-cell border -- Qt's rich-text engine ignores
+            # border-bottom on ordinary heading blocks and adds an uncontrollable gap
+            # under a bare <hr>, so neither of those can sit tight under the title.
+            "h3 { margin-top: 12px; margin-bottom: 3px; }"
+            "h4 { margin-top: 12px; margin-bottom: 2px; }"
+            "h5 { margin-top: 8px;  margin-bottom: 2px; }"
+            "p  { margin-top: 2px;  margin-bottom: 2px; }"
+            )
 
         # ---- Right hand side (graph etc.)
         rh_widget = qtw.QWidget()
@@ -352,7 +389,7 @@ class MainWindow(qtw.QMainWindow):
                                          find_feasible_coils(self.get_state(), self.wires, logger),
                                          )
             if not self.input_form.interactable_widgets["coil_options"].currentData():
-                self.results_textbox.setMarkdown("\n\n### No coil found.\n Please check your input form.")
+                self.results_textbox.setHtml("<h3>No coil found.</h3><p>Please check your input form.</p>")
                 self.signal_bad_beep.emit()
                 return
 
@@ -366,7 +403,7 @@ class MainWindow(qtw.QMainWindow):
             # would need a non-positive port length) makes the model unbuildable, the
             # same way an infeasible coil-winding target does above. Report and abort
             # the update, leaving any previous model untouched.
-            self.results_textbox.setMarkdown(f"\n\n### Model update failed.\n{e}")
+            self.results_textbox.setHtml(f"<h3>Model update failed.</h3><p>{html.escape(str(e))}</p>")
             self.signal_bad_beep.emit()
             return
         V_source = calculate_voltage(vals["excitation_value"],
@@ -428,15 +465,23 @@ class MainWindow(qtw.QMainWindow):
 
         self.graph.set_y_limits_policy(spec.ylimits_policy)
         self.graph.set_title(spec.title)
-        self.graph.ax.set_ylabel(spec.ylabel)
+        self.graph.set_xlabel(spec.xlabel)
+        self.graph.set_ylabel(spec.ylabel)
 
         for i, (name, y) in enumerate(spec.curves.items()):
-            self.graph.add_line2d(i, name, (freqs, y), update_figure=False)
+            self.graph.add_line2d(i, name, (freqs, y), update_figure=False,
+                                  line2d_kwargs=spec.line_kwargs.get(name, {}))
 
         self.graph.update_figure()
 
     def update_all_results(self):
         checked_id = self.graph_data_choice.button_group.checkedId()
         self.update_graph(checked_id)
-        summary_all = self.speaker_model_state["system"].get_summary(self.speaker_model_state["V_source"])
-        self.results_textbox.setMarkdown(summary_all)
+        # The sweep-based summary checks (port chuffing velocity, PR excursion) need
+        # a frequency array; reuse the same range/resolution as the graph.
+        freqs = signal_tools.generate_log_spaced_freq_list(app_settings.get_value("f_min"),
+                                                           app_settings.get_value("f_max"),
+                                                           app_settings.get_value("calc_ppo"))
+        summary_all = self.speaker_model_state["system"].get_summary(
+            self.speaker_model_state["V_source"], freqs)
+        self.results_textbox.setHtml(_rule_under_h2(summary_all))

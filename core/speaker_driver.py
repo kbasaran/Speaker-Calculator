@@ -23,6 +23,12 @@ from config.physics import air
 from core.calculations import calculate_air_mass, calculate_lm, calculate_coil_to_bottom_plate_clearance
 from core.components import Motor
 
+# Suspension that is too weak compared to the motor forces available
+# may cause poor recovery to rest position and be prone to
+# DC offset. A comparison of suspension force at Xmax/2 vs. the
+# motor force is a good indicator against this.
+_F_MOTOR_PER_KMS_LOW_LIMIT = 2
+
 
 @dtc.dataclass
 class SpeakerDriver:
@@ -41,6 +47,7 @@ class SpeakerDriver:
     motor: None | Motor = None  # None or 'Motor' instance
     dead_mass: float = None  # provide only if motor is 'Motor' instance
     Rlw: float = 0  # series electrical resistance between the speaker terminals and the coil (leadwire etc.). provide only if motor is 'Motor' instance.
+    Le: float = 0  # voice coil inductance [H]. 0 means a purely resistive coil.
     Xpeak: float = None
 
     def __post_init__(self):
@@ -133,51 +140,57 @@ class SpeakerDriver:
         return air.Kair / self.Kms * self.Sd**2
 
     def get_summary(self, V_spk: float = 0) -> str:
-        "Summary in markup language."
-        summary = ("## Speaker unit"
-                   "<br></br>"
-                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL      "
-                   f"R<sub>e</sub> : {self.Re:.2f} ohm"
-                   "<br></br>"
-                   f"Bl : {self.Bl:.4g} Tm      "
-                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W"
-                   "<br></br>"
-                   f"Q<sub>es</sub> : {self.Qes:.3g}      "
-                   f"Q<sub>ts</sub> : {self.Qts:.3g}"
-                   "<br></br>"
+        "Summary in HTML (rendered by Qt's rich-text engine via setHtml)."
+        # Vertical spacing between headings/paragraphs is governed centrally by the
+        # results box's default stylesheet, so this markup only carries structure:
+        # <h2>/<h4> headings, <p> paragraphs, <br> intra-paragraph breaks. Column
+        # gaps within a line use &nbsp; runs (HTML collapses ordinary spaces).
+        summary = ("<h2>Speaker unit</h2>"
+                   "<p>"
+                   f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"R<sub>e</sub> : {self.Re:.2f} ohm<br>"
+                   f"Bl : {self.Bl:.4g} Tm&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"Bl²/R<sub>e</sub> : {self.Bl**2/self.Re:.3g} N²/W<br>"
+                   f"Q<sub>es</sub> : {self.Qes:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"Q<sub>ts</sub> : {self.Qts:.3g}<br>"
                    f"V<sub>as</sub> : {self.Vas() * 1e3:.4g} l"
+                   f"&nbsp;&nbsp;&nbsp;&nbsp;L<sub>e</sub> : {self.Le * 1e3:.4g} mH"
+                   "</p>"
                    
-                   "<br/>\n"
-                   f"#### Mass and suspension"
-                   "<br></br>"
-                   f"M<sub>ms</sub> : {self.Mms*1000:.4g} g      "
-                   f"M<sub>md</sub> : {self.Mmd*1000:.4g}"
-                   "<br></br>"
-                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm      "
+                   "<h4>Mass and suspension</h4>"
+                   "<p>"
+                   f"M<sub>md</sub> : {self.Mmd*1000:.4g} g&nbsp;&nbsp;&nbsp;&nbsp;"
+                   f"M<sub>ms</sub> : {self.Mms*1000:.4g}<br>"
+                   f"K<sub>ms</sub> : {self.Kms / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
                    f"R<sub>ms</sub> : {self.Rms:.4g} kg/s"
+                   "</p>"
 
-                   "<br/>\n"
-                   "#### Displacements"
-                   "<br></br>"
+                   "<h4>Displacements</h4>"
+                   "<p>"
                    f"X<sub>peak</sub> : {self.Xpeak*1000:.3g} mm"
                    )
 
         if self.motor is not None:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
-            summary += f"      X<sub>crash_recommended</sub> : {Xcrash*1000:.3g}"
+            summary += f"&nbsp;&nbsp;&nbsp;&nbsp;X<sub>crash_recommended</sub> : {Xcrash*1000:.3g}"
 
         if V_spk > 0:
             # Suspension feasibility
+            f_motor_per_kms_ratio = self.Bl * V_spk / self.Re / self.Kms / (self.Xpeak / 2)
+            warn = ("<br>&#9888; low suspension recovery"
+                    if f_motor_per_kms_ratio > _F_MOTOR_PER_KMS_LOW_LIMIT else "")
             summary += (
-                   # "\n"
-                   # "##### Motor force vs. suspension"
-                   "<br></br>"
+                   "<br>"
                    "F<sub>motor, RMS</sub> / F<sub>suspension</sub>(X<sub>peak</sub>/2): "
-                   f"{self.Bl * V_spk / self.Re / self.Kms / (self.Xpeak / 2):.0%}"
+                   f"{f_motor_per_kms_ratio:.0%}"
+                   f"{warn}"
                     )
 
+        summary += "</p>"
+
         if self.motor is not None:
-            summary += "\n\n----\n"
+            # No separator here: the Motor section is set off by the rule under its
+            # own <h2> (see Motor.get_summary), matching the "Speaker unit" heading.
             summary += self.motor.get_summary()
 
         return summary

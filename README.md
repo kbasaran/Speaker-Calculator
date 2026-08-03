@@ -2,12 +2,19 @@
 Lumped element calculation tool for loudspeaker design, made using Qt for Python.
 
 ## Features
-* Modelling of loudspeaker response in free-air and closed box.
-  * SPL, electrical impedance, displacements, net forces
+* Modelling of loudspeaker response in,
+  * Free-air
+  * Closed box
+  * Passive radiator
+    * Define by PR mass and frequency ratio h
+  * Bass-reflex
+    * Define by port diameter and frequency ratio h
+* SPL, electrical impedance, displacements, net forces, velocities
 * Automatic calculation of most appropriate coil winding for given user parameters.
-  * Wire properties are read from user editable "wire table.ods".
+  * Wire properties are read from user editable "wire_table.ods".
   * Possible to calculate for different types of wire section (round, flat, etc.)
-* Includes a second degree of freedom to observe the effects on parent structure.
+* Includes an additional degree of freedom to observe a mobile parent structure.
+  * Takes into consideration also the resonator and it's inertia, based on it's mounting direction.
 * Possible to manipulate graph settings and export curves.
 * Calculation of magnet system mechanical clearances.
 * Save/load of state.
@@ -16,16 +23,16 @@ Lumped element calculation tool for loudspeaker design, made using Qt for Python
 * Nonlinearities in the system
 * Calculation of magnetic flux
 * Calculation of mass of speaker components (with the exception of the windings)
-* Electrical inductance
-* Change of acoustical impedance at higher frequencies
+* Modal behaviour
 
 ## Screenshots
 
 ![Image](./images/SC1.png)
 ![Image](./images/SC2.png)
+![Image](./images/SC3.png)
 
 ## Installation
-### Windows only
+### Windows
 Go to releases page to download the **.msi** installer. Run the installer and follow the steps in wizard. This will also associate the file extension **.scf** to this application.
 
 ### Any Python environment
@@ -47,14 +54,11 @@ The application uses a linear model with 3 degrees of freedom to do the calculat
 
 ![Image](./images/system_model.webp)
 
-> [!IMPORTANT]
-> The third degree of freedom which represents the vented port or passive radiator is not included in this version.
-
 ### Coil windings
-The application will give you coil winding options based on the winding height and the coil resistance you input as requirement. To be able to do this, a separate table that has information on different wire types needs to be provided by the user. This table is stored in `wire table.ods` which is located in subfolder `data` in the installation folder.
+The application will give you coil winding options based on the winding height and the coil resistance you input as requirement. To be able to do this, a separate table that has information on different wire types needs to be provided by the user. This table is stored in `wire_table.ods` which is located in subfolder `data` in the installation folder.
 
 > [!TIP]
-> To see the location of `wire table.ods` in your computer go to *Help -> Show paths of assets..* from within the application.
+> To see the location of `wire_table.ods` in your computer go to *Help -> Show paths of assets..* from within the application.
 
 ### Wire table file content
 This file contains *Sheet1* which contains the following columns for each wire type.
@@ -71,6 +75,18 @@ This file contains *Sheet1* which contains the following columns for each wire t
 
 > [!WARNING]
 > The application is shipped with an incomplete wire table convenient for testing. User needs to change this to an accurate and complete wire table to be able to get good results. The top three rows of the spreadsheet contain title rows for import and they should not be modified.
+
+#### Recommended sources for coil wire information, curated by Claude.ai:
+- [IEC 60317-0-1 – GlobalSpec](https://standards.globalspec.com/std/13416161/iec-60317-0-1)
+- [IEC 60317-0-2:2020 (sample PDF)](https://cdn.standards.iteh.ai/samples/102360/47d5095c2c794c1098f568b622bb0302/IEC-60317-0-2-2020.pdf)
+- [IEC 60317-13 – GlobalSpec (class 200)](https://standards.globalspec.com/std/1274534/DS/EN%2060317-13)
+- [IEC 60317-36 (self-bonding polyesterimide)](https://www.amazon.com/IEC-60317-36-Ed-Specifications-polyesterimide/dp/2832292070)
+- [ANSI/NEMA MW 1000-2015 (preview)](https://webstore.ansi.org/preview-pages/NEMA/preview_ANSI+NEMA+MW+1000-2015.pdf)
+- [Elektrisola - Selfbonding enamelled wire (SB-wire)](https://www.elektrisola.com/en/Selfbonding-Wire/Info)
+- [Elektrisola - Wire technical datasheets](https://www.elektrisola.com/en/brochure)
+- [MWS Wire – Bondable Magnet Wire](https://mwswire.com/bondable-magnet-wire/)
+- [MWS Wire – Magnet Wire Calculator (NEMA MW 1000 based)](https://mwswire.com/magnet-wire-calculator/)
+- [Copper-clad aluminium wire – Wikipedia](https://en.wikipedia.org/wiki/Copper-clad_aluminium_wire)
 
 ### Basic wire dimensions
 ![Image](./images/coil_winding_1.webp)

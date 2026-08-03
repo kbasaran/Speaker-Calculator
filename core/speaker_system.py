@@ -30,6 +30,11 @@ from core.calculations import make_output_matrices, make_state_matrix_A, make_st
 from core.components import Enclosure, ParentBody, PassiveRadiator, BassReflexPort
 from core.speaker_driver import SpeakerDriver
 
+# Peak vent air velocity above which a port tends to "chuff" (audible turbulence /
+# dynamic compression). ~17 m/s is the common conservative rule of thumb, roughly
+# 5% of the speed of sound; above it the port area should be increased.
+_PORT_CHUFF_VELOCITY = 17.0  # m/s
+
 
 @dtc.dataclass
 class SpeakerSystem:
@@ -55,6 +60,7 @@ class SpeakerSystem:
         Rms, Rpb, Rpr = smp.symbols("R_ms, R_2, R_pr", real=True, positive=True)
         Kair, Vba, Rbox = smp.symbols("Kair, V_ba, R_box", real=True, positive=True)
         Sd, Spr, Bl, Re, Rext = smp.symbols("S_d, S_pr, Bl, R_e, R_ext", real=True, positive=True)
+        Le = smp.symbols("L_e", real=True, positive=True)  # voice coil inductance
         # Direction coefficient for the passive radiator relative to the driver axis:
         # +1 same direction, -1 reverse (opposed / force-cancelling mount).
         # It carries the sign of the PR's *acoustic* coupling to the box air only; the
@@ -75,6 +81,7 @@ class SpeakerSystem:
         x1_t, x1_tt = smp.diff(x1, t), smp.diff(x1, t, t)
         x2_t, x2_tt = smp.diff(x2, t), smp.diff(x2, t, t)
         xpr_t, xpr_tt = smp.diff(xpr, t), smp.diff(xpr, t, t)
+        i_coil_t = smp.diff(i_coil, t)
 
         # Net volume velocity pushed into the box air, relative to the enclosure
         # walls (which move with the parent body x2). The box absorption/leakage
@@ -84,8 +91,10 @@ class SpeakerSystem:
         # lossy air. Rms and Rpr remain the elements' own mechanical losses.
         U_box = Sd * (x1_t - x2_t) + Spr_ac * (xpr_t - x2_t)
 
-        # define state space system
-        eqns = [
+        # ---- Mechanical equations of motion (three force balances).
+        # i_coil (the coil current) is left symbolic here so the same three
+        # equations can serve both the resistive and the inductive model below.
+        mech_eqns = [
 
                 (
                  - Mms * x1_tt
@@ -129,56 +138,83 @@ class SpeakerSystem:
 
                 ]
 
-        # p_housing and i_coil are not state variables, because they are linearly dependent
-        # on the state variables. They are substituted into the equations of motion,
-        # and made available as outputs of the system through the C and D matrices.
-        # box pressure depends on the net volume displaced into the enclosure,
-        # measured relative to the cabinet walls (parent body x2) -- consistent
-        # with the box-loss term above. With no parent body x2 == 0.
-        dependent_vars = {
-            p_housing: - (Kair / Vba * (Spr_ac * (xpr - x2) + Sd * (x1 - x2))),
-            i_coil: (Vsource - Bl * (x1_t - x2_t)) / (Rext + Re),
-            }
+        # Box pressure is a dependent (algebraic) variable in both models: it is
+        # linearly dependent on the state variables, substituted into the equations of
+        # motion, and made available as an output through the C/D matrices. Box pressure
+        # depends on the net volume displaced into the enclosure, measured relative to
+        # the cabinet walls (parent body x2). With no parent body x2 == 0.
+        p_housing_expr = - (Kair / Vba * (Spr_ac * (xpr - x2) + Sd * (x1 - x2)))
 
-        eqns = [eqn.subs(dependent_vars) for eqn in eqns]
+        # Resistive-coil current: with no inductance the coil is purely resistive, so
+        # the current follows the terminal voltage minus the back-EMF instantaneously
+        # and is itself a dependent (algebraic) variable.
+        i_coil_resistive_expr = (Vsource - Bl * (x1_t - x2_t)) / (Rext + Re)
 
-        state_vars = [x1, x1_t, x2, x2_t, xpr, xpr_t]  # state variables
         input_vars = [Vsource]  # input variables
-        state_diffs = [var.diff() for var in state_vars]  # state differentials
 
-        # output variables, as expressions of state variables and input variables
-        # key: name to access the ss model with, val: expression
-        output_exprs = {"x1": x1,
-                        "x1_t": x1_t,
-                        "x2": x2,
-                        "x2_t": x2_t,
-                        "xpr": xpr,
-                        "xpr_t": xpr_t,
-                        "p_housing": dependent_vars[p_housing],
-                        "i_coil": dependent_vars[i_coil],
-                        }
-
-        # dictionary of all sympy symbols used in model
+        # dictionary of all sympy symbols used in the models (union across both)
         self.symbols = {key: val for (key, val) in locals().items() if isinstance(val, smp.Symbol)}
 
-        # solve for state differentials
-        sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
-        if len(sols) == 0:
-            raise RuntimeError("No solution found for the equation.")
+        def assemble(state_vars, eqns, i_coil_output_expr):
+            "Solve for the state differentials and build the symbolic A/B/C/D matrices."
+            state_diffs = [var.diff() for var in state_vars]
 
-        # ---- SS model with symbols
-        A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
-        B_sym = make_state_matrix_B(state_vars, state_diffs, input_vars, sols)  # input matrix
-        # output matrix and feedforward matrix, one row per output
-        C_sym, D_sym = make_output_matrices(output_exprs.values(), state_vars, input_vars)
+            # solve for state differentials
+            sols = solve(eqns, [var for var in state_diffs if var not in state_vars], as_dict=True)  # heavy task, slow
+            if len(sols) == 0:
+                raise RuntimeError("No solution found for the equation.")
 
-        self._symbolic_ss = {"A": A_sym,  # system matrix
-                             "B": B_sym,  # input matrix
-                             "C": C_sym,  # output matrix
-                             "D": D_sym,  # feedforward matrix
-                             "state_vars": state_vars,
-                             "output_names": list(output_exprs.keys()),
+            A_sym = make_state_matrix_A(state_vars, state_diffs, sols)  # system matrix
+            B_sym = make_state_matrix_B(state_vars, state_diffs, input_vars, sols)  # input matrix
+
+            # output variables, as expressions of state variables and input variables
+            # key: name to access the ss model with, val: expression. The output order
+            # is identical between models so downstream (name-based) access is uniform.
+            output_exprs = {"x1": x1,
+                            "x1_t": x1_t,
+                            "x2": x2,
+                            "x2_t": x2_t,
+                            "xpr": xpr,
+                            "xpr_t": xpr_t,
+                            "p_housing": p_housing_expr,
+                            "i_coil": i_coil_output_expr,
                             }
+            # output matrix and feedforward matrix, one row per output
+            C_sym, D_sym = make_output_matrices(output_exprs.values(), state_vars, input_vars)
+
+            return {"A": A_sym,  # system matrix
+                    "B": B_sym,  # input matrix
+                    "C": C_sym,  # output matrix
+                    "D": D_sym,  # feedforward matrix
+                    "state_vars": state_vars,
+                    "output_names": list(output_exprs.keys()),
+                    }
+
+        # ---- Resistive model (Le == 0): i_coil is algebraic, six states.
+        # This is the exact model used whenever the coil has no inductance; it is
+        # order-6 and reproduces the historical behaviour bit-for-bit.
+        resistive_eqns = [eqn.subs({p_housing: p_housing_expr,
+                                    i_coil: i_coil_resistive_expr}) for eqn in mech_eqns]
+        self._symbolic_ss_resistive = assemble(
+            [x1, x1_t, x2, x2_t, xpr, xpr_t],
+            resistive_eqns,
+            i_coil_resistive_expr,
+            )
+
+        # ---- Inductive model (Le > 0): i_coil is a genuine seventh state, governed
+        # by the electrical loop equation V = (Re + Rext)*i + Le*di/dt + Bl*(x1_t - x2_t).
+        # i_coil is appended LAST so the mechanical state indices (and the parent-body /
+        # passive-radiator disabling slices in update_values) are unchanged. This model
+        # cannot be reached by substituting Le = 0 -- the electrical row carries a sole
+        # 1/Le factor and would divide by zero -- which is why the two models are kept
+        # separate and selected by value.
+        elec_eqn = -Le * i_coil_t + Vsource - (Rext + Re) * i_coil - Bl * (x1_t - x2_t)
+        inductive_eqns = [eqn.subs({p_housing: p_housing_expr}) for eqn in mech_eqns] + [elec_eqn]
+        self._symbolic_ss_inductive = assemble(
+            [x1, x1_t, x2, x2_t, xpr, xpr_t, i_coil],
+            inductive_eqns,
+            i_coil,  # the output reads the state directly
+            )
 
     def _get_parameter_names_to_values(self) -> dict:
         "Get a dictionary of all the parameters related to the speaker system"
@@ -192,6 +228,7 @@ class SpeakerSystem:
             "Sd": self.speaker.Sd,
             "Bl": self.speaker.Bl,
             "Re": self.speaker.Re,
+            "Le": self.speaker.Le,
 
             "Mpb": np.inf if self.parent_body is None else self.parent_body.m,
             "Kpb": 0 if self.parent_body is None else self.parent_body.k,
@@ -230,6 +267,14 @@ class SpeakerSystem:
 
         # ---- Update scalars
         self.R_sys = self.speaker.Re + self.Rext
+
+        # ---- Select the electrical model. A non-zero coil inductance turns the coil
+        # current into a genuine state variable (the inductive model); a zero inductance
+        # keeps it algebraic (the exact, order-6 resistive model). See
+        # _build_symbolic_ss_model for why Le == 0 cannot be reached inside the inductive
+        # model (it divides by Le), so the two models are kept separate.
+        self._symbolic_ss = (self._symbolic_ss_inductive if self.speaker.Le > 0
+                             else self._symbolic_ss_resistive)
 
         # ---- Substitute values into the model matrices
         symbols_to_values = self.get_symbols_to_values()
@@ -327,77 +372,126 @@ class SpeakerSystem:
                                                             D[[i], :],
                                                             )
 
-    def get_summary(self, V_source: float = 0) -> str:
-        "Summary in markup language."
+    def get_summary(self, V_source: float = 0, freqs: np.ndarray = None) -> str:
+        """Summary in HTML (rendered by Qt's rich-text engine via setHtml).
+
+        If `freqs` is given, the drive-level checks that need a frequency sweep are
+        appended: peak vent air velocity (chuffing) for a bass-reflex box and peak
+        PR excursion (bottoming) for a passive radiator. Without `freqs` those two
+        lines are simply omitted, so the summary still works without a sweep.
+        """
         V_spk = V_source / self.R_sys * self.speaker.Re
         summary = self.speaker.get_summary(V_spk)
 
-        summary += ("\n\n----\n")
+        summary += ("<h2>System</h2>"
+                    f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
+                    )
 
-        # Each system-level section is introduced by a single "\n" (never a
-        # line-leading "<br/>", which would open a Markdown HTML block and swallow
-        # every following heading) and ends with a trailing inline "<br/>" so the
-        # next header gets the same blank-line gap as the sections above. Check the
-        # vent first since BassReflexPort is a subclass of PassiveRadiator.
+        # Spacing is governed by the results box's default stylesheet, so each section
+        # is just an <h4> heading plus a <p> body. Check the vent first since
+        # BassReflexPort is a subclass of PassiveRadiator.
         if isinstance(self.passive_radiator, BassReflexPort):
             port = self.passive_radiator
+            Vba = self.enclosure.Vba()
             fp = port.f_housed(self.enclosure.Vba())      # Helmholtz tuning
             port_len = port.port_length()
+            diam = port.diameter()
+            L_eff = port_len + port.end_correction        # acoustic length of the air slug
+            f_pipe = air.c_air / (2 * L_eff)              # first half-wave (organ-pipe) mode
             summary += (
-                "\n"
-                "#### Bass reflex"
-                "<br></br>"
-                f"K<sub>enc,v</sub>: {self.enclosure.K(port.S) / 1000:.4g} N/mm"
-                "<br></br>"
-                f"f<sub>p</sub> (tuning): {fp:.4g} Hz"
-                "<br></br>"
-                f"Vent: {port.diameter() * 1000:.4g} mm dia., {port_len * 1000:.4g} mm long"
-                "<br/>"
+                "<h4>Bass reflex</h4>"
+                "<p>"
+                f"f<sub>p_housed</sub> : {fp:.4g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"f<sub>p_free</sub> : {f_pipe:.4g}<br>"
+                
+                f"Port : &#8960;{diam * 1000:.4g} mm × {port_len * 1000:.4g} mm<br>"
+
+                f"f<sub>b</sub> : {self.fb:.4g} Hz&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"Q<sub>p</sub> : {port.Qp(Vba):.3g}<br>"
+                
+                f"{self._alpha_html()}<br>"
+
+                f"S<sub>v</sub>/S<sub>d</sub> : {port.S / self.speaker.Sd:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"L/D : {port_len / diam:.3g}"
+                "</p>"
                 )
+            if freqs is not None:
+                v_peak = self._peak_port_velocity(V_source, freqs)
+                mach = v_peak / air.c_air
+                warn = ("<br>&#9888; chuffing likely"
+                        if v_peak > _PORT_CHUFF_VELOCITY else "")
+                summary += (
+                    "<p>"
+                    f"v<sub>port,peak</sub> : {v_peak:.3g} m/s (Mach {mach:.3f})"
+                    f"{warn}"
+                    "</p>"
+                    )
         elif isinstance(self.passive_radiator, PassiveRadiator):
+            pr = self.passive_radiator
+            Vba = self.enclosure.Vba()
+            f_free = pr.f_free()                          # response notch
             summary += (
-                "\n"
-                "#### Passive Radiator"
-                "<br></br>"
-                f"K<sub>enc,pr</sub>: {self.enclosure.K(self.passive_radiator.S) / 1000:.4g} N/mm"
-                "<br></br>"
-                f"f<sub>p</sub> (notch): {self.passive_radiator.f_free():.4g} Hz"
-                "<br/>"
+                "<h4>Passive Radiator</h4>"
+                "<p>"
+                f"f<sub>p_housed</sub> : {pr.f_housed(Vba):.4g} Hz&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"f<sub>p_free</sub> : {f_free:.4g}<br>"
+                
+                f"M<sub>s,pr</sub> : {pr.m_s() * 1000:.4g} g<br>"
+                
+                f"f<sub>b</sub> : {self.fb:.4g} Hz&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"Q<sub>p</sub> : {pr.Qp(Vba):.3g}<br>"
+                
+                f"K<sub>pr</sub> : {pr.k / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"K<sub>pr,housed</sub> : {(pr.k + pr.k_box(Vba)) / 1000:.4g}<br>"
+                
+                f"{self._alpha_html()}"
+                "</p>"
                 )
+            if freqs is not None:
+                x_pr = self._peak_pr_excursion(V_source, freqs) * 1000
+                xp = self.speaker.Xpeak
+                summary += (
+                    "<p>"
+                    f"x<sub>pr,peak</sub> : {x_pr:.3g} mm"
+                    "</p>"
+                    )
         elif isinstance(self.enclosure, Enclosure):
             summary += (
-                "\n"
-                "#### Enclosure"
-                "<br></br>"
-                f"Q<sub>tc</sub>: {self.Qtc:.3g}      f<sub>b</sub>: {self.fb:.4g} Hz"
-                "<br></br>"
-                f"K<sub>enc,s</sub>: {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
-                "<br/>"
+                "<h4>Enclosure</h4>"
+                "<p>"
+                f"Q<sub>tc</sub> : {self.Qtc:.3g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>b</sub> : {self.fb:.4g} Hz<br>"
+                f"K<sub>enc,s</sub> : {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
+                "</p>"
                 )
-
-        summary += ("\n"
-                    "#### System"
-                    "<br></br>"
-                    f"R<sub>sys</sub>: {self.R_sys:.2f} ohm"
-                    "<br/>"
-                   )
 
         if isinstance(self.parent_body, ParentBody):
             coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
             summary += (
-                "\n"
-                "#### Parent body"
-                "\n"
-                "##### Assuming child masses are decoupled"
-                "<br></br>"
-                f"Q<sub>pb</sub>: {self.parent_body.Q():.4g}      f<sub>pb</sub>: {self.parent_body.f():.4g} Hz"
-                "\n"
-                "##### Assuming child masses are coupled"
-                "<br></br>"
-                f"Q<sub>pb,c</sub>: {self.parent_body.Q(coupled_masses):.4g}      f<sub>pb,c</sub>: {self.parent_body.f(coupled_masses):.4g} Hz"
+                "<h4>Parent body</h4>"
+                "<p>"
+                f"Q<sub>pb,single</sub> : {self.parent_body.Q():.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb,single</sub>: {self.parent_body.f():.4g} Hz<br>"
+                f"Q<sub>pb,coupled</sub> : {self.parent_body.Q(coupled_masses):.4g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>pb,coupled</sub>: {self.parent_body.f(coupled_masses):.4g}"
+                "</p>"
                 )
 
         return summary
+
+    def _alpha_html(self) -> str:
+        "Compliance-ratio fragment α = V_as / V_b, or empty when there is no box air."
+        if self.enclosure is None or self.enclosure.Vb <= 0:
+            return ""
+        alpha = self.speaker.Vas() / self.enclosure.Vb
+        return f"α (V<sub>as</sub>/V<sub>b</sub>) : {alpha:.3g}"
+
+    def _peak_port_velocity(self, V_source, freqs: np.ndarray) -> float:
+        "Peak air-particle velocity in the vent [m/s] over the given frequency range."
+        v_rms = self.get_velocities(V_source, freqs)["PR/vent, RMS"]
+        return float(np.max(np.abs(v_rms))) * 2**0.5
+
+    def _peak_pr_excursion(self, V_source, freqs: np.ndarray) -> float:
+        "Peak PR diaphragm excursion [m] over the given frequency range."
+        x_peak = self.get_displacements(V_source, freqs)["PR/vent, peak"]
+        return float(np.max(np.abs(x_peak)))
 
     def _get_response(self, output_name: str, V_source, freqs: np.ndarray) -> np.ndarray:
         # Frequency response of one output of the system to a given source voltage
