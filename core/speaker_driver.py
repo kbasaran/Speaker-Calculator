@@ -23,12 +23,6 @@ from config.physics import air
 from core.calculations import calculate_air_mass, calculate_lm, calculate_coil_to_bottom_plate_clearance
 from core.components import Motor
 
-# Suspension that is too weak compared to the motor forces available
-# may cause poor recovery to rest position and be prone to
-# DC offset. A comparison of suspension force at Xmax/2 vs. the
-# motor force is a good indicator against this.
-_F_MOTOR_PER_KMS_LOW_LIMIT = 2
-
 
 @dtc.dataclass
 class SpeakerDriver:
@@ -173,18 +167,6 @@ class SpeakerDriver:
         if self.motor is not None:
             Xcrash = calculate_coil_to_bottom_plate_clearance(self.Xpeak)
             summary += f"&nbsp;&nbsp;&nbsp;&nbsp;X<sub>crash_recommended</sub> : {Xcrash*1000:.3g}"
-
-        if V_spk > 0:
-            # Suspension feasibility
-            f_motor_per_kms_ratio = self.Bl * V_spk / self.Re / self.Kms / (self.Xpeak / 2)
-            warn = ("<br>&#9888; low suspension recovery"
-                    if f_motor_per_kms_ratio > _F_MOTOR_PER_KMS_LOW_LIMIT else "")
-            summary += (
-                   "<br>"
-                   "F<sub>motor, RMS</sub> / F<sub>suspension</sub>(X<sub>peak</sub>/2): "
-                   f"{f_motor_per_kms_ratio:.0%}"
-                   f"{warn}"
-                    )
 
         summary += "</p>"
 

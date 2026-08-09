@@ -35,6 +35,12 @@ from core.speaker_driver import SpeakerDriver
 # 5% of the speed of sound; above it the port area should be increased.
 _PORT_CHUFF_VELOCITY = 17.0  # m/s
 
+# Suspension that is too weak compared to the motor forces available
+# may cause poor recovery to rest position and be prone to
+# DC offset. A comparison of suspension force at Xmax/2 vs. the
+# motor force is a good indicator against this.
+_F_MOTOR_TO_SUSPENSION_LOW_LIMIT = 1
+
 
 @dtc.dataclass
 class SpeakerSystem:
@@ -385,6 +391,23 @@ class SpeakerSystem:
 
         summary += ("<h2>System</h2>"
                     f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
+                    )
+
+        if V_spk > 0:
+            # Evaluate suspension feasibility
+            f_motor = self.speaker.Bl * V_spk / self.speaker.Re
+            k_suspension_total = self.speaker.Kms
+            if self.enclosure is not None:
+                k_suspension_total += self.enclosure.K(self.speaker.Sd)
+
+            f_suspension = k_suspension_total * (self.speaker.Xpeak / 2)
+            warn = ("<br>&#9888; low suspension recovery"
+                    if f_motor / f_suspension > _F_MOTOR_TO_SUSPENSION_LOW_LIMIT else "")
+            summary += (
+                   "<br>"
+                   "F<sub>motor, RMS</sub> / F<sub>suspension</sub>(X<sub>peak</sub>/2): "
+                   f"{f_motor / f_suspension:.0%}"
+                   f"{warn}"
                     )
 
         # Spacing is governed by the results box's default stylesheet, so each section
