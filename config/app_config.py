@@ -4,7 +4,7 @@ from pathlib import Path
 from generictools.settings import SettingsManager
 
 APP_DEFINITIONS = {"app_name": "Speaker Calculator",
-                   "version": "0.6.0",
+                   "version": "0.6.1",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2026 Kerem Basaran",
                    "icon_path": "images/logo2025.ico",  # relative posix path
