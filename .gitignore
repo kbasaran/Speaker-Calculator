@@ -1,8 +1,8 @@
 # User specific
 SSC files/
 *.pyproject*
-dist/
-build/
+package_win/dist/
+package_win/build/
 private/
 .idea/
 
