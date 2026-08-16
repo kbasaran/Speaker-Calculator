@@ -364,10 +364,21 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         # Bl and Re mean the same thing on both pages, so keep each pair synced
         # regardless of which page the user edits.
-        form.interactable_widgets["Bl_p2"].valueChanged.connect(form.interactable_widgets["Bl_p3"].setValue)
-        form.interactable_widgets["Bl_p3"].valueChanged.connect(form.interactable_widgets["Bl_p2"].setValue)
-        form.interactable_widgets["Re_p2"].valueChanged.connect(form.interactable_widgets["Re_p3"].setValue)
-        form.interactable_widgets["Re_p3"].valueChanged.connect(form.interactable_widgets["Re_p2"].setValue)
+        def sync_boxes_of_pair(name_1, name_2):
+            """Carry a committed value over from each box of a pair to the other.
+
+            'editingFinished' is used and not 'valueChanged' on purpose. The latter
+            fires on every keystroke, which rewrote the number in the other box while
+            it was still being typed. It also fires on 'setValue', so the pair used to
+            cross-talk while a file was being loaded into the form, letting the load
+            order decide which half of the pair survived.
+            """
+            box_1, box_2 = form.interactable_widgets[name_1], form.interactable_widgets[name_2]
+            box_1.editingFinished.connect(lambda: box_2.setValue(box_1.value()))
+            box_2.editingFinished.connect(lambda: box_1.setValue(box_2.value()))
+
+        sync_boxes_of_pair("Bl_p2", "Bl_p3")
+        sync_boxes_of_pair("Re_p2", "Re_p3")
 
         # ---- Mechanical specs
         form.add_row(pwi.SunkenLine())

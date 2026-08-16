@@ -148,12 +148,11 @@ def convert_v03_to_v04(state: dict) -> dict:
 def convert_v04_to_v05(state: dict) -> dict:
     """Upgrade a v0.4 JSON state dict to the v0.5 schema.
 
-    v0.5 keeps 'Bl_p2'/'Bl_p3' (and 'Re_p2'/'Re_p3') permanently in sync in the GUI,
-    since they describe the same physical motor parameter on the two direct-entry
-    pages. Older files may have a genuinely different value stored in each half of
-    a pair (e.g. the page that wasn't active was left at its default), so instead
-    of letting load order silently decide which value survives, resolve each pair
-    to the value that belonged to whichever 'motor_spec_type' was actually active.
+    v0.5 keeps 'Bl_p2'/'Bl_p3' (and 'Re_p2'/'Re_p3') in sync in the GUI, since they
+    describe the same physical motor parameter on the two direct-entry pages. Older
+    files may hold a different value in each half of a pair (the page that wasn't
+    active was left at its default), so resolve each pair to the value that belonged
+    to whichever 'motor_spec_type' was actually active.
 
     Idempotent: a file where both pairs already match is a no-op.
     """
