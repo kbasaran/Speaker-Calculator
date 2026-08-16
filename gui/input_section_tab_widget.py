@@ -6,6 +6,7 @@ from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
 import generictools.personalized_widgets as pwi
+from core.calculations import calculate_air_mass
 
 logger = logging.getLogger(__name__)
 
@@ -362,23 +363,45 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      into_form=motor_definition_p3,
                      )
 
-        # Bl and Re mean the same thing on both pages, so keep each pair synced
-        # regardless of which page the user edits.
-        def sync_boxes_of_pair(name_1, name_2):
+        # Bl and Re mean the same thing on both pages, and Mmd and Mms differ only by
+        # the air mass on the diaphragm, so keep each pair synced regardless of which
+        # page the user edits.
+        def sync_boxes_of_pair(name_1, name_2, offset=0):
             """Carry a committed value over from each box of a pair to the other.
 
+            'offset' is how much the second box is ahead of the first one, in SI units:
+            box_2 = box_1 + offset. Give a callable if it is not a constant, such as
+            the air mass between Mmd and Mms, which follows Sd.
+
             'editingFinished' is used and not 'valueChanged' on purpose. The latter
-            fires on every keystroke, which rewrote the number in the other box while
-            it was still being typed. It also fires on 'setValue', so the pair used to
-            cross-talk while a file was being loaded into the form, letting the load
-            order decide which half of the pair survived.
+            fires on every keystroke and also on 'setValue', so it rewrote the number
+            in the other box while it was still being typed, and made the pair
+            cross-talk while a file was being loaded into the form.
             """
-            box_1, box_2 = form.interactable_widgets[name_1], form.interactable_widgets[name_2]
-            box_1.editingFinished.connect(lambda: box_2.setValue(box_1.value()))
-            box_2.editingFinished.connect(lambda: box_1.setValue(box_2.value()))
+            def carry_over(source_name, target_name, sign):
+                # values are read and written in SI units, so that the offset does
+                # not depend on the unit each box happens to display
+                try:
+                    offset_now = float(offset() if callable(offset) else offset)
+                    form.set_value(target_name, form.get_value(source_name) + sign * offset_now)
+                except RuntimeError:
+                    pass  # widgets are already torn down. Qt drops a connection when
+                    # the receiving object dies, but not when it is a lambda like below.
+
+            form.interactable_widgets[name_1].editingFinished.connect(
+                lambda: carry_over(name_1, name_2, 1))
+            form.interactable_widgets[name_2].editingFinished.connect(
+                lambda: carry_over(name_2, name_1, -1))
 
         sync_boxes_of_pair("Bl_p2", "Bl_p3")
         sync_boxes_of_pair("Re_p2", "Re_p3")
+        # 'self.widget(0)' is the form on the General tab, which is the one that owns
+        # 'Sd'. It is looked up inside the callable and not here, both because the
+        # tabs are not added to self yet while this form is being built, and because
+        # the air mass has to follow the Sd of the moment the value is carried over.
+        sync_boxes_of_pair("Mmd_p2", "Mms_p3",
+                           offset=lambda: calculate_air_mass(self.widget(0).get_value("Sd")),
+                           )
 
         # ---- Mechanical specs
         form.add_row(pwi.SunkenLine())
