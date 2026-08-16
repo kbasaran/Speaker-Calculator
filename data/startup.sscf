@@ -215,7 +215,7 @@
     },
     "Bl_p2": 4.0,
     "Re_p2": 4.0,
-    "Mmd_p2": 0.003999999999999999,
+    "Mmd_p2": 0.004,
     "Bl_p3": 4.0,
     "Re_p3": 4.0,
     "Mms_p3": 0.004425,
@@ -290,7 +290,7 @@
     "user_title": "",
     "application_data": {
         "app_name": "Speaker Calculator",
-        "version": "0.6.1",
+        "version": "0.6.2",
         "description": "Loudspeaker design and calculations",
         "copyright": "Copyright (C) 2026 Kerem Basaran",
         "icon_path": "images/logo2025.ico",
