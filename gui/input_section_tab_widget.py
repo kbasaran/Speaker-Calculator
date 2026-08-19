@@ -63,7 +63,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("fs",
                                       "Free-air resonance of the driver: the undamped natural frequency"
-                                      "\nwhere moving mass and suspension stiffness cancel (f<sub>s</sub> = √(K<sub>ms</sub>/M<sub>ms</sub>)/2π)."
+                                      "\nwhere moving mass and suspension stiffness cancel (fs = √(Kms/Mms)/2π)."
                                       "\nNote this is not the damped natural (ringing) frequency, nor the"
                                       "\nfrequency of the response peak; those sit lower and depend on damping."
                                       "\nUnit is Hertz.",
@@ -99,7 +99,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("Sd",
                                       "Diaphragm effective surface area.\nUse a value of '0' if there is no diaphragm, e.g. a shaker."
-                                      "Unit is cm².",
+                                      "\nUnit is cm².",
                                       coeff_for_SI=1e-4,
                                       min_max=(0, None),
                                       ),
@@ -492,7 +492,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("Qa",
                                       "Quality factor of the speaker in enclosure resulting from absorption losses inside the enclosure."
-                                      "\nCalculated at f<sub>b</sub>."
+                                      "\nCalculated at fb."
                                       "\nUnitless quantity.",
                                       decimals=1,
                                       min_max=(0.1, None),
@@ -502,7 +502,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("Ql",
                                       "Quality factor of the speaker in enclosure resulting from leakage losses of the enclosure."
-                                      "\nCalculated at f<sub>b</sub>."
+                                      "\nCalculated at fb."
                                       "\nSet a high value for a well-sealed box (no leakage)."
                                       "\nUnitless quantity.",
                                       decimals=1,
@@ -532,9 +532,9 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
 
         form.add_row(pwi.FloatSpinBox("h_pr",
-                                      "Ratio of the passive radiator's free-air resonance f<sub>p</sub> to the"
-                                      "\ndriver's sealed-box resonance f<sub>b</sub>."
-                                      "\nf<sub>p</sub> sets the notch in the system response."
+                                      "Ratio of the passive radiator's free-air resonance fp to the"
+                                      "\ndriver's sealed-box resonance fb."
+                                      "\nfp sets the notch in the system response."
                                       "\nValues below 1 place the notch below the sealed-box resonance."
                                       "\nUnitless quantity."
                                       "\nMind the notation clash with published alignment tables (Dickason, Small):"
@@ -572,8 +572,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.resonator_definition_stacked.addWidget(resonator_definition_pr1)
 
         form.add_row(pwi.FloatSpinBox("area_ratio_pr",
-                                      "Ratio of the passive radiator's surface area S<sub>p</sub>"
-                                      "\nto the driver's surface area S<sub>d</sub>."
+                                      "Ratio of the passive radiator's surface area Sp"
+                                      "\nto the driver's surface area Sd."
                                       "\nUnitless quantity.",
                                       decimals=2,
                                       min_max=(0.1, None),
@@ -593,8 +593,8 @@ class InputSectionTabWidget(qtw.QTabWidget):
                      )
 
         form.add_row(pwi.FloatSpinBox("spring_damping_ratio_pr",
-                                      "Ratio of the passive radiator's mechanical damping R<sub>p</sub>"
-                                      "\nto its suspension stiffness K<sub>p</sub>."
+                                      "Ratio of the passive radiator's mechanical damping Rp"
+                                      "\nto its suspension stiffness Kp."
                                       "\nUnit is seconds.",
                                       decimals=4,
                                       ),
@@ -612,7 +612,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
 
         form.add_row(pwi.FloatSpinBox("port_diameter",
                                       "Internal diameter of the reflex port (vent)."
-                                      "\nSets the port cross-sectional area S<sub>v</sub> = π/4 · D<sub>v</sub>²."
+                                      "\nSets the port cross-sectional area Sv = π/4 · Dv²."
                                       "\nLarger diameters lower the port air velocity (less chuffing)"
                                       "\nbut require a longer tube for the same tuning."
                                       "\nUnit is mm.",
@@ -645,7 +645,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.ComboBox("exit_flare_type",
                                   "Termination geometry of the port ends, which sets the acoustic"
                                   "\nend correction used to compute the physical port length."
-                                  "\nThe correction added to the tube length is k &middot; D<sub>v</sub>,"
+                                  "\nThe correction added to the tube length is k · Dv,"
                                   "\nwhere k depends on how each end is terminated.",
                                   [("Both ends flanged / flared", 0.850),
                                    ("One end flanged, one free", 0.732),
