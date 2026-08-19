@@ -432,7 +432,7 @@ class SpeakerSystem:
                 f"f<sub>b</sub> : {self.fb:.4g} Hz&nbsp;&nbsp;&nbsp;&nbsp;"
                 f"Q<sub>p</sub> : {port.Qp(Vba):.3g}<br>"
                 
-                f"{self._alpha_html()}<br>"
+                f"{self._alpha_html()}&nbsp;&nbsp;&nbsp;&nbsp;{self._h_over_fs_html()}<br>"
 
                 f"S<sub>v</sub>/S<sub>d</sub> : {port.S / self.speaker.Sd:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
                 f"L/D : {port_len / diam:.3g}"
@@ -467,7 +467,7 @@ class SpeakerSystem:
                 f"K<sub>pr</sub> : {pr.k / 1000:.4g} N/mm&nbsp;&nbsp;&nbsp;&nbsp;"
                 f"K<sub>pr,housed</sub> : {(pr.k + pr.k_box(Vba)) / 1000:.4g}<br>"
                 
-                f"{self._alpha_html()}"
+                f"{self._alpha_html()}&nbsp;&nbsp;&nbsp;&nbsp;{self._h_over_fs_html()}"
                 "</p>"
                 )
             if freqs is not None:
@@ -505,6 +505,24 @@ class SpeakerSystem:
             return ""
         alpha = self.speaker.Vas() / self.enclosure.Vb
         return f"α (V<sub>as</sub>/V<sub>b</sub>) : {alpha:.3g}"
+
+    def _h_over_fs_html(self) -> str:
+        """Tuning ratio in alignment-table notation, or empty when not applicable.
+
+        Published vented-box alignments (Dickason, Small) index the tuning as
+        f_b / f_s, where their f_b is the Helmholtz tuning of box + resonator
+        (this tool's f_p_housed) and f_s is the driver's *free-air* resonance.
+        The `h` input field instead references f_p to the driver's *sealed-box*
+        resonance (this tool's f_b), so the two ratios differ by sqrt(1 + α).
+        Reporting f_p_housed / f_s next to α gives both coordinates a table row
+        is written in, so a tabulated alignment transfers without arithmetic.
+        """
+        if (self.passive_radiator is None
+                or self.enclosure is None
+                or self.enclosure.Vba() <= 0):
+            return ""
+        h = self.passive_radiator.f_housed(self.enclosure.Vba()) / self.speaker.fs
+        return f"f<sub>p_housed</sub>/f<sub>s</sub> : {h:.3g}"
 
     def _peak_port_velocity(self, V_source, freqs: np.ndarray) -> float:
         "Peak air-particle velocity in the vent [m/s] over the given frequency range."

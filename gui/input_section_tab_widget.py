@@ -536,7 +536,12 @@ class InputSectionTabWidget(qtw.QTabWidget):
                                       "\ndriver's sealed-box resonance f<sub>b</sub>."
                                       "\nf<sub>p</sub> sets the notch in the system response."
                                       "\nValues below 1 place the notch below the sealed-box resonance."
-                                      "\nUnitless quantity.",
+                                      "\nUnitless quantity."
+                                      "\nMind the notation clash with published alignment tables (Dickason, Small):"
+                                      "\ntheir fb is the Helmholtz tuning of box + resonator, which is fp_housed here,"
+                                      "\nand their tuning ratio h = fb/fs is referenced to the driver's free-air fs."
+                                      "\nConvert with h_here = h_table / √(1 + α); the results panel reports"
+                                      "\nboth α and fp_housed/fs so a table row can be matched directly.",
                                       decimals=3,
                                       min_max=(0.1, None),
                                       ),
