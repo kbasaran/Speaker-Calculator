@@ -143,8 +143,13 @@ def main():
     # quit() only requests the event loop to stop; wait() blocks until the
     # underlying thread has actually finished, so the QThread object is not
     # destroyed while the thread is still running.
+    # A broken audio device can block stream.write() inside the thread, which then
+    # never returns to its event loop to quit. Do not let that hang the exit.
     sound_engine_thread.quit()
-    sound_engine_thread.wait()
+    if not sound_engine_thread.wait(2000):  # ms
+        logger.warning("Sound engine thread did not stop in time. Terminating it.")
+        sound_engine_thread.terminate()
+        sound_engine_thread.wait()
 
 
 if __name__ == "__main__":
