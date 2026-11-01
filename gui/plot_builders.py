@@ -53,10 +53,11 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
 
         # Radiated SPL is proportional to volume velocity (Sd * velocity),
         # so calculate_spl is fed the volume velocity directly with sd=1.
-        U_driver = spk_sys.speaker.Sd * velocs["Diaphragm, RMS"]  # volume velocity
-        _, SPL = calculate_spl((freqs, U_driver), 1.0)
+        # The combined Sd covers all the drivers, so these are total SPL curves.
+        U_drivers = spk_sys.combined.Sd * velocs["Diaphragm, RMS"]  # volume velocity
+        _, SPL = calculate_spl((freqs, U_drivers), 1.0)
 
-        _, SPL_Xpeak_limited = calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.speaker.Sd)
+        _, SPL_Xpeak_limited = calculate_spl((freqs, Xpeak_limited_velocities), spk_sys.combined.Sd)
 
         curves.update({"SPL piston mode, Xpeak limited": SPL_Xpeak_limited,
                        })
@@ -66,7 +67,7 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
         # velocs["PR/vent"] is already the PR's physical outward velocity, so the
         # dir_pr_vent sign is baked in and its volume velocity adds directly.
         if spk_sys.passive_radiator is not None:
-            U_total = U_driver + spk_sys.passive_radiator.S * velocs["PR/vent, RMS"]  # volume velocity
+            U_total = U_drivers + spk_sys.passive_radiator.S * velocs["PR/vent, RMS"]  # volume velocity
             _, SPL_incl_pr = calculate_spl((freqs, U_total), 1.0)
             curves.update({"SPL piston mode incl. radiator": SPL_incl_pr})
 
@@ -81,11 +82,12 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
 
 def build_impedance(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
     # Plot the impedance magnitude |Z| (what impedance analyzers measure and what
-    # sets the amplifier load I = V/|Z|), not the real part. No voice-coil
-    # inductance is modelled, so |Z| stays flat at high frequency.
+    # sets the amplifier load I = V/|Z|), not the real part. When the voice-coil
+    # inductance Le is non-zero, |Z| rises at high frequency; with Le == 0 it
+    # settles to the coil resistance above resonance.
     curves = {key: np.abs(val) for key, val in spk_sys.get_Z(freqs).items()}
     return PlotSpec(curves,
-                    title="Electrical impedance magnitude |Z| (no inductance)",
+                    title="Electrical impedance magnitude |Z|",
                     ylabel="ohm",
                     ylimits_policy="impedance",
                     )

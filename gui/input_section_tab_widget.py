@@ -460,7 +460,43 @@ class InputSectionTabWidget(qtw.QTabWidget):
     def _make_form_for_enclosure_tab(self):
         form = pwi.UserForm()
 
+        # ---- Number of drivers
+        form.add_row(pwi.Title("Drivers"))
+
+        form.add_row(pwi.IntSpinBox("n_speaker",
+                                    "Number of identical drivers sharing the enclosure."
+                                    "\nAll results are for the drivers together: SPL, impedance,"
+                                    "\ncurrent and forces are totals of all the drivers."
+                                    "\nThe passive radiator area ratio refers to their total Sd.",
+                                    min_max=(1, None),
+                                    ),
+                     description="Number of drivers",
+                     )
+
+        form.add_row(pwi.ComboBox("coupling",
+                                  "How the drivers are wired together."
+                                  "\n'Parallel': every voice coil sees the full terminal voltage;"
+                                  "\nthe impedance divides by the number of drivers."
+                                  "\n'Serial': one current flows through all voice coils;"
+                                  "\nthe impedance multiplies by the number of drivers."
+                                  "\nNot used with a single driver.",
+                                  [("Parallel", "parallel"),
+                                   ("Serial", "serial"),
+                                   ],
+                                  ),
+                     description="Electrical coupling",
+                     )
+
+        def adjust_form_for_n_speaker(n_speaker):
+            form.interactable_widgets["coupling"].setEnabled(n_speaker > 1)
+
+        form.interactable_widgets["n_speaker"].valueChanged.connect(adjust_form_for_n_speaker)
+        # adjustment at start
+        adjust_form_for_n_speaker(form.interactable_widgets["n_speaker"].value())
+
         # ---- Enclosure type
+        form.add_row(pwi.SunkenLine())
+
         form.add_row(pwi.Title("Enclosure type"))
 
         enclosue_type_choice_buttons = pwi.ChoiceButtonGroup("enclosure_type",
@@ -574,6 +610,7 @@ class InputSectionTabWidget(qtw.QTabWidget):
         form.add_row(pwi.FloatSpinBox("area_ratio_pr",
                                       "Ratio of the passive radiator's surface area Sp"
                                       "\nto the driver's surface area Sd."
+                                      "\nWith several drivers, Sd is their total area."
                                       "\nUnitless quantity.",
                                       decimals=2,
                                       min_max=(0.1, None),

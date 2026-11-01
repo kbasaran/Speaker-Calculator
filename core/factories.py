@@ -4,20 +4,20 @@ import numpy as np
 
 from core.calculations import calculate_air_mass
 from core.components import Wire, Coil, Motor, Enclosure, ParentBody, PassiveRadiator, BassReflexPort
-from core.speaker_driver import SpeakerDriver
+from core.speaker_driver import CombinedDriver, SpeakerDriver
 from core.speaker_system import SpeakerSystem
 from config.physics import air
 
 logger = logging.getLogger(__name__)
 
 
-def _driver_sealed_fb(speaker: SpeakerDriver, enclosure: Enclosure) -> float:
-    "Driver's housed (sealed-box) resonance f_b -- matches SpeakerSystem.fb."
-    return 1 / 2 / np.pi * ((speaker.Kms + enclosure.K(speaker.Sd)) / speaker.Mms)**0.5
+def _driver_sealed_fb(combined: CombinedDriver, enclosure: Enclosure) -> float:
+    "Housed (sealed-box) resonance f_b of the combined driver -- matches SpeakerSystem.fb."
+    return 1 / 2 / np.pi * ((combined.Kms + enclosure.K(combined.Sd)) / combined.Mms)**0.5
 
 
 def construct_PassiveRadiator(vals,
-                              speaker: SpeakerDriver,
+                              combined: CombinedDriver,
                               enclosure: Enclosure,
                               ) -> PassiveRadiator:
     """Build a PassiveRadiator from the user-facing design parameters.
@@ -27,20 +27,21 @@ def construct_PassiveRadiator(vals,
                                    (PR free-air resonance, i.e. the response
                                    notch, / driver sealed-box resonance)
         spring_damping_ratio_pr  : R_p / K_p of the passive radiator [s]
-        area_ratio_pr            : S_p / S_d
+        area_ratio_pr            : S_p / S_d, with S_d the total area of all the drivers
         Mmdp                     : PR moving mass excluding the coupled air load [kg]
 
-    The driver's housed resonance f_b depends only on the speaker and the
-    enclosure, so it is evaluated here directly (same expression as
-    SpeakerSystem.fb) without needing the full SpeakerSystem.
+    `combined` is all the drivers lumped into one (SpeakerDriver.combined), so f_b
+    and S_d refer to the whole set of drivers. The housed resonance f_b depends only
+    on the drivers and the enclosure, so it is evaluated here directly (same
+    expression as SpeakerSystem.fb) without needing the full SpeakerSystem.
     """
-    Sd = speaker.Sd
+    Sd = combined.Sd
     S = vals["area_ratio_pr"] * Sd
     m = vals["Mmdp"]                          # PassiveRadiator.m (moving mass, no air load)
     m_s = m + calculate_air_mass(S)           # with coupled air mass
 
     # Driver's housed (sealed-box) resonance -- matches SpeakerSystem.fb
-    fb = _driver_sealed_fb(speaker, enclosure)
+    fb = _driver_sealed_fb(combined, enclosure)
     fp = vals["h_pr"] * fb                     # PR free-air resonance (the response notch)
 
     # Invert f_free = 1/2pi * sqrt(k / m_s) for the suspension stiffness
@@ -53,7 +54,7 @@ def construct_PassiveRadiator(vals,
 
 
 def construct_BassReflexPort(vals, spec: str,
-                             speaker: SpeakerDriver,
+                             combined: CombinedDriver,
                              enclosure: Enclosure,
                              ) -> BassReflexPort:
     """Build a BassReflexPort from the user-facing design parameters.
@@ -76,7 +77,7 @@ def construct_BassReflexPort(vals, spec: str,
 
     S = np.pi / 4 * vals["port_diameter"]**2
 
-    fb = _driver_sealed_fb(speaker, enclosure)   # driver housed resonance
+    fb = _driver_sealed_fb(combined, enclosure)  # housed resonance of the combined driver
     fp = vals["h_pr"] * fb                        # port tuning (Helmholtz) frequency
 
     # Enclosure air acts as the port's only spring. Total acoustic mass needed to
@@ -190,6 +191,11 @@ def build_or_update_SpeakerSystem(vals,
     else:
         parent_body = None
 
+    # Several identical drivers are wired together; a single driver has no coupling.
+    n_speaker = vals["n_speaker"]
+    coupling = None if n_speaker == 1 else vals["coupling"]["current_data"]
+    combined = speaker.combined(n_speaker, coupling)
+
     if vals["enclosure_type"] == 2:  # PR or bass-reflex vent
         # resonator_spec_type identifiers are "<family>_<variant>": "pr" for a
         # passive radiator, "br" for a bass-reflex vent. Dispatch on the family so
@@ -197,9 +203,9 @@ def build_or_update_SpeakerSystem(vals,
         spec = vals["resonator_spec_type"]["current_data"]
         family = spec.split("_")[0]
         if family == "pr":
-            passive_radiator = construct_PassiveRadiator(vals, speaker, enclosure)
+            passive_radiator = construct_PassiveRadiator(vals, combined, enclosure)
         elif family == "br":
-            passive_radiator = construct_BassReflexPort(vals, spec, speaker, enclosure)
+            passive_radiator = construct_BassReflexPort(vals, spec, combined, enclosure)
         else:
             raise ValueError(f"Unknown resonator spec type: {spec}")
     else:
@@ -212,6 +218,8 @@ def build_or_update_SpeakerSystem(vals,
                                 parent_body=parent_body,
                                 passive_radiator=passive_radiator,
                                 dir_pr_vent=vals["dir_pr_vent"]["current_data"],
+                                n_speaker=n_speaker,
+                                coupling=coupling,
                                 )
     else:
         spk_sys.update_values(speaker=speaker,
@@ -220,6 +228,8 @@ def build_or_update_SpeakerSystem(vals,
                               parent_body=parent_body,
                               passive_radiator=passive_radiator,
                               dir_pr_vent=vals["dir_pr_vent"]["current_data"],
+                              n_speaker=n_speaker,
+                              coupling=coupling,
                               )
 
     return spk_sys

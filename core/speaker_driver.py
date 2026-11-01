@@ -24,6 +24,25 @@ from core.calculations import calculate_air_mass, calculate_lm, calculate_coil_t
 from core.components import Motor
 
 
+@dtc.dataclass(frozen=True)
+class CombinedDriver:
+    """N identical drivers sharing one enclosure, lumped into a single driver.
+
+    Identical drivers that are wired together and move in phase behave as one
+    driver whose mechanical parameters are N times larger. The electrical
+    parameters depend on the wiring (see SpeakerDriver.combined). Only the
+    parameters the system model needs are carried here; per-driver quantities
+    such as Xpeak, Mmd or the motor stay on the SpeakerDriver itself.
+    """
+    Mms: float
+    Kms: float
+    Rms: float
+    Sd: float
+    Bl: float
+    Re: float
+    Le: float
+
+
 @dtc.dataclass
 class SpeakerDriver:
     """
@@ -126,6 +145,40 @@ class SpeakerDriver:
         self.fs_response_peak = self.fs * (1 - 2 * zeta_speaker**2)**0.5
         if np.iscomplex(self.fs_response_peak):  # no response peak (Qts <= 1/sqrt(2))
             self.fs_response_peak = np.nan
+
+    def combined(self, n_speaker: int, coupling: None | str) -> CombinedDriver:
+        """The N drivers of this type as a single equivalent driver.
+
+        Mass, stiffness, mechanical resistance and area add up for any wiring.
+        Parallel: every coil sees the terminal voltage and the currents add, so
+            Bl stays, Re and Le divide by N.
+        Serial: one current flows through every coil and the voltages add, so
+            Bl, Re and Le multiply by N.
+        Either way Bl²/Re grows by N, the same as Mms and Kms, so Qes and Qts
+        are those of a single driver.
+
+        With n_speaker == 1 the driver's own values are returned unscaled and
+        coupling is ignored.
+        """
+        n = n_speaker
+        if n == 1:
+            Bl, Re, Le = self.Bl, self.Re, self.Le
+        elif coupling == "parallel":
+            Bl, Re, Le = self.Bl, self.Re / n, self.Le / n
+        elif coupling == "serial":
+            Bl, Re, Le = self.Bl * n, self.Re * n, self.Le * n
+        else:
+            raise ValueError(f"No combination rule for {n} drivers with coupling {coupling!r}. "
+                             "Use 'serial' or 'parallel'.")
+
+        return CombinedDriver(Mms=self.Mms * n,
+                              Kms=self.Kms * n,
+                              Rms=self.Rms * n,
+                              Sd=self.Sd * n,
+                              Bl=Bl,
+                              Re=Re,
+                              Le=Le,
+                              )
 
     def Lm(self):
         return calculate_lm(self.Bl, self.Re, self.Mms, self.Sd)  # sensitivity per W@Re

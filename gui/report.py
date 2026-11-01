@@ -116,6 +116,7 @@ INPUTS_NOT_REPORTED = frozenset({
     "Mms_p3",       # "M_ms"
     "Qp",           # "Q_p" under Bass reflex
     "coil_options",  # spelled out under Windings
+    "n_speaker", "coupling",  # "drivers, ... wiring" under System (shown when more than one)
 
     # nothing to say about the design
     "excitation_type",   # every graph it applies to states the excitation itself

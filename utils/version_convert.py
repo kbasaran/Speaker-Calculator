@@ -184,6 +184,38 @@ def convert_v05_to_v06(state: dict) -> dict:
     return state
 
 
+# Default values for the keys added by the v0.8 save format: the number of drivers
+# sharing the enclosure and how they are wired. A frozen snapshot of the v0.8
+# defaults, stored the way the app serialises its widgets.
+V08_NEW_KEY_DEFAULTS = {
+    "n_speaker": 1,
+    "coupling": {
+        "current_index": 0,
+        "current_data": "parallel",
+        "current_text": "Parallel",
+        "items": [
+            ["Parallel", "parallel"],
+            ["Serial", "serial"],
+            ],
+        },
+    }
+
+
+def convert_v07_to_v08(state: dict) -> dict:
+    """Upgrade a v0.6/v0.7 JSON state dict to the v0.8 schema.
+
+    v0.8 added the number of drivers and their electrical coupling (see
+    V08_NEW_KEY_DEFAULTS). Older files describe a single driver, which is what
+    n_speaker = 1 reproduces; the coupling is then unused.
+
+    Only missing keys are added, so this is idempotent -- safe to run on a file
+    that already carries the v0.8 keys.
+    """
+    for key, default in V08_NEW_KEY_DEFAULTS.items():
+        state.setdefault(key, copy.deepcopy(default))
+    return state
+
+
 def convert_any(file: Path) -> dict:
     """Load a session file of any past format and return a current-schema state dict."""
     version = detect_version(file)
@@ -207,6 +239,10 @@ def convert_any(file: Path) -> dict:
     # Bring every pre-0.6 format up to the current (v0.6) schema.
     if version in ("0.1", "0.2", "0.3", "0.4", "0.5"):
         state = convert_v05_to_v06(state)
+
+    # Bring every pre-0.8 format up to the current (v0.8) schema.
+    if version in ("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7"):
+        state = convert_v07_to_v08(state)
 
     return state
             

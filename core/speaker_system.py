@@ -28,7 +28,7 @@ from sympy.physics import mechanics as mech
 from config.physics import air
 from core.calculations import make_output_matrices, make_state_matrix_A, make_state_matrix_B
 from core.components import Enclosure, ParentBody, PassiveRadiator, BassReflexPort
-from core.speaker_driver import SpeakerDriver
+from core.speaker_driver import CombinedDriver, SpeakerDriver
 
 # Peak vent air velocity above which a port tends to "chuff" (audible turbulence /
 # dynamic compression). ~17 m/s is the common conservative rule of thumb, roughly
@@ -51,6 +51,8 @@ class SpeakerSystem:
     parent_body: None | ParentBody = None
     passive_radiator: None | PassiveRadiator = None
     dir_pr_vent: int = 1
+    n_speaker: int = 1  # number of identical drivers sharing the enclosure
+    coupling: None | str = None  # wiring of the drivers: None (single driver), "serial" or "parallel"
 
     def __post_init__(self):
         self._build_symbolic_ss_model()
@@ -228,13 +230,15 @@ class SpeakerSystem:
 
         parameter_names_to_values = {
 
-            "Mms": self.speaker.Mms,
-            "Kms": self.speaker.Kms,
-            "Rms": self.speaker.Rms,
-            "Sd": self.speaker.Sd,
-            "Bl": self.speaker.Bl,
-            "Re": self.speaker.Re,
-            "Le": self.speaker.Le,
+            # The model runs on the combined driver: all n_speaker drivers lumped
+            # into one (identical to the speaker itself when n_speaker == 1).
+            "Mms": self.combined.Mms,
+            "Kms": self.combined.Kms,
+            "Rms": self.combined.Rms,
+            "Sd": self.combined.Sd,
+            "Bl": self.combined.Bl,
+            "Re": self.combined.Re,
+            "Le": self.combined.Le,
 
             "Mpb": np.inf if self.parent_body is None else self.parent_body.m,
             "Kpb": 0 if self.parent_body is None else self.parent_body.k,
@@ -248,8 +252,8 @@ class SpeakerSystem:
 
             "Kair": 0 if self.enclosure is None else air.Kair,  # 0 is trickery a bit, to disable the housing formulas.
             "Vba": 0 if self.enclosure is None else self.enclosure.Vba(),  # in fact Vba is infinite when no enclosure. but infinite is not allowed.
-            "Rbox": 0 if self.enclosure is None else self.enclosure.R(self.speaker.Sd, self.speaker.Mms,
-                                                                      self.speaker.Kms),
+            "Rbox": 0 if self.enclosure is None else self.enclosure.R(self.combined.Sd, self.combined.Mms,
+                                                                      self.combined.Kms),
 
             "Rext": self.Rext,
 
@@ -269,17 +273,21 @@ class SpeakerSystem:
             if key in dataclass_field_names:
                 setattr(self, key, val)
             else:
-                raise KeyError("Not familiar with key '{key}'")
+                raise KeyError(f"Not familiar with key '{key}'")
+
+        # ---- All the drivers lumped into one. The model and every array-level
+        # result use this; per-driver quantities (Xpeak, Mmd, motor) stay on self.speaker.
+        self.combined: CombinedDriver = self.speaker.combined(self.n_speaker, self.coupling)
 
         # ---- Update scalars
-        self.R_sys = self.speaker.Re + self.Rext
+        self.R_sys = self.combined.Re + self.Rext
 
         # ---- Select the electrical model. A non-zero coil inductance turns the coil
         # current into a genuine state variable (the inductive model); a zero inductance
         # keeps it algebraic (the exact, order-6 resistive model). See
         # _build_symbolic_ss_model for why Le == 0 cannot be reached inside the inductive
         # model (it divides by Le), so the two models are kept separate.
-        self._symbolic_ss = (self._symbolic_ss_inductive if self.speaker.Le > 0
+        self._symbolic_ss = (self._symbolic_ss_inductive if self.combined.Le > 0
                              else self._symbolic_ss_resistive)
 
         # ---- Substitute values into the model matrices
@@ -293,14 +301,17 @@ class SpeakerSystem:
         if isinstance(self.enclosure, Enclosure):
             # self.Kair = air.Kair
             # box loss is stored as an acoustic resistance; refer it back to the
-            # driver's mechanical domain (x Sd**2) for the sealed-box damping ratio
-            Rbox_mech = self.enclosure.R(self.speaker.Sd, self.speaker.Mms, self.speaker.Kms) * self.speaker.Sd ** 2
+            # driver's mechanical domain (x Sd**2) for the sealed-box damping ratio.
+            # Evaluated on the combined driver: with N drivers this works out to one
+            # driver in a box of Vb/N, for serial and parallel wiring alike.
+            c = self.combined
+            Rbox_mech = self.enclosure.R(c.Sd, c.Mms, c.Kms) * c.Sd ** 2
             zeta_boxed_speaker = (
                                          Rbox_mech
-                                         + self.speaker.Rms + self.speaker.Bl ** 2 / self.speaker.Re) \
-                                 / 2 / ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) * self.speaker.Mms) ** 0.5
+                                         + c.Rms + c.Bl ** 2 / c.Re) \
+                                 / 2 / ((c.Kms + self.enclosure.K(c.Sd)) * c.Mms) ** 0.5
 
-            fb_undamped = 1 / 2 / np.pi * ((self.speaker.Kms + self.enclosure.K(self.speaker.Sd)) / self.speaker.Mms) ** 0.5
+            fb_undamped = 1 / 2 / np.pi * ((c.Kms + self.enclosure.K(c.Sd)) / c.Mms) ** 0.5
 
             # Displacement *response-peak* frequency of the boxed driver (the "bump" on
             # the excursion/SPL curve) -- NOT the damped natural (ringing) frequency.
@@ -326,7 +337,7 @@ class SpeakerSystem:
             # Zeta is damping ratio. It is not damping coefficient (c) or quality factor (Q).
             # Zeta = c / 2 / (k*m)**0.5)
             # Q = (k*m)**0.5 / c
-            zeta2_free = self.parent_body.c / 2 / ((self.speaker.Mms + self.parent_body.m) * self.parent_body.k)**0.5
+            zeta2_free = self.parent_body.c / 2 / ((self.combined.Mms + self.parent_body.m) * self.parent_body.k)**0.5
             if self.parent_body.c > 0:
                 q2_free = 1 / 2 / zeta2_free
             elif self.parent_body.c == 0:
@@ -336,7 +347,7 @@ class SpeakerSystem:
 
             # assuming relative displacement between x1 and x2 are zero
             # i.e. blocked speaker
-            f2_undamped = 1 / 2 / np.pi * (self.parent_body.k / (self.speaker.Mms + self.parent_body.m))**0.5
+            f2_undamped = 1 / 2 / np.pi * (self.parent_body.k / (self.combined.Mms + self.parent_body.m))**0.5
 
             # Displacement *response-peak* frequency of the parent body -- NOT the
             # damped natural (ringing) frequency. Peaks at w0*sqrt(1 - 2*zeta**2), real
@@ -386,19 +397,23 @@ class SpeakerSystem:
         PR excursion (bottoming) for a passive radiator. Without `freqs` those two
         lines are simply omitted, so the summary still works without a sweep.
         """
-        V_spk = V_source / self.R_sys * self.speaker.Re
+        V_spk = V_source / self.R_sys * self.combined.Re
         summary = self.speaker.get_summary(V_spk)
 
-        summary += ("<h2>System</h2>"
-                    f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
-                    )
+        summary += "<h2>System</h2>"
+        if self.n_speaker > 1:
+            summary += (f"{self.n_speaker} drivers, {self.coupling} wiring<br>"
+                        f"R<sub>e,combined</sub> : {self.combined.Re:.2f} ohm<br>"
+                        )
+        summary += f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
 
         if V_spk > 0:
             # Evaluate suspension feasibility
-            f_motor = self.speaker.Bl * V_spk / self.speaker.Re
-            k_suspension_total = self.speaker.Kms
+            c = self.combined
+            f_motor = c.Bl * V_spk / c.Re
+            k_suspension_total = c.Kms
             if self.enclosure is not None:
-                k_suspension_total += self.enclosure.K(self.speaker.Sd)
+                k_suspension_total += self.enclosure.K(c.Sd)
 
             f_suspension = k_suspension_total * (self.speaker.Xpeak / 2)
             warn = ("<br>&#9888; low suspension recovery"
@@ -451,7 +466,7 @@ class SpeakerSystem:
             summary += (
                 "</p>"
                 "<p>"
-                f"S<sub>v</sub>/S<sub>d</sub> : {port.S / self.speaker.Sd:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"S<sub>v</sub>/S<sub>d</sub> : {port.S / self.combined.Sd:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
                 f"L/D : {port_len / diam:.3g}"
                 "</p>"
                 )
@@ -493,12 +508,12 @@ class SpeakerSystem:
                 "<h4>Enclosure</h4>"
                 "<p>"
                 f"Q<sub>tc</sub> : {self.Qtc:.3g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>b</sub> : {self.fb:.4g} Hz<br>"
-                f"K<sub>enc,s</sub> : {self.enclosure.K(self.speaker.Sd) / 1000:.4g} N/mm"
+                f"K<sub>enc,s</sub> : {self.enclosure.K(self.combined.Sd) / 1000:.4g} N/mm"
                 "</p>"
                 )
 
         if isinstance(self.parent_body, ParentBody):
-            coupled_masses = self.speaker.Mmd + getattr(self.passive_radiator, "m", 0)
+            coupled_masses = self.speaker.Mmd * self.n_speaker + getattr(self.passive_radiator, "m", 0)
             summary += (
                 "<h4>Parent body</h4>"
                 "<p>"
@@ -614,7 +629,11 @@ class SpeakerSystem:
     
     def get_currents(self, V_source, freqs: np.ndarray) -> dict:
         # Voltage argument given in RMS
-        # outputs in A
+        # outputs in A. This is the current drawn from the voltage source, which also
+        # flows through Rext. With several drivers it is the current into the wired
+        # set of drivers as a whole (the box terminals, when the wiring is inside the
+        # box). Each voice coil carries this current in serial wiring, and 1/N of it
+        # in parallel wiring.
         return {"Coil, RMS": self._get_response("i_coil", V_source, freqs)}
 
     def get_pressures(self, V_source, freqs: np.ndarray) -> dict:
@@ -646,8 +665,9 @@ class SpeakerSystem:
         accs = self.get_accelerations(V_source, freqs)
         i_coil = self.get_currents(V_source, freqs)["Coil, RMS"]
 
-        force_coil = self.speaker.Bl * i_coil
-        force_speaker = accs["Diaphragm, RMS"] * self.speaker.Mms  # inertial force
+        # Totals over all the drivers: the combined Bl and Mms carry the n_speaker factor.
+        force_coil = self.combined.Bl * i_coil
+        force_speaker = accs["Diaphragm, RMS"] * self.combined.Mms  # inertial force
 
         forces = dict()
         forces["Lorentz force, RMS"] = np.abs(force_coil)

@@ -467,9 +467,11 @@ class MainWindow(qtw.QMainWindow):
             self.results_textbox.setHtml(f"<h3>Model update failed.</h3><p>{html.escape(str(e))}</p>")
             self.signal_bad_beep.emit()
             return False
+        # "Watts @Re" is the total power into all the drivers, so it refers to the
+        # combined Re (the driver's own Re when there is a single driver).
         V_source = calculate_voltage(vals["excitation_value"],
                                         vals["excitation_type"]["current_data"],
-                                        re=speaker_driver.Re,
+                                        re=speaker_system.combined.Re,
                                         rnom=vals["Rnom"],
                                         )
 
