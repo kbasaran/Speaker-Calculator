@@ -42,6 +42,35 @@ _PORT_CHUFF_VELOCITY = 17.0  # m/s
 _F_MOTOR_TO_SUSPENSION_LOW_LIMIT = 1
 
 
+def excitation_at_speaker(spk_sys, V_source) -> tuple[float, float]:
+    """Voltage across the speaker terminals and the power into Re, from V_source.
+
+    A series resistance (source, cables) divides the source voltage down, so the
+    speaker only sees V_source * Re / R_sys. With several drivers both refer to
+    the combined driver: the voltage at the terminals of the whole set and the
+    total power into all the voice coils.
+    """
+    Re = spk_sys.combined.Re
+    V_spk = V_source / spk_sys.R_sys * Re
+    return V_spk, V_spk**2 / Re
+
+
+def voltage_line(spk_sys, V_source, V_spk, W_spk) -> str:
+    """Excitation voltage description, used in graph and window titles.
+
+    When the speaker Re equals the system resistance there is no series
+    network, so a single voltage is shown; otherwise both are reported. With
+    several drivers the voltage is across the whole wired set and the power is
+    the total into all of them, which the wording makes explicit.
+    """
+    several = spk_sys.n_speaker > 1
+    total = " total" if several else ""
+    if spk_sys.combined.Re == spk_sys.R_sys:
+        return f"{V_spk:.4g}V {W_spk:.3g}Watt{total} @ Re"
+    speaker = "Drivers" if several else "Speaker"
+    return f"System: {V_source:.4g}V, {speaker}: {V_spk:.4g}V {W_spk:.3g}Watt{total} @ Re"
+
+
 @dtc.dataclass
 class SpeakerSystem:
     speaker: SpeakerDriver
@@ -397,14 +426,17 @@ class SpeakerSystem:
         PR excursion (bottoming) for a passive radiator. Without `freqs` those two
         lines are simply omitted, so the summary still works without a sweep.
         """
-        V_spk = V_source / self.R_sys * self.combined.Re
-        summary = self.speaker.get_summary(V_spk)
+        V_spk, W_spk = excitation_at_speaker(self, V_source)
+        # With several drivers the speaker and motor sections describe one of them;
+        # the System section, the drivers combined and the graphs are totals.
+        single_driver = ", single driver" if self.n_speaker > 1 else ""
+        summary = self.speaker.get_summary(V_spk, heading_note=single_driver)
 
         summary += "<h2>System</h2>"
-        if self.n_speaker > 1:
-            summary += (f"{self.n_speaker} drivers, {self.coupling} wiring<br>"
-                        f"R<sub>e,combined</sub> : {self.combined.Re:.2f} ohm<br>"
-                        )
+        if V_spk > 0:
+            # The drive level of the voltage-dependent values below (motor force,
+            # port velocity, PR excursion), worded as in the graph titles.
+            summary += f"Excitation : {voltage_line(self, V_source, V_spk, W_spk)}<br>"
         summary += f"R<sub>sys</sub> : {self.R_sys:.2f} ohm"
 
         if V_spk > 0:
@@ -428,6 +460,20 @@ class SpeakerSystem:
         # Spacing is governed by the results box's default stylesheet, so each section
         # is just an <h4> heading plus a <p> body. Check the vent first since
         # BassReflexPort is a subclass of PassiveRadiator.
+
+        if self.n_speaker > 1:
+            # The values the model runs on: all the drivers lumped into one.
+            c = self.combined
+            summary += (
+                "<h4>Drivers combined</h4>"
+                "<p>"
+                f"{self.n_speaker} drivers, {self.coupling} wiring<br>"
+                f"R<sub>e</sub> : {c.Re:.2f} ohm&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"Bl : {c.Bl:.4g} Tm<br>"
+                f"S<sub>d</sub> : {c.Sd * 1e4:.4g} cm²&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"V<sub>as</sub> : {self._combined_Vas() * 1e3:.4g} l"
+                "</p>"
+                )
         if isinstance(self.passive_radiator, BassReflexPort):
             port = self.passive_radiator
             Vba = self.enclosure.Vba()
@@ -466,7 +512,8 @@ class SpeakerSystem:
             summary += (
                 "</p>"
                 "<p>"
-                f"S<sub>v</sub>/S<sub>d</sub> : {port.S / self.combined.Sd:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
+                f"S<sub>v</sub>/S<sub>d{',total' if self.n_speaker > 1 else ''}</sub> : "
+                f"{port.S / self.combined.Sd:.3g}&nbsp;&nbsp;&nbsp;&nbsp;"
                 f"L/D : {port_len / diam:.3g}"
                 "</p>"
                 )
@@ -508,7 +555,10 @@ class SpeakerSystem:
                 "<h4>Enclosure</h4>"
                 "<p>"
                 f"Q<sub>tc</sub> : {self.Qtc:.3g}&nbsp;&nbsp;&nbsp;&nbsp;f<sub>b</sub> : {self.fb:.4g} Hz<br>"
-                f"K<sub>enc,s</sub> : {self.enclosure.K(self.combined.Sd) / 1000:.4g} N/mm"
+                # Box stiffness felt by each driver: 1/N of the stiffness on the
+                # combined driver, to compare with K_ms under the speaker unit.
+                f"K<sub>enc,s</sub>{single_driver} : "
+                f"{self.enclosure.K(self.combined.Sd) / self.n_speaker / 1000:.4g} N/mm"
                 "</p>"
                 )
 
@@ -524,12 +574,17 @@ class SpeakerSystem:
 
         return summary
 
+    def _combined_Vas(self) -> float:
+        "Equivalent air volume of all the drivers together: N times one driver's V_as."
+        return air.Kair / self.combined.Kms * self.combined.Sd**2
+
     def _alpha_html(self) -> str:
         "Compliance-ratio fragment α = V_as / V_b, or empty when there is no box air."
         if self.enclosure is None or self.enclosure.Vb <= 0:
             return ""
-        alpha = self.speaker.Vas() / self.enclosure.Vb
-        return f"α (V<sub>as</sub>/V<sub>b</sub>) : {alpha:.3g}"
+        alpha = self._combined_Vas() / self.enclosure.Vb
+        vas = "V<sub>as,total</sub>" if self.n_speaker > 1 else "V<sub>as</sub>"
+        return f"α ({vas}/V<sub>b</sub>) : {alpha:.3g}"
 
     def _h_over_fs_html(self) -> str:
         """Tuning ratio in alignment-table notation, or empty when not applicable.

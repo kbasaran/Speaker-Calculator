@@ -150,8 +150,11 @@ class Motor:
                          + self.airgap_clearance_outer
                          )
     
-    def get_summary(self) -> str:
-        "Summary in markup language."
+    def get_summary(self, heading_note: str = "") -> str:
+        """Summary in markup language.
+
+        heading_note is appended to the heading, e.g. ", single driver".
+        """
 
         self.airgap_radii = list((
             self.former_ID/2 - self.airgap_clearance_inner,
@@ -160,7 +163,7 @@ class Motor:
          ))
 
         summary = (
-            "<h2>Motor</h2>"
+            f"<h2>Motor{heading_note}</h2>"
             "<p>"
             f"Overhang : {(self.coil.h_winding - self.h_top_plate) *500:.4g} mm<br>"
             f"OD<sub>pole piece</sub> : {(self.coil.carrier_OD - 2 * (self.t_former + self.airgap_clearance_inner)) * 1000:.4g}<br>"

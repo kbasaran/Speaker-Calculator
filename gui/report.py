@@ -124,6 +124,19 @@ INPUTS_NOT_REPORTED = frozenset({
     "motor_spec_type",   # only records which way the numbers were entered
     })
 
+# Inputs reported under another tab's heading than the one they are entered on.
+# The nominal impedance and the external resistance sit on the General tab of the
+# form, among the driver parameters, but describe the electrical system; they
+# lead the System table, in the order the form lists them.
+INPUTS_REPORTED_UNDER = {
+    "Rnom": "System",
+    "Rext": "System",
+    }
+
+# Tabs holding the parameters of one driver. With several drivers, their
+# headings in the report say so.
+PER_DRIVER_TABS = ("General", "Motor")
+
 # Inputs whose value names the kind of part first and the way it is specified
 # after a " - "; only the part is of interest, e.g. "PR - Define mass and damping
 # ratio" is reported as "PR".
@@ -237,7 +250,7 @@ def _display_value(widget) -> str:
     return ""
 
 
-def collect_extra_inputs(input_form) -> list[tuple[str, list[dict]]]:
+def collect_extra_inputs(input_form, n_speaker: int = 1) -> list[tuple[str, list[dict]]]:
     """The active input values worth reporting beside the results summary.
 
     Left out are the values the summary already carries and the handful that say
@@ -248,8 +261,13 @@ def collect_extra_inputs(input_form) -> list[tuple[str, list[dict]]]:
     current model are listed: a disabled input has been switched off by the form
     logic, and one on a hidden stacked page belongs to a definition that was not
     used.
+
+    Inputs in INPUTS_REPORTED_UNDER are moved to the head of the named tab's
+    table. With n_speaker > 1 the per-driver tabs (PER_DRIVER_TABS) are headed
+    "<tab>, single driver".
     """
     sections = []
+    moved = {}  # tab name -> rows moved into it from other tabs
 
     for i_tab in range(input_form.count()):
         form = input_form.widget(i_tab)
@@ -272,16 +290,25 @@ def collect_extra_inputs(input_form) -> list[tuple[str, list[dict]]]:
             if name in INPUTS_VALUE_BEFORE_DASH:
                 value = value.split(" - ")[0].strip()
 
-            rows.append({"label": WIDGET_LABELS.get(name) or _label_for(probe) or name,
-                         "value": value,
-                         "unit": _unit_from_tooltip(probe.toolTip()),
-                         "tooltip": probe.toolTip(),
-                         })
+            row = {"label": WIDGET_LABELS.get(name) or _label_for(probe) or name,
+                   "value": value,
+                   "unit": _unit_from_tooltip(probe.toolTip()),
+                   "tooltip": probe.toolTip(),
+                   }
+            if name in INPUTS_REPORTED_UNDER:
+                moved.setdefault(INPUTS_REPORTED_UNDER[name], []).append(row)
+            else:
+                rows.append(row)
 
-        if rows:
-            sections.append((input_form.tabText(i_tab), rows))
+        sections.append((input_form.tabText(i_tab), rows))
 
-    return sections
+    sections = [(tab, moved.get(tab, []) + rows) for tab, rows in sections]
+
+    if n_speaker > 1:
+        sections = [(f"{tab}, single driver" if tab in PER_DRIVER_TABS else tab, rows)
+                    for tab, rows in sections]
+
+    return [(tab, rows) for tab, rows in sections if rows]
 
 
 # ---- Graphs ----------------------------------------------------------------

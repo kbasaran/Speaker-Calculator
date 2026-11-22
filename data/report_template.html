@@ -89,6 +89,8 @@ p { margin: 0.5mm 0; }
 .doc-subtitle {
     color: var(--ink-soft);
     font-size: 8.5pt;
+    /* the design identity separates its parts with runs of spaces */
+    white-space: pre-wrap;
 }
 
 .description {
@@ -106,18 +108,15 @@ p { margin: 0.5mm 0; }
    is carried by the grid itself rather than by each half, so the gutter between
    the columns is part of the same area instead of a stripe of paper running
    down the middle. The columns are independent, so the taller of the two
-   decides how far down the page the panel reaches.
-
-   Both headings sit inside the panel, which is what lets its top edge be a
-   single straight line across the page. */
+   decides how far down the page the panel reaches. */
 
 .columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
     column-gap: var(--gutter);
     align-items: start;
-    /* The headings that would normally open a section sit inside this panel, so
-       the gap an <h2> would have left above it has to come from the panel. */
+    /* The gap an <h2> would have left above the panel has to come from the
+       panel itself. */
     margin-top: 5mm;
     background: var(--panel);
     border: 1px solid var(--rule-soft);
@@ -129,13 +128,15 @@ p { margin: 0.5mm 0; }
    the panel's padding to space the contents off its edges. */
 .columns > section > *:first-child { margin-top: 2mm; }
 .columns > section > *:last-child { margin-bottom: 0; }
+/* The results column opens with the summary's first heading, inside the
+   .results wrapper; it takes the same top gap as the first input table. */
+.columns .results > *:first-child { margin-top: 0; }
 
 /* The results markup comes verbatim from SpeakerSystem.get_summary, which is
    written for Qt's rich-text engine: column gaps inside a line are runs of
    &nbsp; and the headings carry no classes. Only the shared heading/paragraph
    rules above apply to it, except that its own <h2> parts are stepped down here
-   so the "Results" heading leading the column still reads as the senior one,
-   and to the size of the <h3> headings that lead the input tables opposite. */
+   to the size of the <h3> headings that lead the input tables opposite. */
 
 .results h2 {
     font-size: 10pt;
@@ -247,12 +248,10 @@ figure.graph img {
 <div class="columns">
 
 <section>
-<h2>Inputs</h2>
 $inputs
 </section>
 
 <section>
-<h2>Results</h2>
 <div class="results">
 $results
 </div>

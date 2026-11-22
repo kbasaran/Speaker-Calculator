@@ -186,13 +186,17 @@ class SpeakerDriver:
     def Vas(self):
         return air.Kair / self.Kms * self.Sd**2
 
-    def get_summary(self, V_spk: float = 0) -> str:
-        "Summary in HTML (rendered by Qt's rich-text engine via setHtml)."
+    def get_summary(self, V_spk: float = 0, heading_note: str = "") -> str:
+        """Summary in HTML (rendered by Qt's rich-text engine via setHtml).
+
+        heading_note is appended to the section headings, e.g. ", single driver"
+        when this driver is one of several in a system.
+        """
         # Vertical spacing between headings/paragraphs is governed centrally by the
         # results box's default stylesheet, so this markup only carries structure:
         # <h2>/<h4> headings, <p> paragraphs, <br> intra-paragraph breaks. Column
         # gaps within a line use &nbsp; runs (HTML collapses ordinary spaces).
-        summary = ("<h2>Speaker unit</h2>"
+        summary = (f"<h2>Speaker unit{heading_note}</h2>"
                    "<p>"
                    f"L<sub>m</sub> : {self.Lm() :.2f} dBSPL&nbsp;&nbsp;&nbsp;&nbsp;"
                    f"R<sub>e</sub> : {self.Re:.2f} ohm<br>"
@@ -226,6 +230,6 @@ class SpeakerDriver:
         if self.motor is not None:
             # No separator here: the Motor section is set off by the rule under its
             # own <h2> (see Motor.get_summary), matching the "Speaker unit" heading.
-            summary += self.motor.get_summary()
+            summary += self.motor.get_summary(heading_note)
 
         return summary

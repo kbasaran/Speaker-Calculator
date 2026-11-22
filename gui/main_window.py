@@ -353,7 +353,7 @@ class MainWindow(qtw.QMainWindow):
                 title=self.title_textbox.text(),
                 description=self.notes_textbox.toPlainText(),
                 results_html=self.speaker_model_state["summary_html"],
-                input_sections=report.collect_extra_inputs(self.input_form),
+                input_sections=report.collect_extra_inputs(self.input_form, spk_sys.n_speaker),
                 graphs=report.render_graphs(spk_sys, V_source),
                 subtitle=labels.design_identity(spk_sys, V_source,
                                                 app_settings.get_value("f_max")),

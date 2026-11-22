@@ -207,6 +207,49 @@ class TestSpeakerSystemArray(unittest.TestCase):
         self.assertEqual(list(build_spl(self.configure(2, "parallel", speaker=shaker), FREQS, V, V, 1).curves),
                          ["Moving mass, single driver, RMS"])
 
+    def test_summary_headings_mark_single_driver(self):
+        single = self.configure().get_summary(V)
+        self.assertIn("<h2>Speaker unit</h2>", single)
+        self.assertNotIn("Drivers combined", single)
+
+        multi = self.configure(2, "parallel").get_summary(V)
+        self.assertIn("<h2>Speaker unit, single driver</h2>", multi)
+        self.assertIn("<h4>Drivers combined</h4>", multi)
+
+    def test_box_stiffness_and_alpha_in_summary(self):
+        # K_enc,s is the box stiffness each driver feels, N * Kair * Sd² / Vb;
+        # alpha uses the V_as of all the drivers together.
+        n = 2
+        enclosure = Enclosure(VB, QA, QL)
+        sys = self.configure(n, "parallel", enclosure=enclosure)
+        k_each = n * enclosure.K(SD)
+        self.assertIn(f"K<sub>enc,s</sub>, single driver : {k_each / 1000:.4g} N/mm", sys.get_summary(V))
+        self.assertAlmostEqual(sys._combined_Vas(), n * self.spk.Vas())
+
+    def test_excitation_and_identity_say_total(self):
+        from gui import labels
+        sys = self.configure()
+        self.assertNotIn("total", labels.voltage_line(sys, V, *labels.excitation_at_speaker(sys, V)))
+        identity = labels.design_identity(sys, V, 1000)
+        self.assertNotIn("Per driver:", identity)
+        self.assertNotIn("System:", identity)
+
+        sys = self.configure(2, "serial", Rext=1)
+        line = labels.voltage_line(sys, V, *labels.excitation_at_speaker(sys, V))
+        self.assertIn("Drivers:", line)
+        self.assertIn("Watt total @ Re", line)
+        identity = labels.design_identity(sys, V, 1000)
+        self.assertTrue(identity.startswith("2× serial    Per driver:    "))
+        self.assertIn("    System:    ", identity)
+
+    def test_summary_states_excitation_as_graph_titles(self):
+        from gui import labels
+        for n, coupling, Rext in ((1, None, 0), (2, "serial", 1)):
+            sys = self.configure(n, coupling, Rext=Rext)
+            line = labels.voltage_line(sys, V, *labels.excitation_at_speaker(sys, V))
+            self.assertIn(f"<h2>System</h2>Excitation : {line}<br>", sys.get_summary(V))
+        self.assertNotIn("Excitation", sys.get_summary())  # no drive level given
+
     def test_summary_mentions_drivers_only_when_several(self):
         self.assertNotIn("wiring", self.configure().get_summary(V))
         summary = self.configure(2, "serial").get_summary(V)
