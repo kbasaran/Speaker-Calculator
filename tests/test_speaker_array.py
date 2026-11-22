@@ -157,6 +157,56 @@ class TestSpeakerSystemArray(unittest.TestCase):
         fb = ((self.spk.Kms + n * K1) / self.spk.Mms)**0.5 / 2 / np.pi
         self.assertAlmostEqual(sys.fb, fb, places=9)
 
+    def test_driver_forces_are_per_driver(self):
+        # In free air every driver in parallel sees the full voltage, so it moves and
+        # pushes exactly like a single driver; in serial each driver sees V/N.
+        names = ("Lorentz force, RMS", "Force from speaker to parent body, RMS")
+        single = self.configure().get_forces(V, FREQS)
+        single = {k: single[k].copy() for k in names}
+        single_at_V_over_3 = self.configure().get_forces(V / 3, FREQS)
+        single_at_V_over_3 = {k: single_at_V_over_3[k].copy() for k in names}
+
+        parallel = self.configure(3, "parallel").get_forces(V, FREQS)
+        serial = self.configure(3, "serial").get_forces(V, FREQS)
+        for k in names:
+            k_multi = k.replace(", RMS", ", single driver, RMS")
+            assert_close(self, parallel[k_multi], single[k])
+            assert_close(self, serial[k_multi], single_at_V_over_3[k])
+
+    def test_parent_body_force_is_system_total(self):
+        # The cabinet carries all the drivers: compare with one hand-built big driver.
+        from core.components import ParentBody
+        pb = ParentBody(0.5, 25e3, 4)
+        key = "Force from parent body to reference frame, RMS"
+        key_multi = "Force from parent body to reference frame, total, RMS"
+
+        self.sys.update_values(speaker=self.spk, n_speaker=2, coupling="parallel",
+                               enclosure=None, passive_radiator=None, parent_body=pb, Rext=0)
+        combined = self.sys.get_forces(V, FREQS)[key_multi].copy()
+
+        big = make_driver(Sd=2 * SD, Mms=2 * MMS, Re=RE / 2, Le=LE / 2)
+        self.sys.update_values(speaker=big, n_speaker=1, coupling=None,
+                               enclosure=None, passive_radiator=None, parent_body=pb, Rext=0)
+        assert_close(self, combined, self.sys.get_forces(V, FREQS)[key])
+
+    def test_diaphragm_curves_marked_single_driver(self):
+        from gui.plot_builders import build_displacements, build_velocities
+        for builder in (build_displacements, build_velocities):
+            single = builder(self.configure(), FREQS, V, V, 1).curves
+            self.assertIn("Diaphragm, RMS", single)
+
+            multi = builder(self.configure(2, "parallel"), FREQS, V, V, 1).curves
+            self.assertIn("Diaphragm, single driver, RMS", multi)
+            self.assertFalse([k for k in multi if k.startswith("Diaphragm") and "single driver" not in k])
+
+    def test_shaker_acceleration_marked_single_driver(self):
+        from gui.plot_builders import build_spl
+        shaker = make_driver(Sd=0)
+        self.assertEqual(list(build_spl(self.configure(speaker=shaker), FREQS, V, V, 1).curves),
+                         ["Moving mass, RMS"])
+        self.assertEqual(list(build_spl(self.configure(2, "parallel", speaker=shaker), FREQS, V, V, 1).curves),
+                         ["Moving mass, single driver, RMS"])
+
     def test_summary_mentions_drivers_only_when_several(self):
         self.assertNotIn("wiring", self.configure().get_summary(V))
         summary = self.configure(2, "serial").get_summary(V)

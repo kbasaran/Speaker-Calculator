@@ -31,6 +31,20 @@ class PlotSpec:
     line_kwargs: dict[str, dict] = field(default_factory=dict)
 
 
+def _mark_single_driver(spk_sys, curves: dict) -> dict:
+    """Label the diaphragm curves as those of a single driver when there are several.
+
+    Every driver's cone moves the same way, so the diaphragm displacement and
+    velocity are per driver while e.g. SPL is a total. The model keys stay
+    fixed ("Diaphragm, RMS"), since other calculations look them up by name;
+    the remark is added here, where they become graph labels.
+    """
+    if spk_sys.n_speaker == 1:
+        return curves
+    return {key.replace("Diaphragm", "Diaphragm, single driver", 1) if key.startswith("Diaphragm") else key: val
+            for key, val in curves.items()}
+
+
 def _dotted_for_peak(curve_names) -> dict[str, dict]:
     """Line kwargs drawing 'peak' curves dotted, leaving RMS (and any others) solid."""
     return {name: {"linestyle": ":"} for name in curve_names if "peak" in name.lower()}
@@ -40,7 +54,7 @@ def build_spl(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
     curves = {}
 
     if spk_sys.speaker.Sd == 0:  # shaker or other with no diaphragm
-        accs = spk_sys.get_accelerations(V_source, freqs)
+        accs = _mark_single_driver(spk_sys, spk_sys.get_accelerations(V_source, freqs))
         curves.update({key.replace("Diaphragm", "Moving mass"): 20*np.log10(np.abs(acc)/1e-6)
                        for key, acc in accs.items() if "relative" not in key})
         title = f"Acceleration\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}"
@@ -97,6 +111,7 @@ def build_relative_displacements(spk_sys, freqs, V_source, V_spk, W_spk) -> Plot
     curves = {key: np.abs(val) * 1e3
               for key, val in spk_sys.get_displacements(V_source, freqs).items()
               if "relative" in key}
+    curves = _mark_single_driver(spk_sys, curves)
 
     if not curves:
         title = "Displacements - relative to parent body\n-No parent body in this model-"
@@ -116,6 +131,7 @@ def build_displacements(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
               if "relative" not in key}
     if isinstance(spk_sys.passive_radiator, BassReflexPort):
         curves = {key: val for key, val in curves.items() if "vent" not in key.lower()}
+    curves = _mark_single_driver(spk_sys, curves)
     return PlotSpec(curves,
                     title=f"Absolute displacements\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}",
                     ylabel="mm",
@@ -133,6 +149,7 @@ def build_forces(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
 
 def build_velocities(spk_sys, freqs, V_source, V_spk, W_spk) -> PlotSpec:
     curves = {key: np.abs(val) for key, val in spk_sys.get_velocities(V_source, freqs).items()}
+    curves = _mark_single_driver(spk_sys, curves)
     return PlotSpec(curves,
                     title=f"Velocities\n{_voltage_line(spk_sys, V_source, V_spk, W_spk)}",
                     ylabel="m/s",
